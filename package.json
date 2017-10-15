@@ -1,0 +1,24 @@
+{
+  "name": "kcpuv",
+  "version": "1.0.0",
+  "description": "## Build",
+  "main": "node/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://OYYD@bitbucket.org/OYYD/kcpuv.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "gypfile": true,
+  "homepage": "https://bitbucket.org/OYYD/kcpuv#readme",
+  "dependencies": {
+    "nan": "^2.7.0"
+  }
+}

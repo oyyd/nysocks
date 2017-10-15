@@ -1,0 +1,12 @@
+[submodule "deps/kcp"]
+	path = deps/kcp
+	url = https://github.com/skywind3000/kcp.git
+[submodule "deps/googletest"]
+	path = deps/googletest
+	url = https://github.com/google/googletest.git
+[submodule "deps/libuv"]
+	path = deps/libuv
+	url = https://github.com/libuv/libuv.git
+[submodule "deps/gyp"]
+	path = deps/gyp
+	url = https://chromium.googlesource.com/external/gyp

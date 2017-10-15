@@ -1,0 +1,17 @@
+research
+kcpuv.xcodeproj
+**/build
+
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/*.xcodeproj
+**/*.build
+**/Release
+CMakeScripts
+CMakeFiles
+CTestTestfile.cmake
+**/*.h.gch
+
+**/Debug
+
+node_modules
