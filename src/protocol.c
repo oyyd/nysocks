@@ -1,8 +1,13 @@
 // The encryption part is imported from:
 // https://github.com/saju/misc/blob/master/misc/openssl_aes.c
 #include "protocol.h"
+#include "kcpuv_sess.h"
 #include <openssl/aes.h>
 #include <openssl/evp.h>
+
+static void encode_random_bytes(unsigned char *content, int position) {
+  RAND_bytes(content + position, KCPUV_NONCE_LENGTH);
+}
 
 /**
  * Create a 256 bit key and IV using the supplied key_data. salt can be added
@@ -104,7 +109,11 @@ void kcpuv_cryptor_clean(kcpuv_cryptor *cryptor) {
 }
 
 int kcpuv_protocol_decode(const char *content) {
-  return (*(const unsigned char *)content) & 0xff;
+  int close = (*(const unsigned char *)content) & 0xff;
+  return close;
 }
 
-void kcpuv_protocol_encode(int close, char *content) { *content = close; }
+void kcpuv_protocol_encode(int close, char *content) {
+  *content = close;
+  encode_random_bytes(content, 1);
+}

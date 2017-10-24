@@ -9,6 +9,7 @@ extern "C" {
 #include "utils.h"
 #include "uv.h"
 
+extern const int KCPUV_NONCE_LENGTH;
 extern long kcpuv_udp_buf_size;
 extern uv_loop_t *kcpuv_loop;
 

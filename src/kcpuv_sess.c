@@ -11,6 +11,7 @@ uv_loop_t *kcpuv_loop = NULL;
 static int debug = 0;
 static kcpuv_sess_list *sess_list = NULL;
 
+const int KCPUV_NONCE_LENGTH = 8;
 static const int KCPUV_PROTOCOL_OVERHEAD = 1;
 static const int wnd_size = 2048;
 static const IUINT32 IKCP_MTU_DEF = 1400 - KCPUV_PROTOCOL_OVERHEAD;

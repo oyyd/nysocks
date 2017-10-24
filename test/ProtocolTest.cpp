@@ -1,5 +1,6 @@
 #include "protocol.h"
 #include "KcpuvTest.h"
+#include "kcpuv_sess.h"
 #include "utils.h"
 #include <cstring>
 
@@ -13,13 +14,14 @@ protected:
 };
 
 TEST_F(ProtocolTest, encode_and_decode_char_pointer) {
-  int size = 5;
+  int size = 20;
   char *str = new char[size];
   memset(str, static_cast<int>('a'), size);
   kcpuv_protocol_encode(1, str);
 
   EXPECT_EQ(static_cast<unsigned int>(str[0]), 1);
-  EXPECT_EQ(static_cast<unsigned int>(str[2]), 'a');
+  EXPECT_EQ(static_cast<int>(str[1 + KCPUV_NONCE_LENGTH]),
+            static_cast<int>('a'));
 
   int close = kcpuv_protocol_decode(str);
 
