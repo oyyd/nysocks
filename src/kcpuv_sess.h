@@ -6,10 +6,12 @@ extern "C" {
 #endif // __cplusplus
 
 #include "ikcp.h"
+#include "protocol.h"
 #include "utils.h"
 #include "uv.h"
 
 extern const int KCPUV_NONCE_LENGTH;
+extern const int KCPUV_PROTOCOL_OVERHEAD;
 extern long kcpuv_udp_buf_size;
 extern uv_loop_t *kcpuv_loop;
 
@@ -30,6 +32,7 @@ struct KCPUV_SESS {
   unsigned int timeout;
   kcpuv_listen_cb on_msg_cb;
   kcpuv_close_cb on_close_cb;
+  kcpuv_cryptor *cryptor;
   // TODO: outher config
 };
 
@@ -48,9 +51,12 @@ void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port);
 
 int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb);
 
+int kcpuv_stop_listen(kcpuv_sess *sess);
+
 void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len);
 
-void kcpuv_close(kcpuv_sess *sess, unsigned int);
+void kcpuv_close(kcpuv_sess *sess,
+                 unsigned int should_send_a_close_cmd_to_the_other_side);
 
 void kcpuv_bind_close(kcpuv_sess *, kcpuv_close_cb);
 

@@ -10,6 +10,7 @@
       'deps/kcp/ikcp.c',
       'src/kcpuv_sess.c',
       'src/utils.c',
+      'src/protocol.c',
       'node/binding.cc',
     ],
   }]
