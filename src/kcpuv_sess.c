@@ -4,14 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int debug = 1;
+// global
+static int debug = 0;
+static int use_default_loop = 1;
 
 // extern
 // TODO: it only accepts int in uv.h
 long kcpuv_udp_buf_size = 4 * 1024 * 1024;
 uv_loop_t *kcpuv_loop = NULL;
 
-static int use_default_loop = 1;
 const int KCPUV_NONCE_LENGTH = 8;
 const int KCPUV_PROTOCOL_OVERHEAD = 1;
 static const int WND_SIZE = 2048;
@@ -55,13 +56,19 @@ void kcpuv_destruct() {
     return;
   }
 
-  uv_loop_close(kcpuv_loop);
-  free(kcpuv_loop);
+  if (!use_default_loop) {
+    uv_loop_close(kcpuv_loop);
+    free(kcpuv_loop);
+  }
 
   kcpuv_link *ptr = sess_list->list;
   kcpuv_link *ptr_next = ptr->next;
-  free(buffer);
-  buffer = NULL;
+
+  if (buffer != NULL) {
+    free(buffer);
+    buffer = NULL;
+  }
+
   // destruct all nodes
   while (ptr_next) {
     ptr = ptr_next;
@@ -287,6 +294,10 @@ void kcpuv_free(kcpuv_sess *sess) {
 
 // Set sending info.
 void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
+  if (sess->send_addr != NULL) {
+    free(sess->send_addr);
+  }
+
   sess->send_addr = malloc(sizeof(struct sockaddr_in));
   uv_ip4_addr(addr, port, sess->send_addr);
 }

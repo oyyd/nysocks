@@ -206,8 +206,8 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "initSend", InitSend);
   Nan::SetMethod(target, "send", Send);
   Nan::SetMethod(target, "bindClose", BindClose);
-  Nan::SetMethod(target, "initialize", Initialize);
   Nan::SetMethod(target, "close", Close);
+  Nan::SetMethod(target, "initialize", Initialize);
   Nan::SetMethod(target, "destruct", Destruct);
   Nan::SetMethod(target, "startLoop", StartLoop);
   Nan::SetMethod(target, "destroyLoop", DestroyLoop);

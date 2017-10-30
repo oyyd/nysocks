@@ -2,13 +2,15 @@
   "name": "kcpuv",
   "version": "1.0.0",
   "description": "## Build",
-  "main": "node/index.js",
+  "main": "node_lib/index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "node-gyp rebuild"
+    "dev": "babel node/src --out-dir node/lib -w",
+    "build": "babel node/src --out-dir node/lib",
+    "install": "node-gyp rebuild",
+    "test:packet": "node node/lib/__tests__/send_a_buf"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,33 @@
   "homepage": "https://bitbucket.org/OYYD/kcpuv#readme",
   "dependencies": {
     "nan": "^2.7.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.10.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true
+    },
+    "extends": "airbnb-base",
+    "rules": {
+      "semi": [2, "never"]
+    }
+  },
+  "babel": {
+    "presets": [
+      [
+        "env",
+        {
+          "target": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
   }
 }
