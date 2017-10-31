@@ -35,7 +35,6 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 void recver_cb(kcpuv_sess *sess, char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
-  delete[] data;
   kcpuv_destroy_loop();
 }
 
@@ -62,7 +61,6 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
 
   kcpuv_start_loop();
 
-  delete msg;
   kcpuv_free(sender);
   kcpuv_free(recver);
   kcpuv_destruct();
@@ -88,7 +86,7 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
   int size = 4096;
   char *msg = new char[size];
 
-  memset(msg, 'a', size);
+  memset(msg, 65, size);
 
   // bind local
   kcpuv_listen(recver, receive_port, &recver_cb2);
@@ -111,7 +109,6 @@ static testing::MockFunction<void(void)> *test_callback3;
 static void close_cb(kcpuv_sess *sess) {
   test_callback3->Call();
   delete test_callback3;
-  // kcpuv_destroy_loop();
 }
 
 TEST_F(KcpuvSessTest, on_close_cb) {

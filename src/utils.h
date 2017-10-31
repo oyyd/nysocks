@@ -38,7 +38,7 @@ kcpuv_link *kcpuv_link_create(void *);
 
 void kcpuv_link_add(kcpuv_link *current, kcpuv_link *next);
 
-int kcpuv_link_remove(kcpuv_link *head, void *node);
+int kcpuv_link_remove_by_item(kcpuv_link *head, void *node);
 
 void kcpuv_log_error(char *msg);
 

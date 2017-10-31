@@ -9,8 +9,6 @@ extern "C" {
 #include <openssl/evp.h>
 
 typedef struct KCPUV_CRYPTOR {
-  char *key;
-  int key_len;
   EVP_CIPHER_CTX *en;
   EVP_CIPHER_CTX *de;
 } kcpuv_cryptor;

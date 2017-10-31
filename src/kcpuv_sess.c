@@ -64,35 +64,27 @@ int kcpuv_destruct() {
     // we don't call the `uv_run` on this loop and
     // then causes a memory leaking.
     int rval = uv_loop_close(kcpuv_loop);
-    if (rval) {
-      // fprintf(stderr, "failed to close the loop: %s\n", uv_strerror(rval));
-      return -1;
-    }
+    // if (rval) {
+    //   fprintf(stderr, "failed to close the loop: %s\n", uv_strerror(rval));
+    //   return -1;
+    // }
 
     free(kcpuv_loop);
     kcpuv_loop = NULL;
   }
-
-  kcpuv_link *ptr = sess_list->list;
-  kcpuv_link *ptr_next = ptr->next;
 
   if (buffer != NULL) {
     free(buffer);
     buffer = NULL;
   }
 
+  kcpuv_link *ptr = sess_list->list;
+  kcpuv_link *ptr_next = ptr->next;
+
   // destruct all nodes
-  while (ptr_next) {
-    ptr = ptr_next;
+  while (ptr_next != NULL) {
+    kcpuv_free(ptr_next->node);
     ptr_next = ptr->next;
-
-    if (ptr->node != NULL) {
-      kcpuv_sess *sess = ptr->node;
-      kcpuv_free(sess);
-    }
-
-    kcpuv_link_remove(sess_list->list, ptr);
-    free(ptr);
   }
 
   free(sess_list->list);
@@ -168,10 +160,12 @@ void kcpuv_start_loop() {
 }
 
 void kcpuv_destroy_loop() {
-  uv_idle_stop(idler);
-  free(idler);
+  if (idler != NULL) {
+    uv_idle_stop(idler);
+    free(idler);
+  }
 
-  if (!use_default_loop) {
+  if (!use_default_loop && kcpuv_loop != NULL) {
     uv_stop(kcpuv_loop);
   }
 }
@@ -206,6 +200,7 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 
 static int send_cb(uv_udp_send_t *req, int status) {
   // TODO: should check status?
+  free(req->data);
   free(req);
 }
 
@@ -231,14 +226,16 @@ static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   memcpy(plaintext + KCPUV_PROTOCOL_OVERHEAD + KCPUV_NONCE_LENGTH, msg, len);
 
   // encrypt
-  char *data = kcpuv_cryptor_encrypt(sess->cryptor, plaintext, &write_len);
+  char *data =
+      (char *)kcpuv_cryptor_encrypt(sess->cryptor, plaintext, &write_len);
 
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, write_len);
+  // for freeing the buf latter
+  req->data = data;
 
   uv_udp_send(req, sess->handle, &buf, 1, sess->send_addr, &send_cb);
 
-  free(data);
   free(plaintext);
   return 0;
 }
@@ -290,7 +287,7 @@ kcpuv_sess *kcpuv_create() {
 // Free a kcpuv session.
 void kcpuv_free(kcpuv_sess *sess) {
   if (sess_list != NULL && sess_list->list != NULL) {
-    kcpuv_link_remove(sess_list->list, sess);
+    kcpuv_link_remove_by_item(sess_list->list, sess);
     sess_list->len -= 1;
   }
 
@@ -303,6 +300,7 @@ void kcpuv_free(kcpuv_sess *sess) {
   if (sess->recv_addr != NULL) {
     free(sess->recv_addr);
   }
+
   free(sess->handle);
   ikcp_release(sess->kcp);
   free(sess);
@@ -335,7 +333,7 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     if (debug) {
       printf("input: %ld\n", iclock64());
       print_as_hex(read_msg, read_len);
-      printf("\n");
+      printf("%s\n", read_msg);
     }
 
     // check protocol
@@ -344,7 +342,6 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
       kcpuv_close(sess, 0);
       free(read_msg);
       free(buf->base);
-      free(buf);
       return;
     }
 
@@ -366,7 +363,6 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
   // release uv buf
   free(buf->base);
-  free(buf);
 }
 
 // Set receiving info.

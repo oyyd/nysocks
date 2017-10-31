@@ -86,13 +86,10 @@ unsigned char *kcpuv_cryptor_decrypt(kcpuv_cryptor *cryptor,
 
 int kcpuv_cryptor_init(kcpuv_cryptor *cryptor, char *key, int key_len,
                        unsigned int salt[]) {
-  cryptor->key = key;
-  cryptor->key_len = key_len;
   cryptor->en = malloc(sizeof(EVP_CIPHER_CTX));
   cryptor->de = malloc(sizeof(EVP_CIPHER_CTX));
 
-  if (aes_init((unsigned char *)cryptor->key, cryptor->key_len, salt,
-               cryptor->en, cryptor->de)) {
+  if (aes_init((unsigned char *)key, key_len, salt, cryptor->en, cryptor->de)) {
     fprintf(stderr, "Couldn't initialize AES cipher\n");
     return -1;
   }
@@ -105,7 +102,6 @@ void kcpuv_cryptor_clean(kcpuv_cryptor *cryptor) {
   EVP_CIPHER_CTX_cleanup(cryptor->de);
   free(cryptor->en);
   free(cryptor->de);
-  free(cryptor->key);
 }
 
 int kcpuv_protocol_decode(const char *content) {
@@ -114,6 +110,6 @@ int kcpuv_protocol_decode(const char *content) {
 }
 
 void kcpuv_protocol_encode(int close, char *content) {
-  *content = close;
+  content[0] = close;
   encode_random_bytes(content, 1);
 }

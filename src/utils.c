@@ -72,8 +72,13 @@ void print_as_hex(const char *msg, int len) {
     cur += len;
   }
 
-  for (i = 0; i < protocol_length; i += 1) {
-  }
+  // for (i = 8; i < len && i < 18; i += 1) {
+  //   for (int j = 0; j < len; j += 1) {
+  //     printf("%x ", (unsigned)(unsigned char)msg[cur + j]);
+  //   }
+  //   printf(" ");
+  //   cur += len;
+  // }
 
   printf("\n");
 }
@@ -102,7 +107,7 @@ void kcpuv_link_add(kcpuv_link *head, kcpuv_link *next) {
 }
 
 // Return -1 if the pointer is not in the queue.
-int kcpuv_link_remove(kcpuv_link *head, void *node) {
+int kcpuv_link_remove_by_item(kcpuv_link *head, void *node) {
   kcpuv_link *current = head;
 
   while (current->next != NULL && current->next->node != node) {

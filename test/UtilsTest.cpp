@@ -22,7 +22,6 @@ TEST_F(UtilsTest, kcpuv_link) {
 
     kcpuv_link *link = kcpuv_link_create(node);
     kcpuv_link_add(head, link);
-    delete node;
   }
 
   for (int i = 0; i < 3; i += 1) {
@@ -32,7 +31,7 @@ TEST_F(UtilsTest, kcpuv_link) {
 
   current = head->next->next;
 
-  int rval = kcpuv_link_remove(head, current->node);
+  int rval = kcpuv_link_remove_by_item(head, current->node);
   EXPECT_EQ(rval, 0);
 
   current = head->next;
@@ -42,7 +41,7 @@ TEST_F(UtilsTest, kcpuv_link) {
 
   current = NULL;
 
-  rval = kcpuv_link_remove(head, current);
+  rval = kcpuv_link_remove_by_item(head, current);
   EXPECT_EQ(rval, -1);
 
   kcpuv_link *next = NULL;
