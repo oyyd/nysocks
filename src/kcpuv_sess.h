@@ -43,6 +43,8 @@ typedef struct KCPUV_SESS_LIST {
 
 kcpuv_sess_list *kcpuv_get_sess_list();
 
+void kcpuv_use_default_loop(int value);
+
 kcpuv_sess *kcpuv_create();
 
 void kcpuv_free(kcpuv_sess *sess);
@@ -62,7 +64,7 @@ void kcpuv_bind_close(kcpuv_sess *, kcpuv_close_cb);
 
 void kcpuv_initialize();
 
-void kcpuv_destruct();
+int kcpuv_destruct();
 
 void kcpuv_start_loop();
 

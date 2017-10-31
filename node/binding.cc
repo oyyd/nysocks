@@ -1,3 +1,5 @@
+#define NDEBUG
+
 #include "kcpuv_sess.h"
 #include <iostream>
 #include <nan.h>
@@ -94,6 +96,16 @@ void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
   }
 }
 
+static NAN_METHOD(UseDefaultLoop) {
+  Isolate *isolate = info.GetIsolate();
+  bool use = info[0]->BooleanValue();
+  int val = 0;
+  if (use) {
+    val = 1;
+  }
+  kcpuv_use_default_loop(val);
+}
+
 static NAN_METHOD(Initialize) { kcpuv_initialize(); }
 
 static NAN_METHOD(Destruct) { kcpuv_destruct(); }
@@ -109,7 +121,7 @@ static NAN_METHOD(Listen) {
 
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-  int port = static_cast<double>(info[1]->ToNumber(isolate)->Value());
+  int port = info[1]->ToNumber(isolate)->Int32Value();
 
   if (!info[2]->IsFunction()) {
     isolate->ThrowException(Exception::Error(
@@ -199,6 +211,7 @@ static NAN_MODULE_INIT(Init) {
 
   KcpuvSessBinding::constructor.Reset(isolate, tpl->GetFunction());
 
+  Nan::Set(target, "useDefaultLoop", UseDefaultLoop);
   Nan::Set(target, String::NewFromUtf8(isolate, "create"), tpl->GetFunction());
   Nan::SetMethod(target, "free", Free);
   Nan::SetMethod(target, "listen", Listen);

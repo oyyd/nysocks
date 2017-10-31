@@ -16,6 +16,7 @@ protected:
 TEST_F(ProtocolTest, encode_and_decode_char_pointer) {
   int size = 20;
   char *str = new char[size];
+
   memset(str, static_cast<int>('a'), size);
   kcpuv_protocol_encode(1, str);
 
@@ -26,17 +27,17 @@ TEST_F(ProtocolTest, encode_and_decode_char_pointer) {
   int close = kcpuv_protocol_decode(str);
 
   EXPECT_EQ(close, 1);
+
+  delete str;
 }
 
 TEST_F(ProtocolTest, init_and_clean_cryptor) {
   int key_len = 6;
   char *key = new char[key_len];
-  memset(key, 65, key_len);
-
   unsigned int salt[] = {12345, 23456};
-
   kcpuv_cryptor *cryptor = new kcpuv_cryptor;
 
+  memset(key, 65, key_len);
   int rval = kcpuv_cryptor_init(cryptor, key, key_len, salt);
 
   EXPECT_EQ(rval, 0);
@@ -63,11 +64,14 @@ TEST_F(ProtocolTest, init_and_clean_cryptor) {
     EXPECT_EQ(cmpval, 0);
 
     delete[] ciphertext;
+    delete[] deciphertext;
     delete[] content;
   }
 
   kcpuv_cryptor_clean(cryptor);
+
   delete cryptor;
+  delete key;
 }
 
 } // namespace kcpuv_test

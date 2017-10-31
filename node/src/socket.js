@@ -1,6 +1,8 @@
 import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
 
+binding.useDefaultLoop(true)
+
 // const {
 //   create, free,
 //   listen, stopListen, initSend, send, bindClose, close,

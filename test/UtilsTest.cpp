@@ -22,6 +22,7 @@ TEST_F(UtilsTest, kcpuv_link) {
 
     kcpuv_link *link = kcpuv_link_create(node);
     kcpuv_link_add(head, link);
+    delete node;
   }
 
   for (int i = 0; i < 3; i += 1) {
@@ -43,6 +44,16 @@ TEST_F(UtilsTest, kcpuv_link) {
 
   rval = kcpuv_link_remove(head, current);
   EXPECT_EQ(rval, -1);
+
+  kcpuv_link *next = NULL;
+  current = head;
+
+  while (current != NULL) {
+    next = current->next;
+    free(current->node);
+    free(current);
+    current = next;
+  }
 }
 
 TEST_F(UtilsTest, iclock) {

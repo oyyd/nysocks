@@ -46,11 +46,11 @@ static int aes_init(unsigned char *key_data, int key_data_len,
  */
 unsigned char *kcpuv_cryptor_encrypt(kcpuv_cryptor *cryptor,
                                      unsigned char *plaintext, int *len) {
-  EVP_CIPHER_CTX *e = cryptor->en;
   /* max ciphertext len for a n bytes of plaintext is n + AES_BLOCK_SIZE -1
    * bytes */
   int c_len = *len + AES_BLOCK_SIZE, f_len = 0;
   unsigned char *ciphertext = malloc(c_len);
+  EVP_CIPHER_CTX *e = cryptor->en;
 
   /* allows reusing of 'e' for multiple encryption cycles */
   EVP_EncryptInit_ex(e, NULL, NULL, NULL, NULL);

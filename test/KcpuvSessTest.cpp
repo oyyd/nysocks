@@ -35,9 +35,11 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 void recver_cb(kcpuv_sess *sess, char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
+  delete[] data;
   kcpuv_destroy_loop();
 }
 
+// TODO: valgrid possiblely lost
 TEST_F(KcpuvSessTest, transfer_one_packet) {
   kcpuv_initialize();
 
@@ -59,6 +61,10 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
   EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
 
   kcpuv_start_loop();
+
+  delete msg;
+  kcpuv_free(sender);
+  kcpuv_free(recver);
   kcpuv_destruct();
 }
 
@@ -96,6 +102,8 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
 
   kcpuv_start_loop();
   kcpuv_destruct();
+
+  delete msg;
 }
 
 static testing::MockFunction<void(void)> *test_callback3;
