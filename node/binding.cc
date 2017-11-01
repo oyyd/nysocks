@@ -52,17 +52,21 @@ private:
 
 Persistent<Function> KcpuvSessBinding::constructor;
 
-void buffer_delete_callback(char *data, void *hint) { free(data); }
+// void buffer_delete_callback(char *data, void *hint) { free(data); }
 
 void binding_cb(kcpuv_sess *sess, char *data, int len) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
   // NOTE: Create a scope for the allocation of v8 memories
   // as we are calling a js function outside the v8
   Nan::HandleScope scope;
-  Isolate *isolate = Isolate::GetCurrent();
+
+  // NOTE: V8 will free these memories so that we have to
+  // make a copy.
+  char *buf_data = new char[len];
+  memcpy(buf_data, data, len);
 
   const int argc = 1;
-  Local<Value> args[argc] = {Nan::NewBuffer(data, len).ToLocalChecked()};
+  Local<Value> args[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
                     Nan::New(binding->bind_cb), argc, args);
@@ -97,12 +101,12 @@ void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
 }
 
 static NAN_METHOD(UseDefaultLoop) {
-  Isolate *isolate = info.GetIsolate();
   bool use = info[0]->BooleanValue();
   int val = 0;
   if (use) {
     val = 1;
   }
+
   kcpuv_use_default_loop(val);
 }
 
@@ -135,8 +139,6 @@ static NAN_METHOD(Listen) {
 }
 
 static NAN_METHOD(StopListen) {
-  Isolate *isolate = info.GetIsolate();
-
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
@@ -187,7 +189,6 @@ static NAN_METHOD(InitSend) {
 }
 
 static NAN_METHOD(Send) {
-  Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
@@ -211,8 +212,8 @@ static NAN_MODULE_INIT(Init) {
 
   KcpuvSessBinding::constructor.Reset(isolate, tpl->GetFunction());
 
-  Nan::Set(target, "useDefaultLoop", UseDefaultLoop);
   Nan::Set(target, String::NewFromUtf8(isolate, "create"), tpl->GetFunction());
+  Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "stopListen", StopListen);

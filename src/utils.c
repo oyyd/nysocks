@@ -53,16 +53,16 @@ IUINT32 iclock() { return (IUINT32)(iclock64() & 0xfffffffful); }
 // |  4   |  1  |  1  |  2  | 4  | 4  |  4  |  4  |
 // +------+-----+-----+-----+----+----+-----+-----+
 static int protocol_len[8] = {4, 1, 1, 2, 4, 4, 4, 4};
-static char *protocol_name[8] = {"conv", "cmd", "frg", "wnd",
-                                 "ts",   "sn",  "una", "len"};
-static int protocol_length = 24;
+// static char *protocol_name[8] = {"conv", "cmd", "frg", "wnd",
+//                                  "ts",   "sn",  "una", "len"};
+// static int protocol_length = 24;
 
 void print_as_hex(const char *msg, int len) {
   int i;
   int cur = 0;
 
   for (i = 0; i < 8; i += 1) {
-    char *name = protocol_name[i];
+    // char *name = protocol_name[i];
     int len = protocol_len[i];
 
     for (int j = 0; j < len; j += 1) {
@@ -99,30 +99,33 @@ kcpuv_link *kcpuv_link_create(void *node) {
 void kcpuv_link_add(kcpuv_link *head, kcpuv_link *next) {
   kcpuv_link *current = head;
 
+  // TODO: we don't have to add a new node to the end of the queue
   while (current->next != NULL) {
     current = current->next;
   }
 
   current->next = next;
+  next->next = NULL;
 }
 
 // Return -1 if the pointer is not in the queue.
-int kcpuv_link_remove_by_item(kcpuv_link *head, void *node) {
+kcpuv_link *kcpuv_link_get_pointer(kcpuv_link *head, void *node) {
   kcpuv_link *current = head;
+  kcpuv_link *ptr = NULL;
 
   while (current->next != NULL && current->next->node != node) {
     current = current->next;
   }
 
   if (current->next != NULL) {
-    kcpuv_link *ptr = current->next;
+    ptr = current->next;
     current->next = ptr->next;
-    free(ptr);
+    ptr->next = NULL;
 
-    return 0;
+    return ptr;
   }
 
-  return -1;
+  return NULL;
 }
 
 void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {

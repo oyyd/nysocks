@@ -18,7 +18,7 @@ const int KCPUV_PROTOCOL_OVERHEAD = 1;
 static const int WND_SIZE = 2048;
 static const IUINT32 IKCP_MTU_DEF =
     1400 - KCPUV_PROTOCOL_OVERHEAD - KCPUV_NONCE_LENGTH;
-static const IUINT32 IKCP_OVERHEAD = 24;
+// static const IUINT32 IKCP_OVERHEAD = 24;
 static const size_t MAX_SENDING_LEN = 65536;
 static const size_t BUFFER_LEN = MAX_SENDING_LEN;
 static const unsigned int DEFAULT_TIMEOUT = 30000;
@@ -41,6 +41,7 @@ void kcpuv_initialize() {
   // check and create list
   sess_list = malloc(sizeof(kcpuv_sess_list));
   sess_list->list = kcpuv_link_create(NULL);
+  sess_list->len = 0;
 
   // init buffer
   buffer = malloc(sizeof(char) * BUFFER_LEN);
@@ -198,7 +199,7 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
   }
 }
 
-static int send_cb(uv_udp_send_t *req, int status) {
+static void send_cb(uv_udp_send_t *req, int status) {
   // TODO: should check status?
   free(req->data);
   free(req);
@@ -209,7 +210,7 @@ static int send_cb(uv_udp_send_t *req, int status) {
 // TODO: do not allocate twice
 static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   if (debug) {
-    printf("output: %d %ld\n", len, iclock64());
+    printf("output: %d %lld\n", len, iclock64());
     printf("content: ");
     print_as_hex(msg, len);
     printf("\n");
@@ -226,15 +227,16 @@ static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   memcpy(plaintext + KCPUV_PROTOCOL_OVERHEAD + KCPUV_NONCE_LENGTH, msg, len);
 
   // encrypt
-  char *data =
-      (char *)kcpuv_cryptor_encrypt(sess->cryptor, plaintext, &write_len);
+  char *data = (char *)kcpuv_cryptor_encrypt(
+      sess->cryptor, (unsigned char *)plaintext, &write_len);
 
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, write_len);
   // for freeing the buf latter
   req->data = data;
 
-  uv_udp_send(req, sess->handle, &buf, 1, sess->send_addr, &send_cb);
+  uv_udp_send(req, sess->handle, &buf, 1,
+              (const struct sockaddr *)sess->send_addr, &send_cb);
 
   free(plaintext);
   return 0;
@@ -287,7 +289,10 @@ kcpuv_sess *kcpuv_create() {
 // Free a kcpuv session.
 void kcpuv_free(kcpuv_sess *sess) {
   if (sess_list != NULL && sess_list->list != NULL) {
-    kcpuv_link_remove_by_item(sess_list->list, sess);
+    kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, sess);
+    if (ptr != NULL) {
+      free(ptr);
+    }
     sess_list->len -= 1;
   }
 
@@ -301,6 +306,7 @@ void kcpuv_free(kcpuv_sess *sess) {
     free(sess->recv_addr);
   }
 
+  // TODO: should stop listening
   free(sess->handle);
   ikcp_release(sess->kcp);
   free(sess);
@@ -326,12 +332,12 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
   if (nread > 0) {
     kcpuv_sess *sess = (kcpuv_sess *)handle->data;
-    ssize_t read_len = nread;
-    char *read_msg = kcpuv_cryptor_decrypt(
+    int read_len = nread;
+    char *read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
 
     if (debug) {
-      printf("input: %ld\n", iclock64());
+      printf("input: %lld\n", iclock64());
       print_as_hex(read_msg, read_len);
       printf("%s\n", read_msg);
     }
@@ -385,6 +391,7 @@ int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
   // NOTE: it seems setting options before uv_udp_recv_start won't work
   uv_send_buffer_size(sess->handle, &kcpuv_udp_buf_size);
   uv_recv_buffer_size(sess->handle, &kcpuv_udp_buf_size);
+  return 0;
 }
 
 // Stop listening
@@ -400,6 +407,7 @@ void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_close_cb cb) {
 // Sessions won't receive msg anymore after closed.
 // We still need to send the close msg to the other side
 // and then we can free the sess.
+// NOTE: Users are expected to `kcpuv_free` sessions manually.
 void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg) {
   // mark that this sess could be freed
   sess->is_closed = 1;

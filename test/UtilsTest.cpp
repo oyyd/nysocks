@@ -15,6 +15,7 @@ protected:
 TEST_F(UtilsTest, kcpuv_link) {
   kcpuv_link *head = kcpuv_link_create(NULL);
   kcpuv_link *current = head;
+  kcpuv_link *ptr;
 
   for (int i = 0; i < 3; i += 1) {
     int *node = new int;
@@ -31,8 +32,8 @@ TEST_F(UtilsTest, kcpuv_link) {
 
   current = head->next->next;
 
-  int rval = kcpuv_link_remove_by_item(head, current->node);
-  EXPECT_EQ(rval, 0);
+  ptr = kcpuv_link_get_pointer(head, current->node);
+  free(ptr);
 
   current = head->next;
   EXPECT_EQ(*(static_cast<int *>(current->node)), 0);
@@ -41,8 +42,8 @@ TEST_F(UtilsTest, kcpuv_link) {
 
   current = NULL;
 
-  rval = kcpuv_link_remove_by_item(head, current);
-  EXPECT_EQ(rval, -1);
+  ptr = kcpuv_link_get_pointer(head, current);
+  free(ptr);
 
   kcpuv_link *next = NULL;
   current = head;

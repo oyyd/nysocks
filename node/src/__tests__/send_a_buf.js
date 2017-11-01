@@ -1,4 +1,4 @@
-import { create, listen, stopListen,
+import { create, listen, stopListen, destroy,
   setAddr, send, close, startKcpuv, stopKcpuv } from '../socket'
 
 function main() {
@@ -15,26 +15,28 @@ function main() {
   listen(sender, senderPort, (buf) => {
     console.log('sender: ', buf)
   })
+
   listen(receiver, receiverPort, (buf) => {
     const content = buf.toString('utf8')
     console.log('receive: ', content)
 
     if (content === msg) {
-      stopListen(sender)
-      stopListen(receiver)
       close(sender)
       close(receiver)
-      stopKcpuv()
+      stopListen(sender)
+      stopListen(receiver)
+      setTimeout(() => {
+        stopKcpuv()
+      }, 100)
     }
   })
+
   setAddr(sender, addr, receiverPort)
   setAddr(receiver, addr, senderPort)
 
   const buf = Buffer.from(msg)
 
   send(sender, buf, buf.length)
-
-  console.log('binding finished')
 }
 
 main()

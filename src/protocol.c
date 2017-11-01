@@ -4,6 +4,7 @@
 #include "kcpuv_sess.h"
 #include <openssl/aes.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 
 static void encode_random_bytes(unsigned char *content, int position) {
   RAND_bytes(content + position, KCPUV_NONCE_LENGTH);
@@ -84,6 +85,7 @@ unsigned char *kcpuv_cryptor_decrypt(kcpuv_cryptor *cryptor,
   return plaintext;
 }
 
+// TODO: salt should be chars
 int kcpuv_cryptor_init(kcpuv_cryptor *cryptor, char *key, int key_len,
                        unsigned int salt[]) {
   cryptor->en = malloc(sizeof(EVP_CIPHER_CTX));
@@ -111,5 +113,5 @@ int kcpuv_protocol_decode(const char *content) {
 
 void kcpuv_protocol_encode(int close, char *content) {
   content[0] = close;
-  encode_random_bytes(content, 1);
+  encode_random_bytes((unsigned char *)content, 1);
 }

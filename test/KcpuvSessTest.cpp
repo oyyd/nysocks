@@ -104,6 +104,41 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
   delete msg;
 }
 
+static testing::MockFunction<void(int)> *test_callback22;
+
+void recver_cb22(kcpuv_sess *sess, char *data, int len) {
+  test_callback22->Call(len);
+  delete test_callback22;
+  kcpuv_destroy_loop();
+}
+
+TEST_F(KcpuvSessTest, mock_implementation) {
+  kcpuv_initialize();
+
+  test_callback22 = new testing::MockFunction<void(int)>();
+
+  char *addr = "127.0.0.1";
+  int sender_port = 8888;
+  int receiver_port = 8889;
+  char *msg = "hello";
+  int msg_len = 5;
+
+  kcpuv_sess *sender = kcpuv_create();
+  kcpuv_sess *receiver = kcpuv_create();
+
+  kcpuv_listen(sender, sender_port, NULL);
+  kcpuv_listen(receiver, receiver_port, &recver_cb22);
+
+  kcpuv_init_send(sender, addr, receiver_port);
+  kcpuv_init_send(receiver, addr, sender_port);
+
+  kcpuv_send(sender, msg, msg_len);
+
+  kcpuv_start_loop();
+
+  kcpuv_destruct();
+}
+
 static testing::MockFunction<void(void)> *test_callback3;
 
 static void close_cb(kcpuv_sess *sess) {
