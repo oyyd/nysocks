@@ -25,8 +25,8 @@ struct KCPUV_SESS {
   void *data;
   ikcpcb *kcp;
   uv_udp_t *handle;
-  struct sockaddr_in *send_addr;
-  struct sockaddr_in *recv_addr;
+  struct sockaddr *send_addr;
+  struct sockaddr *recv_addr;
   int is_closed;
   IUINT32 recv_ts;
   unsigned int timeout;

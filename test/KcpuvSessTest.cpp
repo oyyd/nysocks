@@ -244,6 +244,7 @@ TEST_F(KcpuvSessTest, kcpuv_get_address) {
   int rval = kcpuv_get_address(sess, ip_addr, &namelen, &port);
 
   EXPECT_EQ(rval, 0);
+  EXPECT_EQ(port, bind_port);
 
   kcpuv_stop_listen(sess);
   kcpuv_destruct();

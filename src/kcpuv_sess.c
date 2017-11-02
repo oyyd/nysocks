@@ -318,8 +318,8 @@ void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
     free(sess->send_addr);
   }
 
-  sess->send_addr = malloc(sizeof(struct sockaddr_in));
-  uv_ip4_addr(addr, port, sess->send_addr);
+  sess->send_addr = malloc(sizeof(struct sockaddr));
+  uv_ip4_addr(addr, port, (struct sockaddr_in *)sess->send_addr);
 }
 
 // Called when uv receives a msg and pass
@@ -375,8 +375,8 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
   sess->on_msg_cb = cb;
   // get local addr
-  sess->recv_addr = malloc(sizeof(struct sockaddr_in));
-  uv_ip4_addr("0.0.0.0", port, sess->recv_addr);
+  sess->recv_addr = malloc(sizeof(struct sockaddr));
+  uv_ip4_addr("0.0.0.0", port, (struct sockaddr_in *)sess->recv_addr);
 
   // bind local and start recv
   int rval =
@@ -402,7 +402,8 @@ int kcpuv_stop_listen(kcpuv_sess *sess) {
 // Get address and port of a sess.
 int kcpuv_get_address(kcpuv_sess *sess, char *addr, int *namelen, int *port) {
   // Assume their `sa_family`es are all ipv4.
-  struct sockaddr_storage *name = malloc(sizeof(struct sockaddr));
+  struct sockaddr *name = malloc(sizeof(struct sockaddr));
+  *namelen = sizeof(struct sockaddr);
   int rval = uv_udp_getsockname((const uv_udp_t *)sess->handle,
                                 (struct sockaddr *)name, namelen);
 
@@ -411,15 +412,12 @@ int kcpuv_get_address(kcpuv_sess *sess, char *addr, int *namelen, int *port) {
     return rval;
   }
 
-  if (*namelen == 8) {
+  if (name->sa_family == AF_INET) {
     uv_ip4_name((const struct sockaddr_in *)name, addr, 8);
-    *port = ((const struct sockaddr_in *)name)->sin_port;
-  } else if (*namelen == 16) {
-    uv_ip6_name((const struct sockaddr_in6 *)name, addr, 16);
-    *port = ((const struct sockaddr_in6 *)name)->sin6_port;
+    *port = ntohs(((struct sockaddr_in *)name)->sin_port);
   } else {
-    free(name);
-    return -2;
+    uv_ip6_name((const struct sockaddr_in6 *)name, addr, 16);
+    *port = ntohs(((struct sockaddr_in6 *)name)->sin6_port);
   }
 
   free(name);
