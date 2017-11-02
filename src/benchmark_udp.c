@@ -65,7 +65,7 @@ int benchmark_udp() {
   // 1. udp listen
   uv_udp_init(loop, recv_handle);
 
-  uv_ip4_addr("127.0.0.1", 12354, (struct sockaddr_in *)&listen_addr);
+  uv_ip4_addr("0.0.0.0", 12354, (struct sockaddr_in *)&listen_addr);
 
   uv_udp_bind(recv_handle, &listen_addr, UV_UDP_REUSEADDR);
 
@@ -144,9 +144,9 @@ int benchmark_kcpuv_sess() {
 
   // bind local
   kcpuv_listen(recver, receive_port, &recver_cb);
-  kcpuv_init_send(recver, "127.0.0.1", send_port);
+  kcpuv_init_send(recver, "0.0.0.0", send_port);
   kcpuv_listen(sender, send_port, NULL);
-  kcpuv_init_send(sender, "127.0.0.1", receive_port);
+  kcpuv_init_send(sender, "0.0.0.0", receive_port);
 
   for (int i = 0; i < times; i += 1) {
     char *msg = malloc(sizeof(char) * content_size);

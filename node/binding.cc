@@ -19,6 +19,7 @@ using v8::Handle;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
+using v8::Number;
 using v8::Object;
 using v8::Persistent;
 using v8::String;
@@ -138,6 +139,21 @@ static NAN_METHOD(Listen) {
   kcpuv_listen(sess, port, &binding_cb);
 }
 
+static NAN_METHOD(GetPort) {
+  Isolate *isolate = info.GetIsolate();
+  char addr[16];
+  int namelen = 0;
+  int port = 0;
+
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  kcpuv_get_address(obj->GetSess(), (char *)&addr, &namelen, &port);
+
+  Local<Number> port_value = Number::New(isolate, port);
+  info.GetReturnValue().Set(port_value);
+}
+
 static NAN_METHOD(StopListen) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
@@ -216,6 +232,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
   Nan::SetMethod(target, "listen", Listen);
+  Nan::SetMethod(target, "getPort", GetPort);
   Nan::SetMethod(target, "stopListen", StopListen);
   Nan::SetMethod(target, "initSend", InitSend);
   Nan::SetMethod(target, "send", Send);

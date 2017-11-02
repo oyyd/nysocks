@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.create = create;
 exports.destroy = destroy;
 exports.listen = listen;
+exports.getPort = getPort;
 exports.stopListen = stopListen;
 exports.send = send;
 exports.close = close;
@@ -52,6 +53,10 @@ function listen(sess) {
   var onMessage = arguments[2];
 
   _addon2.default.listen(sess, port, onMessage);
+}
+
+function getPort(sess) {
+  return _addon2.default.getPort(sess);
 }
 
 function stopListen(sess) {

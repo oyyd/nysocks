@@ -27,6 +27,10 @@ export function listen(sess, port = 0, onMessage) {
   binding.listen(sess, port, onMessage)
 }
 
+export function getPort(sess) {
+  return binding.getPort(sess)
+}
+
 export function stopListen(sess) {
   binding.stopListen(sess)
 }

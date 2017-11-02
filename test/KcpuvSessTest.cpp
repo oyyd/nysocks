@@ -81,8 +81,8 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
 
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *recver = kcpuv_create();
-  int send_port = 12305;
-  int receive_port = 12306;
+  int send_port = 12002;
+  int receive_port = 12003;
   int size = 4096;
   char *msg = new char[size];
 
@@ -134,6 +134,8 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 
   kcpuv_send(sender, msg, msg_len);
 
+  EXPECT_CALL(*test_callback22, Call(_)).Times(1);
+
   kcpuv_start_loop();
 
   kcpuv_destruct();
@@ -177,8 +179,8 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *recver = kcpuv_create();
-  int send_port = 12305;
-  int receive_port = 12306;
+  int send_port = 12004;
+  int receive_port = 12005;
 
   // bind local
   kcpuv_listen(recver, receive_port, NULL);
@@ -211,7 +213,7 @@ TEST_F(KcpuvSessTest, timeout) {
   test_callback5 = new testing::MockFunction<void(void)>();
 
   kcpuv_sess *sender = kcpuv_create();
-  int send_port = 12305;
+  int send_port = 12007;
   int receive_port = 12306;
 
   kcpuv_listen(sender, send_port, NULL);
@@ -224,6 +226,26 @@ TEST_F(KcpuvSessTest, timeout) {
 
   kcpuv_start_loop();
 
+  kcpuv_stop_listen(sender);
+
+  kcpuv_destruct();
+}
+
+TEST_F(KcpuvSessTest, kcpuv_get_address) {
+  kcpuv_initialize();
+
+  int bind_port = 8990;
+  kcpuv_sess *sess = kcpuv_create();
+  kcpuv_listen(sess, bind_port, NULL);
+
+  char *ip_addr = new char[16];
+  int port = 0;
+  int namelen = 0;
+  int rval = kcpuv_get_address(sess, ip_addr, &namelen, &port);
+
+  EXPECT_EQ(rval, 0);
+
+  kcpuv_stop_listen(sess);
   kcpuv_destruct();
 }
 } // namespace kcpuv_test

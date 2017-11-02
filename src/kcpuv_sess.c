@@ -376,11 +376,11 @@ int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
   sess->on_msg_cb = cb;
   // get local addr
   sess->recv_addr = malloc(sizeof(struct sockaddr_in));
-  uv_ip4_addr("127.0.0.1", port, sess->recv_addr);
+  uv_ip4_addr("0.0.0.0", port, sess->recv_addr);
 
   // bind local and start recv
-  int rval = uv_udp_bind(sess->handle, (const struct sockaddr *)sess->recv_addr,
-                         UV_UDP_REUSEADDR);
+  int rval =
+      uv_udp_bind(sess->handle, (const struct sockaddr *)sess->recv_addr, 0);
 
   if (rval != 0) {
     fprintf(stderr, "uv error: %s\n", uv_strerror(rval));
@@ -397,6 +397,33 @@ int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
 // Stop listening
 int kcpuv_stop_listen(kcpuv_sess *sess) {
   return uv_udp_recv_stop(sess->handle);
+}
+
+// Get address and port of a sess.
+int kcpuv_get_address(kcpuv_sess *sess, char *addr, int *namelen, int *port) {
+  // Assume their `sa_family`es are all ipv4.
+  struct sockaddr_storage *name = malloc(sizeof(struct sockaddr));
+  int rval = uv_udp_getsockname((const uv_udp_t *)sess->handle,
+                                (struct sockaddr *)name, namelen);
+
+  if (rval) {
+    free(name);
+    return rval;
+  }
+
+  if (*namelen == 8) {
+    uv_ip4_name((const struct sockaddr_in *)name, addr, 8);
+    *port = ((const struct sockaddr_in *)name)->sin_port;
+  } else if (*namelen == 16) {
+    uv_ip6_name((const struct sockaddr_in6 *)name, addr, 16);
+    *port = ((const struct sockaddr_in6 *)name)->sin6_port;
+  } else {
+    free(name);
+    return -2;
+  }
+
+  free(name);
+  return 0;
 }
 
 // Set close msg listener

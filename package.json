@@ -21,7 +21,8 @@
   "gypfile": true,
   "homepage": "https://bitbucket.org/OYYD/kcpuv#readme",
   "dependencies": {
-    "nan": "^2.7.0"
+    "nan": "^2.7.0",
+    "socksv5": "^0.0.6"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -36,7 +37,11 @@
     },
     "extends": "airbnb-base",
     "rules": {
-      "semi": [2, "never"]
+      "semi": [
+        2,
+        "never"
+      ],
+      "import/prefer-default-export": 0
     }
   },
   "babel": {

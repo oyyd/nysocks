@@ -53,6 +53,8 @@ void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port);
 
 int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb);
 
+int kcpuv_get_address(kcpuv_sess *sess, char *addr, int *namelen, int *port);
+
 int kcpuv_stop_listen(kcpuv_sess *sess);
 
 void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len);
