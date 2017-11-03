@@ -14,7 +14,7 @@ export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
 
-  binding.bindClose(sess, () => sess.event.emit('close'))
+  binding.bindClose(sess, (errorMsg) => sess.event.emit('close'))
 
   return sess
 }
@@ -24,7 +24,11 @@ export function destroy(sess) {
 }
 
 export function listen(sess, port = 0, onMessage) {
-  binding.listen(sess, port, onMessage)
+  const errMsg = binding.listen(sess, port, onMessage)
+
+  if (errMsg) {
+    throw new Error(errMsg)
+  }
 }
 
 export function getPort(sess) {
@@ -45,6 +49,15 @@ export function close(sess) {
 
 export function setAddr(sess, address, port) {
   binding.initSend(sess, address, port)
+}
+
+export function createConnection(targetAddress, targetPort, onMsg) {
+  const sess = create()
+
+  listen(sess, 0, onMsg)
+  setAddr(sess, targetAddress, targetPort)
+
+  return sess
 }
 
 export function startKcpuv() {

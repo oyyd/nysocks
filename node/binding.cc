@@ -73,11 +73,26 @@ void binding_cb(kcpuv_sess *sess, char *data, int len) {
                     Nan::New(binding->bind_cb), argc, args);
 }
 
-void closing_cb(kcpuv_sess *sess) {
+void closing_cb(kcpuv_sess *sess, const char *error_msg) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
 
+  const int argc = 1;
+  Local<Value> args[argc] = {Nan::Undefined()};
+
+  if (error_msg) {
+    Isolate *isolate = Isolate::GetCurrent();
+
+    // if (!isolate) {
+    //   isolate = Isolate::New();
+    //   isolate->Enter();
+    // }
+
+    // TODO: memcpy
+    args[0] = String::NewFromUtf8(isolate, error_msg);
+  }
+
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->close_cb), 0, 0);
+                    Nan::New(binding->close_cb), argc, args);
 }
 
 void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
@@ -136,7 +151,12 @@ static NAN_METHOD(Listen) {
 
   obj->bind_cb = Nan::Persistent<Function>(info[2].As<Function>());
   kcpuv_sess *sess = obj->GetSess();
-  kcpuv_listen(sess, port, &binding_cb);
+
+  int rval = kcpuv_listen(sess, port, &binding_cb);
+  if (rval != 0) {
+    return info.GetReturnValue().Set(
+        String::NewFromUtf8(isolate, uv_strerror(rval)));
+  }
 }
 
 static NAN_METHOD(GetPort) {
@@ -190,7 +210,7 @@ static NAN_METHOD(Close) {
   }
 
   kcpuv_sess *sess = obj->GetSess();
-  kcpuv_close(sess, closeVal);
+  kcpuv_close(sess, closeVal, NULL);
 }
 
 static NAN_METHOD(InitSend) {

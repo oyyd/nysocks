@@ -11,6 +11,7 @@ exports.stopListen = stopListen;
 exports.send = send;
 exports.close = close;
 exports.setAddr = setAddr;
+exports.createConnection = createConnection;
 exports.startKcpuv = startKcpuv;
 exports.stopKcpuv = stopKcpuv;
 
@@ -37,7 +38,7 @@ function create() {
   var sess = _addon2.default.create();
   sess.event = new _events2.default();
 
-  _addon2.default.bindClose(sess, function () {
+  _addon2.default.bindClose(sess, function (errorMsg) {
     return sess.event.emit('close');
   });
 
@@ -52,7 +53,11 @@ function listen(sess) {
   var port = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
   var onMessage = arguments[2];
 
-  _addon2.default.listen(sess, port, onMessage);
+  var errMsg = _addon2.default.listen(sess, port, onMessage);
+
+  if (errMsg) {
+    throw new Error(errMsg);
+  }
 }
 
 function getPort(sess) {
@@ -73,6 +78,15 @@ function close(sess) {
 
 function setAddr(sess, address, port) {
   _addon2.default.initSend(sess, address, port);
+}
+
+function createConnection(targetAddress, targetPort, onMsg) {
+  var sess = create();
+
+  listen(sess, 0, onMsg);
+  setAddr(sess, targetAddress, targetPort);
+
+  return sess;
 }
 
 function startKcpuv() {

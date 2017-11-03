@@ -112,7 +112,7 @@ static void update_kcp_sess(uv_idle_t *idler) {
     kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
 
     if (now - sess->recv_ts >= sess->timeout) {
-      kcpuv_close(sess, 1);
+      kcpuv_close(sess, 1, "timeout");
       continue;
     }
 
@@ -345,7 +345,7 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     // check protocol
     int close = kcpuv_protocol_decode(read_msg);
     if (close) {
-      kcpuv_close(sess, 0);
+      kcpuv_close(sess, 0, NULL);
       free(read_msg);
       free(buf->base);
       return;
@@ -433,7 +433,8 @@ void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_close_cb cb) {
 // We still need to send the close msg to the other side
 // and then we can free the sess.
 // NOTE: Users are expected to `kcpuv_free` sessions manually.
-void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg) {
+void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
+                 const char *error_msg) {
   // mark that this sess could be freed
   sess->is_closed = 1;
 
@@ -450,6 +451,6 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg) {
   // call callback to inform outside
   if (sess->on_close_cb != NULL) {
     kcpuv_close_cb on_close_cb = sess->on_close_cb;
-    on_close_cb(sess);
+    on_close_cb(sess, error_msg);
   }
 }

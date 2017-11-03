@@ -143,7 +143,7 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 
 static testing::MockFunction<void(void)> *test_callback3;
 
-static void close_cb(kcpuv_sess *sess) {
+static void close_cb(kcpuv_sess *sess, const char *error_msg) {
   test_callback3->Call();
   delete test_callback3;
 }
@@ -159,14 +159,14 @@ TEST_F(KcpuvSessTest, on_close_cb) {
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
 
-  kcpuv_close(sender, 0);
+  kcpuv_close(sender, 0, NULL);
 
   kcpuv_destruct();
 }
 
 static testing::MockFunction<void(void)> *test_callback4;
 
-static void close_cb2(kcpuv_sess *sess) {
+static void close_cb2(kcpuv_sess *sess, const char *error_msg) {
   test_callback4->Call();
   delete test_callback4;
   kcpuv_destroy_loop();
@@ -192,7 +192,7 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
   EXPECT_CALL(*test_callback4, Call()).Times(1);
 
-  kcpuv_close(sender, 1);
+  kcpuv_close(sender, 1, NULL);
 
   kcpuv_start_loop();
 
@@ -201,7 +201,7 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
 static testing::MockFunction<void(void)> *test_callback5;
 
-static void close_cb3(kcpuv_sess *sess) {
+static void close_cb3(kcpuv_sess *sess, const char *error_msg) {
   test_callback5->Call();
   delete test_callback5;
   kcpuv_destroy_loop();

@@ -5,7 +5,7 @@ function main() {
 
   const sess = binding.create()
 
-  binding.listen(sess, 12010, () => {})
+  binding.listen(sess, 0, () => {})
 
   setTimeout(() => {
     console.log('port', binding.getPort(sess))

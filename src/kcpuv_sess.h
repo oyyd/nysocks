@@ -18,7 +18,7 @@ extern uv_loop_t *kcpuv_loop;
 typedef struct KCPUV_SESS kcpuv_sess;
 
 typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, char *data, int len);
-typedef void (*kcpuv_close_cb)(kcpuv_sess *sess);
+typedef void (*kcpuv_close_cb)(kcpuv_sess *sess, const char *error_msg);
 
 struct KCPUV_SESS {
   // user defined
@@ -60,7 +60,8 @@ int kcpuv_stop_listen(kcpuv_sess *sess);
 void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len);
 
 void kcpuv_close(kcpuv_sess *sess,
-                 unsigned int should_send_a_close_cmd_to_the_other_side);
+                 unsigned int should_send_a_close_cmd_to_the_other_side,
+                 const char *error_msg);
 
 void kcpuv_bind_close(kcpuv_sess *, kcpuv_close_cb);
 
