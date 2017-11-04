@@ -1,4 +1,5 @@
-import { createConnection, getPort, create, send, startKcpuv, listen, setAddr } from './socket'
+import { createConnection, getPort, create, send,
+  startKcpuv, listen, setAddr } from './socket'
 
 const DEFAULT_OPTIONS = {
   targetAddress: '0.0.0.0',
@@ -6,12 +7,41 @@ const DEFAULT_OPTIONS = {
   socketAmount: 100,
 }
 
-startKcpuv()
+const CONVERSATION_START_CHAR = '\\\\start'
+const CONVERSATION_END_CHAR = '\\\\end'
+
+let kcpuvStarted = false
 
 export function tunnel(manager, socket) {
   // const socket = manager.conns[0]
   //
   // return socket
+}
+
+export function checkHandshakeMsg(buf) {
+  return buf.slice(0, CONVERSATION_START_CHAR.length)
+    .toString('utf8') === CONVERSATION_START_CHAR
+}
+
+export function checkMsg(buf) {
+  const { length } = buf
+  const end = buf.slice(length - CONVERSATION_END_CHAR.length)
+    .toString('utf8') === CONVERSATION_END_CHAR
+
+  if (!end) {
+    return null
+  }
+
+  let msg = null
+
+  try {
+    msg = JSON.parse(buf.slice(0, length - CONVERSATION_END_CHAR.length)
+      .toString('utf8'))
+  } catch (err) {
+    throw new Error('invalid msg')
+  }
+
+  return msg
 }
 
 export function getPorts(targetAddress, targetPort) {
@@ -22,7 +52,11 @@ export function getPorts(targetAddress, targetPort) {
       data = Buffer.concat([data, buf])
     })
 
-    sess.on('close', () => {
+    sess.event.on('close', (errorMsg) => {
+      if (errorMsg) {
+        throw new Error(errorMsg)
+      }
+
       resolve(data)
     })
   })
@@ -49,6 +83,11 @@ export function createClient(_options) {
 }
 
 export function createManager(_options) {
+  if (!kcpuvStarted) {
+    kcpuvStarted = true
+    startKcpuv()
+  }
+
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { socketAmount } = options
   const conns = []

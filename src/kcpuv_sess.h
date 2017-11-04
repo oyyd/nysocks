@@ -6,6 +6,7 @@ extern "C" {
 #endif // __cplusplus
 
 #include "ikcp.h"
+#include "kcpuv.h"
 #include "protocol.h"
 #include "utils.h"
 #include "uv.h"
@@ -25,8 +26,10 @@ struct KCPUV_SESS {
   void *data;
   ikcpcb *kcp;
   uv_udp_t *handle;
+  unsigned short save_last_packet_addr;
   struct sockaddr *send_addr;
   struct sockaddr *recv_addr;
+  struct sockaddr *last_packet_addr;
   int is_closed;
   IUINT32 recv_ts;
   unsigned int timeout;
@@ -48,6 +51,10 @@ void kcpuv_use_default_loop(int value);
 kcpuv_sess *kcpuv_create();
 
 void kcpuv_free(kcpuv_sess *sess);
+
+void kcpuv_set_save_last_packet_addr(kcpuv_sess *sess, unsigned short value);
+
+int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port);
 
 void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port);
 

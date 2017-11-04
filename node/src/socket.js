@@ -14,7 +14,7 @@ export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
 
-  binding.bindClose(sess, (errorMsg) => sess.event.emit('close'))
+  binding.bindClose(sess, errorMsg => sess.event.emit('close', errorMsg))
 
   return sess
 }

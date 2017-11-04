@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "kcpuv.h"
 #include "utils.h"
 #include <openssl/evp.h>
 

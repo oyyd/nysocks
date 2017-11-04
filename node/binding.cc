@@ -136,6 +136,36 @@ static NAN_METHOD(Free) {
   obj->Free();
 }
 
+static NAN_METHOD(SetSaveLastPacketAddr) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  int save_value = info[1]->ToNumber(isolate)->Int32Value();
+
+  kcpuv_set_save_last_packet_addr(obj->GetSess(), save_value);
+}
+
+static NAN_METHOD(GetLastPacketAddr) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  char *addr = new char[17];
+  int port = 0;
+
+  kcpuv_get_last_packet_addr(obj->GetSess(), addr, &port);
+
+  Local<Object> returnObj = Object::New(isolate);
+  returnObj->Set(String::NewFromUtf8(isolate, "port"),
+                 Number::New(isolate, port));
+  returnObj->Set(String::NewFromUtf8(isolate, "address"),
+                 String::NewFromUtf8(isolate, addr));
+
+  delete[] addr;
+  return info.GetReturnValue().Set(returnObj);
+}
+
 static NAN_METHOD(Listen) {
   Isolate *isolate = info.GetIsolate();
 
@@ -161,7 +191,7 @@ static NAN_METHOD(Listen) {
 
 static NAN_METHOD(GetPort) {
   Isolate *isolate = info.GetIsolate();
-  char addr[16];
+  char addr[17];
   int namelen = 0;
   int port = 0;
 
@@ -251,6 +281,8 @@ static NAN_MODULE_INIT(Init) {
   Nan::Set(target, String::NewFromUtf8(isolate, "create"), tpl->GetFunction());
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
+  Nan::SetMethod(target, "setSaveLastPacketAddr", SetSaveLastPacketAddr);
+  Nan::SetMethod(target, "getLastPacketAddr", GetLastPacketAddr);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "getPort", GetPort);
   Nan::SetMethod(target, "stopListen", StopListen);

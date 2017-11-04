@@ -4,28 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-// global
-static int debug = 0;
+// kpcuv_sess
 static int use_default_loop = 0;
-
-// extern
-// TODO: it only accepts int in uv.h
-long kcpuv_udp_buf_size = 4 * 1024 * 1024;
-uv_loop_t *kcpuv_loop = NULL;
-
-const int KCPUV_NONCE_LENGTH = 8;
-const int KCPUV_PROTOCOL_OVERHEAD = 1;
-static const int WND_SIZE = 2048;
-static const IUINT32 IKCP_MTU_DEF =
-    1400 - KCPUV_PROTOCOL_OVERHEAD - KCPUV_NONCE_LENGTH;
-// static const IUINT32 IKCP_OVERHEAD = 24;
-static const size_t MAX_SENDING_LEN = 65536;
-static const size_t BUFFER_LEN = MAX_SENDING_LEN;
-static const unsigned int DEFAULT_TIMEOUT = 30000;
-
 static kcpuv_sess_list *sess_list = NULL;
 static char *buffer = NULL;
 static uv_idle_t *idler = NULL;
+// kcpuv_sess extern
+// TODO: it only accepts int in uv.h
+long kcpuv_udp_buf_size = 4 * 1024 * 1024;
+uv_loop_t *kcpuv_loop = NULL;
 
 // NOTE: Use this after first creation.
 kcpuv_sess_list *kcpuv_get_sess_list() { return sess_list; }
@@ -251,9 +238,9 @@ kcpuv_sess *kcpuv_create() {
   sess->kcp = ikcp_create(0, sess);
   // ikcp_nodelay(sess->kcp, 0, 10, 0, 0);
   ikcp_nodelay(sess->kcp, 1, 10, 2, 1);
-  ikcp_wndsize(sess->kcp, WND_SIZE, WND_SIZE);
-  ikcp_setmtu(sess->kcp, IKCP_MTU_DEF);
-  // sess->kcp->rmt_wnd = WND_SIZE;
+  ikcp_wndsize(sess->kcp, INIT_WND_SIZE, INIT_WND_SIZE);
+  ikcp_setmtu(sess->kcp, MTU_DEF);
+  // sess->kcp->rmt_wnd = INIT_WND_SIZE;
   // sess->kcp->stream = 1;
 
   sess->handle = malloc(sizeof(uv_udp_t));
@@ -262,8 +249,10 @@ kcpuv_sess *kcpuv_create() {
   sess->handle->data = sess;
   sess->send_addr = NULL;
   sess->recv_addr = NULL;
+  sess->last_packet_addr = NULL;
   sess->on_msg_cb = NULL;
   sess->on_close_cb = NULL;
+  sess->save_last_packet_addr = 0;
   sess->is_closed = 0;
   sess->recv_ts = iclock();
   sess->timeout = DEFAULT_TIMEOUT;
@@ -299,6 +288,10 @@ void kcpuv_free(kcpuv_sess *sess) {
   kcpuv_cryptor_clean(sess->cryptor);
   free(sess->cryptor);
 
+  if (sess->last_packet_addr != NULL) {
+    free(sess->last_packet_addr);
+  }
+
   if (sess->send_addr != NULL) {
     free(sess->send_addr);
   }
@@ -310,6 +303,28 @@ void kcpuv_free(kcpuv_sess *sess) {
   free(sess->handle);
   ikcp_release(sess->kcp);
   free(sess);
+}
+
+void kcpuv_set_save_last_packet_addr(kcpuv_sess *sess, unsigned short value) {
+  sess->save_last_packet_addr = value;
+}
+
+int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
+  if (sess->last_packet_addr == NULL) {
+    return 0;
+  }
+
+  if (sess->last_packet_addr->sa_family == AF_INET) {
+    uv_ip4_name((const struct sockaddr_in *)sess->last_packet_addr, name,
+                IP4_ADDR_LENTH);
+    *port = ntohs(((struct sockaddr_in *)sess->last_packet_addr)->sin_port);
+    return IP4_ADDR_LENTH;
+  }
+
+  uv_ip6_name((const struct sockaddr_in6 *)sess->last_packet_addr, name,
+              IP6_ADDR_LENGTH);
+  *port = ntohs(((struct sockaddr_in6 *)sess->last_packet_addr)->sin6_port);
+  return IP6_ADDR_LENGTH;
 }
 
 // Set sending info.
@@ -332,6 +347,15 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
   if (nread > 0) {
     kcpuv_sess *sess = (kcpuv_sess *)handle->data;
+
+    if (sess->save_last_packet_addr) {
+      if (sess->last_packet_addr == NULL) {
+        sess->last_packet_addr = malloc(sizeof(struct sockaddr));
+      }
+
+      memcpy(sess->last_packet_addr, addr, sizeof(struct sockaddr));
+    }
+
     int read_len = nread;
     char *read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
@@ -413,10 +437,10 @@ int kcpuv_get_address(kcpuv_sess *sess, char *addr, int *namelen, int *port) {
   }
 
   if (name->sa_family == AF_INET) {
-    uv_ip4_name((const struct sockaddr_in *)name, addr, 8);
+    uv_ip4_name((const struct sockaddr_in *)name, addr, IP4_ADDR_LENTH);
     *port = ntohs(((struct sockaddr_in *)name)->sin_port);
   } else {
-    uv_ip6_name((const struct sockaddr_in6 *)name, addr, 16);
+    uv_ip6_name((const struct sockaddr_in6 *)name, addr, IP6_ADDR_LENGTH);
     *port = ntohs(((struct sockaddr_in6 *)name)->sin6_port);
   }
 

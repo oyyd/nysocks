@@ -39,7 +39,7 @@ function create() {
   sess.event = new _events2.default();
 
   _addon2.default.bindClose(sess, function (errorMsg) {
-    return sess.event.emit('close');
+    return sess.event.emit('close', errorMsg);
   });
 
   return sess;

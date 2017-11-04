@@ -246,7 +246,53 @@ TEST_F(KcpuvSessTest, kcpuv_get_address) {
   EXPECT_EQ(rval, 0);
   EXPECT_EQ(port, bind_port);
 
+  delete[] ip_addr;
   kcpuv_stop_listen(sess);
+  kcpuv_destruct();
+}
+
+static testing::MockFunction<void(void)> *last_packet_addr_callback;
+
+static void last_packet_addr_cb(kcpuv_sess *sess, char *error_msg, int len) {
+  char *addr = new char[17];
+  int port = 0;
+
+  int namelen = kcpuv_get_last_packet_addr(sess, addr, &port);
+
+  last_packet_addr_callback->Call();
+  delete last_packet_addr_callback;
+
+  delete[] addr;
+  kcpuv_destroy_loop();
+}
+
+TEST_F(KcpuvSessTest, last_packet_addr) {
+  kcpuv_initialize();
+
+  last_packet_addr_callback = new testing::MockFunction<void(void)>();
+  EXPECT_CALL(*last_packet_addr_callback, Call()).Times(1);
+
+  kcpuv_sess *sess = kcpuv_create();
+  kcpuv_sess *sender = kcpuv_create();
+
+  kcpuv_set_save_last_packet_addr(sess, 1);
+  kcpuv_listen(sess, 0, &last_packet_addr_cb);
+
+  char *addr = new char[17];
+  int namelen = 0;
+  int port = 0;
+  kcpuv_get_address(sess, addr, &namelen, &port);
+
+  char *msg = "hello";
+  kcpuv_init_send(sender, "127.0.0.1", port);
+  kcpuv_send(sender, msg, strlen(msg));
+
+  kcpuv_start_loop();
+
+  delete[] addr;
+  kcpuv_stop_listen(sess);
+  kcpuv_close(sender, 0, NULL);
+  kcpuv_close(sess, 0, NULL);
   kcpuv_destruct();
 }
 } // namespace kcpuv_test

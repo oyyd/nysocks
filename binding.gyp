@@ -11,6 +11,7 @@
       'src/kcpuv_sess.c',
       'src/utils.c',
       'src/protocol.c',
+      'src/kcpuv.c',
       'node/binding.cc',
     ],
   }]
