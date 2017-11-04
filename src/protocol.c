@@ -107,11 +107,11 @@ void kcpuv_cryptor_clean(kcpuv_cryptor *cryptor) {
 }
 
 int kcpuv_protocol_decode(const char *content) {
-  int close = (*(const unsigned char *)content) & 0xff;
-  return close;
+  int cmd = (*(const unsigned char *)content) & 0xff;
+  return cmd;
 }
 
-void kcpuv_protocol_encode(int close, char *content) {
-  content[0] = close;
+void kcpuv_protocol_encode(int cmd, char *content) {
+  content[0] = cmd;
   encode_random_bytes((unsigned char *)content, 1);
 }

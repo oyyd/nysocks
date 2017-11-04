@@ -51,8 +51,6 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
 
   // bind local
   kcpuv_listen(recver, receive_port, &recver_cb);
-  kcpuv_init_send(recver, "127.0.0.1", send_port);
-  kcpuv_listen(sender, send_port, NULL);
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
 
   kcpuv_send(sender, msg, strlen(msg));
@@ -90,8 +88,6 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
 
   // bind local
   kcpuv_listen(recver, receive_port, &recver_cb2);
-  kcpuv_init_send(recver, "127.0.0.1", send_port);
-  kcpuv_listen(sender, send_port, NULL);
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
 
   kcpuv_send(sender, msg, size);
@@ -126,11 +122,8 @@ TEST_F(KcpuvSessTest, mock_implementation) {
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *receiver = kcpuv_create();
 
-  kcpuv_listen(sender, sender_port, NULL);
   kcpuv_listen(receiver, receiver_port, &recver_cb22);
-
   kcpuv_init_send(sender, addr, receiver_port);
-  kcpuv_init_send(receiver, addr, sender_port);
 
   kcpuv_send(sender, msg, msg_len);
 
@@ -184,8 +177,6 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
   // bind local
   kcpuv_listen(recver, receive_port, NULL);
-  kcpuv_init_send(recver, "127.0.0.1", send_port);
-  kcpuv_listen(sender, send_port, NULL);
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
 
   kcpuv_bind_close(recver, close_cb2);

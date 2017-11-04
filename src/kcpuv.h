@@ -9,8 +9,19 @@ extern "C" {
 
 // global
 extern const int debug;
+
+extern const int KCPUV_STATE_CREATED;
+extern const int KCPUV_STATE_ACK;
+extern const int KCPUV_STATE_WAIT_ACK;
+extern const int KCPUV_STATE_READY;
+extern const int KCPUV_STATE_CLOSED;
+extern const int KCPUV_CMD_ACK;
+extern const int KCPUV_CMD_PUSH;
+extern const int KCPUV_CMD_NOO;
+extern const int KCPUV_CMD_CLS;
 extern const int KCPUV_NONCE_LENGTH;
 extern const int KCPUV_PROTOCOL_OVERHEAD;
+extern const int KCPUV_OVERHEAD;
 extern const int INIT_WND_SIZE;
 extern const IUINT32 MTU_DEF;
 // extern IUINT32 IKCP_OVERHEAD;

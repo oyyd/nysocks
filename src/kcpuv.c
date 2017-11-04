@@ -1,8 +1,19 @@
 #include "kcpuv.h"
 
 const int debug = 0;
+
+const int KCPUV_STATE_CREATED = 0;
+const int KCPUV_STATE_ACK = 10;
+const int KCPUV_STATE_WAIT_ACK = 20;
+const int KCPUV_STATE_READY = 30;
+const int KCPUV_STATE_CLOSED = 40;
+const int KCPUV_CMD_ACK = 10;
+const int KCPUV_CMD_PUSH = 20;
+const int KCPUV_CMD_NOO = 30;
+const int KCPUV_CMD_CLS = 40;
 const int KCPUV_NONCE_LENGTH = 8;
 const int KCPUV_PROTOCOL_OVERHEAD = 1;
+const int KCPUV_OVERHEAD = KCPUV_NONCE_LENGTH + KCPUV_PROTOCOL_OVERHEAD;
 const int INIT_WND_SIZE = 2048;
 const IUINT32 MTU_DEF = 1400 - KCPUV_PROTOCOL_OVERHEAD - KCPUV_NONCE_LENGTH;
 // const IUINT32 IKCP_OVERHEAD = 24;

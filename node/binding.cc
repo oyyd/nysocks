@@ -30,6 +30,7 @@ public:
   explicit KcpuvSessBinding() {
     sess = kcpuv_create();
     sess->data = this;
+    sess->timeout = 0;
   }
   virtual ~KcpuvSessBinding() {}
 

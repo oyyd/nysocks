@@ -30,7 +30,7 @@ struct KCPUV_SESS {
   struct sockaddr *send_addr;
   struct sockaddr *recv_addr;
   struct sockaddr *last_packet_addr;
-  int is_closed;
+  int state;
   IUINT32 recv_ts;
   unsigned int timeout;
   kcpuv_listen_cb on_msg_cb;

@@ -98,7 +98,7 @@ static void update_kcp_sess(uv_idle_t *idler) {
     int size;
     kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
 
-    if (now - sess->recv_ts >= sess->timeout) {
+    if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
       kcpuv_close(sess, 1, "timeout");
       continue;
     }
@@ -205,13 +205,19 @@ static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
 
   kcpuv_sess *sess = (kcpuv_sess *)user;
   uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
-  int write_len = len + KCPUV_PROTOCOL_OVERHEAD + KCPUV_NONCE_LENGTH;
+  int write_len = len + KCPUV_OVERHEAD;
   // ikcp assume we copy and send the msg
   char *plaintext = malloc(sizeof(char) * write_len);
 
   // encode protocol
-  kcpuv_protocol_encode(sess->is_closed, plaintext);
-  memcpy(plaintext + KCPUV_PROTOCOL_OVERHEAD + KCPUV_NONCE_LENGTH, msg, len);
+  int close_val = 0;
+
+  if (sess->state == KCPUV_STATE_CLOSED) {
+    close_val = KCPUV_CMD_CLS;
+  }
+
+  kcpuv_protocol_encode(close_val, plaintext);
+  memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
 
   // encrypt
   char *data = (char *)kcpuv_cryptor_encrypt(
@@ -253,7 +259,7 @@ kcpuv_sess *kcpuv_create() {
   sess->on_msg_cb = NULL;
   sess->on_close_cb = NULL;
   sess->save_last_packet_addr = 0;
-  sess->is_closed = 0;
+  sess->state = KCPUV_STATE_CREATED;
   sess->recv_ts = iclock();
   sess->timeout = DEFAULT_TIMEOUT;
 
@@ -327,17 +333,24 @@ int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
   return IP6_ADDR_LENGTH;
 }
 
-// Set sending info.
-void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
+void init_send(kcpuv_sess *sess, const struct sockaddr *addr) {
   if (sess->send_addr != NULL) {
     free(sess->send_addr);
   }
 
   sess->send_addr = malloc(sizeof(struct sockaddr));
-  uv_ip4_addr(addr, port, (struct sockaddr_in *)sess->send_addr);
+  memcpy(sess->send_addr, addr, sizeof(struct sockaddr));
 }
 
-// Called when uv receives a msg and pass
+// Set sending info.
+void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
+  struct sockaddr addr_info;
+
+  uv_ip4_addr(addr, port, (struct sockaddr_in *)&addr_info);
+  init_send(sess, &addr_info);
+}
+
+// Called when uv receives a msg and pass.
 static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                     const struct sockaddr *addr, unsigned flags) {
   if (nread < 0) {
@@ -347,6 +360,11 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
   if (nread > 0) {
     kcpuv_sess *sess = (kcpuv_sess *)handle->data;
+
+    if (sess->state == KCPUV_STATE_WAIT_ACK) {
+      sess->state == KCPUV_STATE_READY;
+      init_send(sess, addr);
+    }
 
     if (sess->save_last_packet_addr) {
       if (sess->last_packet_addr == NULL) {
@@ -367,8 +385,8 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     }
 
     // check protocol
-    int close = kcpuv_protocol_decode(read_msg);
-    if (close) {
+    int cmd = kcpuv_protocol_decode(read_msg);
+    if (cmd == KCPUV_CMD_CLS) {
       kcpuv_close(sess, 0, NULL);
       free(read_msg);
       free(buf->base);
@@ -378,10 +396,8 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     // update active time
     sess->recv_ts = iclock();
 
-    int rval = ikcp_input(
-        sess->kcp,
-        (const char *)(read_msg + KCPUV_PROTOCOL_OVERHEAD + KCPUV_NONCE_LENGTH),
-        read_len - KCPUV_PROTOCOL_OVERHEAD - KCPUV_NONCE_LENGTH);
+    int rval = ikcp_input(sess->kcp, (const char *)(read_msg + KCPUV_OVERHEAD),
+                          read_len - KCPUV_OVERHEAD);
 
     if (debug == 1 && rval < 0) {
       // TODO:
@@ -397,6 +413,7 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
 // Set receiving info.
 int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
+  sess->state = KCPUV_STATE_WAIT_ACK;
   sess->on_msg_cb = cb;
   // get local addr
   sess->recv_addr = malloc(sizeof(struct sockaddr));
@@ -460,7 +477,7 @@ void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_close_cb cb) {
 void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
                  const char *error_msg) {
   // mark that this sess could be freed
-  sess->is_closed = 1;
+  sess->state = KCPUV_STATE_CLOSED;
 
   if (send_close_msg != 0) {
     // send an packet with empty content
