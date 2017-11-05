@@ -158,7 +158,7 @@ void kcpuv_destroy_loop() {
   }
 }
 
-// Send msg through kcp.
+// Send content through kcp.
 void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
   unsigned long s = 0;
 
@@ -186,10 +186,61 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
   }
 }
 
+// TODO: should check status?
 static void send_cb(uv_udp_send_t *req, int status) {
-  // TODO: should check status?
-  free(req->data);
+  kcpuv_send_cb_data *cb_data = (kcpuv_send_cb_data *)req->data;
+  // free buffer and request
+  free(cb_data->buf_data);
   free(req);
+
+  kcpuv_close_cb cb = cb_data->cb;
+  if (cb != NULL) {
+    cb(cb_data->sess, cb_data->cus_data);
+  }
+
+  free(cb_data);
+}
+
+static void udp_send(kcpuv_sess *sess, char *data, int length,
+                     kcpuv_close_cb cb, char *cus_data) {
+  kcpuv_send_cb_data *cb_data = malloc(sizeof(kcpuv_send_cb_data));
+  cb_data->buf_data = data;
+  cb_data->cb = cb;
+  cb_data->sess = sess;
+  cb_data->cus_data = cus_data;
+
+  uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
+  // for freeing the buf latter
+  req->data = cb_data;
+
+  // make buffers from string
+  uv_buf_t buf = uv_buf_init(data, length);
+
+  uv_udp_send(req, sess->handle, &buf, 1,
+              (const struct sockaddr *)sess->send_addr, &send_cb);
+}
+
+static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
+                                     int len, kcpuv_close_cb cb,
+                                     char *cus_data) {
+  // encode protocol
+  int write_len = len + KCPUV_OVERHEAD;
+  // ikcp assume we copy and send the msg
+  char *plaintext = malloc(sizeof(char) * write_len);
+
+  kcpuv_protocol_encode(cmd, plaintext);
+
+  if (len != 0) {
+    memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
+  }
+
+  // encrypt
+  char *data = (char *)kcpuv_cryptor_encrypt(
+      sess->cryptor, (unsigned char *)plaintext, &write_len);
+
+  free(plaintext);
+
+  udp_send(sess, data, write_len, cb, cus_data);
 }
 
 // Func to output data for kcp through udp.
@@ -204,35 +255,16 @@ static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   }
 
   kcpuv_sess *sess = (kcpuv_sess *)user;
-  uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
-  int write_len = len + KCPUV_OVERHEAD;
-  // ikcp assume we copy and send the msg
-  char *plaintext = malloc(sizeof(char) * write_len);
 
-  // encode protocol
-  int close_val = 0;
+  kcpuv_send_with_protocol(sess, KCPUV_CMD_PUSH, msg, len, NULL, NULL);
 
-  if (sess->state == KCPUV_STATE_CLOSED) {
-    close_val = KCPUV_CMD_CLS;
-  }
-
-  kcpuv_protocol_encode(close_val, plaintext);
-  memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
-
-  // encrypt
-  char *data = (char *)kcpuv_cryptor_encrypt(
-      sess->cryptor, (unsigned char *)plaintext, &write_len);
-
-  // make buffers from string
-  uv_buf_t buf = uv_buf_init(data, write_len);
-  // for freeing the buf latter
-  req->data = data;
-
-  uv_udp_send(req, sess->handle, &buf, 1,
-              (const struct sockaddr *)sess->send_addr, &send_cb);
-
-  free(plaintext);
   return 0;
+}
+
+// Send cmds directly through udp.
+void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd, kcpuv_close_cb cb,
+                    void *data) {
+  kcpuv_send_with_protocol(sess, cmd, NULL, 0, cb, data);
 }
 
 // Create a kcpuv session. This is a common structure for
@@ -350,6 +382,19 @@ void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
   init_send(sess, &addr_info);
 }
 
+// Update kcp for content transmission.
+static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
+  // update active time
+  sess->recv_ts = iclock();
+
+  int rval = ikcp_input(sess->kcp, msg, length);
+
+  if (debug == 1 && rval < 0) {
+    // TODO:
+    fprintf(stderr, "ikcp_input() < 0: %d", rval);
+  }
+}
+
 // Called when uv receives a msg and pass.
 static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                     const struct sockaddr *addr, unsigned flags) {
@@ -362,7 +407,7 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     kcpuv_sess *sess = (kcpuv_sess *)handle->data;
 
     if (sess->state == KCPUV_STATE_WAIT_ACK) {
-      sess->state == KCPUV_STATE_READY;
+      sess->state = KCPUV_STATE_READY;
       init_send(sess, addr);
     }
 
@@ -393,17 +438,8 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
       return;
     }
 
-    // update active time
-    sess->recv_ts = iclock();
-
-    int rval = ikcp_input(sess->kcp, (const char *)(read_msg + KCPUV_OVERHEAD),
-                          read_len - KCPUV_OVERHEAD);
-
-    if (debug == 1 && rval < 0) {
-      // TODO:
-      fprintf(stderr, "ikcp_input() < 0: %d", rval);
-    }
-
+    input_kcp(sess, (const char *)(read_msg + KCPUV_OVERHEAD),
+              read_len - KCPUV_OVERHEAD);
     free(read_msg);
   }
 
@@ -474,23 +510,23 @@ void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_close_cb cb) {
 // We still need to send the close msg to the other side
 // and then we can free the sess.
 // NOTE: Users are expected to `kcpuv_free` sessions manually.
+// 1. bindClose 2. close 3. callback
 void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
                  const char *error_msg) {
   // mark that this sess could be freed
   sess->state = KCPUV_STATE_CLOSED;
 
   if (send_close_msg != 0) {
-    // send an packet with empty content
-    // TODO: Is there any better choices?
-    char *content = "a";
-    // TODO: this message may not be sent
-    kcpuv_send(sess, content, 1);
-    // IUINT32 now = iclock();
-    // ikcp_update(sess, now);
-  }
-
-  // call callback to inform outside
-  if (sess->on_close_cb != NULL) {
+    kcpuv_send_cmd(sess, KCPUV_CMD_CLS, sess->on_close_cb, error_msg);
+    // // send an packet with empty content
+    // // TODO: Is there any better choices?
+    // char *content = "a";
+    // // TODO: this message may not be sent
+    // kcpuv_send(sess, content, 1);
+    // // IUINT32 now = iclock();
+    // // ikcp_update(sess, now);
+  } else if (sess->on_close_cb != NULL) {
+    // call callback to inform outside
     kcpuv_close_cb on_close_cb = sess->on_close_cb;
     on_close_cb(sess, error_msg);
   }

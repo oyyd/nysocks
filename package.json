@@ -45,6 +45,7 @@
         2,
         "never"
       ],
+      "arrow-parens": 0,
       "import/prefer-default-export": 0
     }
   },

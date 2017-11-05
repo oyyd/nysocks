@@ -44,7 +44,7 @@ export function send(sess, buf) {
 }
 
 export function close(sess) {
-  binding.close(sess)
+  binding.close(sess, true)
 }
 
 export function setAddr(sess, address, port) {

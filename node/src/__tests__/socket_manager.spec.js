@@ -1,17 +1,17 @@
-import { checkMsg, checkHandshakeMsg } from '../socket_manager'
+import { checkJSONMsg, checkHandshakeMsg } from '../socket_manager'
 
 describe('socket_manager', () => {
-  describe('checkMsg', () => {
+  describe('checkJSONMsg', () => {
     it('should return null if it\'s not the end', () => {
       const buffer = Buffer.from('{')
-      const res = checkMsg(buffer)
+      const res = checkJSONMsg(buffer)
 
       expect(res).toBe(null)
     })
 
     it('should return an object if the msg is valid', () => {
       const buffer = Buffer.from('{}\\\\end')
-      const res = checkMsg(buffer)
+      const res = checkJSONMsg(buffer)
 
       expect(typeof res).toBe('object')
     })
@@ -20,7 +20,7 @@ describe('socket_manager', () => {
       const buffer = Buffer.from('{\\\\end')
 
       try {
-        checkMsg(buffer)
+        checkJSONMsg(buffer)
       } catch (err) {
         //
         done()

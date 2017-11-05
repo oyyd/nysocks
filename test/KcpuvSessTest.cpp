@@ -38,7 +38,6 @@ void recver_cb(kcpuv_sess *sess, char *data, int len) {
   kcpuv_destroy_loop();
 }
 
-// TODO: valgrid possiblely lost
 TEST_F(KcpuvSessTest, transfer_one_packet) {
   kcpuv_initialize();
 
@@ -135,9 +134,14 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 }
 
 static testing::MockFunction<void(void)> *test_callback3;
+static char *error_msg = "invalid";
 
-static void close_cb(kcpuv_sess *sess, const char *error_msg) {
+static void close_cb(kcpuv_sess *sess, void *data) {
+  const char *msg = reinterpret_cast<const char *>(data);
+
+  EXPECT_STREQ(msg, error_msg);
   test_callback3->Call();
+
   delete test_callback3;
 }
 
@@ -152,14 +156,15 @@ TEST_F(KcpuvSessTest, on_close_cb) {
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
 
-  kcpuv_close(sender, 0, NULL);
+  kcpuv_close(sender, 0, error_msg);
 
   kcpuv_destruct();
 }
 
 static testing::MockFunction<void(void)> *test_callback4;
 
-static void close_cb2(kcpuv_sess *sess, const char *error_msg) {
+static void close_cb2(kcpuv_sess *sess, void *data) {
+  const char *error_msg = reinterpret_cast<const char *>(data);
   test_callback4->Call();
   delete test_callback4;
   kcpuv_destroy_loop();
@@ -179,7 +184,7 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
   kcpuv_listen(recver, receive_port, NULL);
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
 
-  kcpuv_bind_close(recver, close_cb2);
+  kcpuv_bind_close(recver, &close_cb2);
 
   EXPECT_CALL(*test_callback4, Call()).Times(1);
 
@@ -192,7 +197,8 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
 static testing::MockFunction<void(void)> *test_callback5;
 
-static void close_cb3(kcpuv_sess *sess, const char *error_msg) {
+static void close_cb3(kcpuv_sess *sess, void *data) {
+  const char *error_msg = reinterpret_cast<const char *>(data);
   test_callback5->Call();
   delete test_callback5;
   kcpuv_destroy_loop();

@@ -1,4 +1,4 @@
-import { createConnection, getPort, create, send,
+import { getPort, create, send, close,
   startKcpuv, listen, setAddr } from './socket'
 
 const DEFAULT_OPTIONS = {
@@ -29,7 +29,7 @@ export function checkHandshakeMsg(buf) {
     .toString('utf8') === CONVERSATION_START_CHAR
 }
 
-export function checkMsg(buf) {
+export function checkJSONMsg(buf) {
   const { length } = buf
   const end = buf.slice(length - CONVERSATION_END_CHAR.length)
     .toString('utf8') === CONVERSATION_END_CHAR
@@ -59,18 +59,19 @@ export function initClientSocket(sess, targetAddress, targetPort) {
     listen(sess, 0, (buf) => {
       data = Buffer.concat([data, buf])
 
-      const res = checkMsg(data)
+      const res = checkJSONMsg(data)
 
       if (res) {
-        console.log('res', res)
+        resolve(res)
       }
     })
+
     sess.event.on('close', (errorMsg) => {
       if (errorMsg) {
         throw new Error(errorMsg)
       }
 
-      resolve(data)
+      // resolve(data)
     })
 
     send(sess, msg, msg.length)
@@ -80,6 +81,27 @@ export function initClientSocket(sess, targetAddress, targetPort) {
 export const CLIENT_STATE = {
   0: 'NOT_CONNECT',
   1: 'CONNECT',
+}
+
+export function initClientConns(options, client) {
+  const { targetAddress } = options
+  const { ports } = client
+  const conns = []
+
+  ports.forEach((port) => {
+    const socket = create()
+    setAddr(socket, targetAddress, port)
+
+    conns.push({
+      socket,
+      targetSocketPort: port,
+      targetSocketAddr: targetAddress,
+    })
+  })
+
+  return Object.assign({}, client, {
+    conns,
+  })
 }
 
 export function createClient(_options) {
@@ -92,16 +114,22 @@ export function createClient(_options) {
 
   const masterSocket = create()
 
-  return initClientSocket(masterSocket, targetAddress, targetPort).then((ports) => {
-    client.ports = ports
-    client.state = 1
-    return client
-  }).then((ports) => {
-    return {
-      ports,
-      masterSocket,
-    }
-  })
+  client.masterSocket = masterSocket
+
+  return initClientSocket(masterSocket, targetAddress, targetPort)
+    .then((ports) => {
+      client.ports = ports
+      client.state = 1
+      return client
+    })
+    .then(c => initClientConns(options, c))
+}
+
+export function closeClient(client) {
+  const { masterSocket, conns } = client
+
+  conns.forEach(conn => close(conn))
+  close(masterSocket)
 }
 
 export function createManager(_options) {
@@ -152,6 +180,17 @@ export function getConnectionPorts(manager) {
 }
 
 if (module === require.main) {
-  const manager = createManager()
-  const client = createClient()
+  startKcpuv()
+  const socket = create()
+  close(socket)
+
+  // const manager = createManager()
+  //
+  // createClient().then(client => {
+  //   console.log('client', client)
+  //
+  //   setTimeout(() => {
+  //     closeClient(client)
+  //   }, 1000)
+  // })
 }

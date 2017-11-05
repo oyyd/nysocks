@@ -73,7 +73,7 @@ function send(sess, buf) {
 }
 
 function close(sess) {
-  _addon2.default.close(sess);
+  _addon2.default.close(sess, true);
 }
 
 function setAddr(sess, address, port) {

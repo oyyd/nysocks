@@ -240,8 +240,7 @@ static NAN_METHOD(Close) {
     closeVal = 1;
   }
 
-  kcpuv_sess *sess = obj->GetSess();
-  kcpuv_close(sess, closeVal, NULL);
+  kcpuv_close(obj->GetSess(), closeVal, NULL);
 }
 
 static NAN_METHOD(InitSend) {

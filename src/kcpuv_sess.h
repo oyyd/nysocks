@@ -19,7 +19,14 @@ extern uv_loop_t *kcpuv_loop;
 typedef struct KCPUV_SESS kcpuv_sess;
 
 typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, char *data, int len);
-typedef void (*kcpuv_close_cb)(kcpuv_sess *sess, const char *error_msg);
+typedef void (*kcpuv_close_cb)(kcpuv_sess *sess, void *data);
+
+typedef struct KCPUV_SEND_CB_DATA {
+  kcpuv_sess *sess;
+  kcpuv_close_cb cb;
+  char *buf_data;
+  void *cus_data;
+} kcpuv_send_cb_data;
 
 struct KCPUV_SESS {
   // user defined
