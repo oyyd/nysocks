@@ -1,11 +1,11 @@
 import { getPort, create, send, close,
-  startKcpuv, listen, setAddr, stopKcpuv } from './socket'
+  startKcpuv, listen, setAddr } from './socket'
 
 const DEFAULT_OPTIONS = {
   targetAddress: '0.0.0.0',
   targetPort: 20000,
   // socketAmount: 100,
-  socketAmount: 2,
+  socketAmount: 1,
 }
 
 const CONVERSATION_START_CHAR = '\\\\start'
@@ -13,15 +13,16 @@ const CONVERSATION_END_CHAR = '\\\\end'
 
 let kcpuvStarted = false
 
+function start() {
+  if (!kcpuvStarted) {
+    kcpuvStarted = true
+    startKcpuv()
+  }
+}
+
 function sendJson(sess, jsonMsg) {
   const content = Buffer.from(`${JSON.stringify(jsonMsg)}${CONVERSATION_END_CHAR}`)
   send(sess, content, content.length)
-}
-
-export function tunnel(manager, socket) {
-  // const socket = manager.conns[0]
-  //
-  // return socket
 }
 
 export function checkHandshakeMsg(buf) {
@@ -83,20 +84,24 @@ export const CLIENT_STATE = {
   1: 'CONNECT',
 }
 
-export function initClientConns(options, client) {
+export function initClientConns(options, client, next) {
   const { targetAddress } = options
   const { ports } = client
   const conns = []
 
   ports.forEach((port) => {
+    const info = {}
     const socket = create()
+
+    listen(socket, 0, (buf) => next(info, buf))
     setAddr(socket, targetAddress, port)
 
-    conns.push({
-      socket,
-      targetSocketPort: port,
-      targetSocketAddr: targetAddress,
-    })
+    info.socket = socket
+    info.targetSocketPort = port
+    info.targetSocketAddr = targetAddress
+    info.locked = false
+
+    conns.push(info)
   })
 
   return Object.assign({}, client, {
@@ -104,7 +109,9 @@ export function initClientConns(options, client) {
   })
 }
 
-export function createClient(_options) {
+export function createClient(_options, next) {
+  start()
+
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { targetAddress, targetPort } = options
   const client = {
@@ -122,7 +129,7 @@ export function createClient(_options) {
       client.state = 1
       return client
     })
-    .then(c => initClientConns(options, c))
+    .then(c => initClientConns(options, c, next))
 }
 
 export function closeClient(client) {
@@ -132,26 +139,33 @@ export function closeClient(client) {
   close(masterSocket)
 }
 
-export function createManager(_options) {
+export function getConnectionPorts(manager) {
+  return manager.conns.map(i => i.port)
+}
+
+export function createManager(_options, next) {
+  start()
+
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { socketAmount, targetPort } = options
   const conns = []
+  const manager = {
+    conns,
+  }
 
   // create master socket
   const masterSocket = create()
+  manager.masterSocket = masterSocket
 
   // create sockets for tunneling
   for (let i = 0; i < socketAmount; i += 1) {
+    const info = {}
     const socket = create()
-    listen(socket, 0, (buf) => {
-      // ...
-    })
+    listen(socket, 0, (buf) => next(info, buf))
 
     const port = getPort(socket)
-    const info = {
-      socket,
-      port,
-    }
+    info.socket = socket
+    info.port = port
     conns.push(info)
   }
 
@@ -160,32 +174,60 @@ export function createManager(_options) {
 
     if (shouldReply) {
       // TODO:
-      sendJson(masterSocket, conns.map(i => i.port))
+      sendJson(masterSocket, getConnectionPorts(manager))
     }
   })
 
-  return {
-    masterSocket,
-    conns,
-  }
+  return manager
 }
 
-export function getConnectionPorts(manager) {
-  return manager.conns.map(i => i.port)
+export function sendBuf(socketInfo, buf) {
+  send(socketInfo.socket, buf, buf.length)
+}
+
+export function lockOne(client) {
+  const { conns } = client
+
+  for (let i = 0; i < conns.length; i += 1) {
+    const conn = conns[i]
+
+    if (!conn.locked) {
+      conn.locked = true
+      return conn
+    }
+  }
+
+  throw new Error('no availiable socket')
+}
+
+export function releaseOne(client, info) {
+  const { conns } = client
+
+  for (let i = 0; i < conns.length; i += 1) {
+    if (conns[i] === info) {
+      if (!conns[i].locked) {
+        throw new Error('release an unlocked socket')
+      } else {
+        conns[i].locked = false
+        return
+      }
+    }
+  }
+
+  throw new Error('release an unknown socket')
 }
 
 if (module === require.main) {
-  if (!kcpuvStarted) {
-    kcpuvStarted = true
-    startKcpuv()
-  }
+  const manager = createManager(null, (info, buf) => {
+    console.log('manager received:', buf.toString('utf8'))
+    sendBuf(info, Buffer.from('I have received'))
+  })
 
-  const manager = createManager()
-
-  createClient().then(client => {
-    console.log('client', client)
-
-    closeClient(client)
-    stopKcpuv()
+  createClient(null, (info, buf) => {
+    console.log('client:', buf.toString('utf8'))
+  }).then(client => {
+    sendBuf(client.conns[0], Buffer.from('Hello'))
+  }).catch(err => {
+    console.error(err)
   })
 }

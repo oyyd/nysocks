@@ -33,6 +33,10 @@ export function listen(sess, port = 0, onMessage) {
   }
 }
 
+export function bindListener(sess, onMessage) {
+  binding.bindListen(sess, onMessage)
+}
+
 export function getPort(sess) {
   return binding.getPort(sess)
 }

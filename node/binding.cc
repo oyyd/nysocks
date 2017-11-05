@@ -45,7 +45,7 @@ public:
 
   kcpuv_sess *GetSess() { return sess; }
 
-  Nan::CopyablePersistentTraits<Function>::CopyablePersistent bind_cb;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent listen_cb;
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent close_cb;
   int is_freed = 0;
 
@@ -57,7 +57,7 @@ Persistent<Function> KcpuvSessBinding::constructor;
 
 // void buffer_delete_callback(char *data, void *hint) { free(data); }
 
-void binding_cb(kcpuv_sess *sess, char *data, int len) {
+void on_listen_cb(kcpuv_sess *sess, char *data, int len) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
   // NOTE: Create a scope for the allocation of v8 memories
   // as we are calling a js function outside the v8
@@ -72,7 +72,7 @@ void binding_cb(kcpuv_sess *sess, char *data, int len) {
   Local<Value> args[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->bind_cb), argc, args);
+                    Nan::New(binding->listen_cb), argc, args);
 }
 
 void closing_cb(kcpuv_sess *sess, void *data) {
@@ -175,20 +175,38 @@ static NAN_METHOD(Listen) {
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
   int port = info[1]->ToNumber(isolate)->Int32Value();
 
-  if (!info[2]->IsFunction()) {
-    isolate->ThrowException(Exception::Error(
-        String::NewFromUtf8(isolate, "`Listen` expect a callback function")));
-    return;
+  if (info[2]->IsFunction()) {
+    obj->listen_cb = Nan::Persistent<Function>(info[2].As<Function>());
   }
 
-  obj->bind_cb = Nan::Persistent<Function>(info[2].As<Function>());
-  kcpuv_sess *sess = obj->GetSess();
+  // else {
+  // isolate->ThrowException(Exception::Error(
+  //     String::NewFromUtf8(isolate, "`Listen` expect a callback
+  //     function")));
+  // return;
+  // }
 
-  int rval = kcpuv_listen(sess, port, &binding_cb);
+  kcpuv_sess *sess = obj->GetSess();
+  int rval = kcpuv_listen(sess, port, &on_listen_cb);
+
   if (rval != 0) {
     return info.GetReturnValue().Set(
         String::NewFromUtf8(isolate, uv_strerror(rval)));
   }
+}
+
+static NAN_METHOD(BindListen) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  if (!info[1]->IsFunction()) {
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(
+        isolate, "`BindListen` expect a callback function")));
+    return;
+  }
+
+  obj->listen_cb = Nan::Persistent<Function>(info[1].As<Function>());
 }
 
 static NAN_METHOD(GetPort) {
@@ -290,6 +308,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "initSend", InitSend);
   Nan::SetMethod(target, "send", Send);
   Nan::SetMethod(target, "bindClose", BindClose);
+  Nan::SetMethod(target, "bindListen", BindListen);
   Nan::SetMethod(target, "close", Close);
   Nan::SetMethod(target, "initialize", Initialize);
   Nan::SetMethod(target, "destruct", Destruct);
