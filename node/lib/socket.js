@@ -27,6 +27,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 _addon2.default.useDefaultLoop(true);
 
+_addon2.default.initialize();
+
 // const {
 //   create, free,
 //   listen, stopListen, initSend, send, bindClose, close,
@@ -73,7 +75,9 @@ function send(sess, buf) {
 }
 
 function close(sess) {
-  _addon2.default.close(sess, true);
+  var sendCloseMsg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+  _addon2.default.close(sess, sendCloseMsg);
 }
 
 function setAddr(sess, address, port) {
@@ -90,11 +94,11 @@ function createConnection(targetAddress, targetPort, onMsg) {
 }
 
 function startKcpuv() {
-  _addon2.default.initialize();
   _addon2.default.startLoop();
 }
 
+// TODO:
 function stopKcpuv() {
   _addon2.default.destroyLoop();
-  _addon2.default.destruct();
+  // binding.destruct()
 }

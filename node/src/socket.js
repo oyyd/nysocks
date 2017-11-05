@@ -3,6 +3,8 @@ import binding from '../../build/Release/addon.node'
 
 binding.useDefaultLoop(true)
 
+binding.initialize()
+
 // const {
 //   create, free,
 //   listen, stopListen, initSend, send, bindClose, close,
@@ -43,8 +45,8 @@ export function send(sess, buf) {
   binding.send(sess, buf, buf.length)
 }
 
-export function close(sess) {
-  binding.close(sess, true)
+export function close(sess, sendCloseMsg = false) {
+  binding.close(sess, sendCloseMsg)
 }
 
 export function setAddr(sess, address, port) {
@@ -61,11 +63,11 @@ export function createConnection(targetAddress, targetPort, onMsg) {
 }
 
 export function startKcpuv() {
-  binding.initialize()
   binding.startLoop()
 }
 
+// TODO:
 export function stopKcpuv() {
   binding.destroyLoop()
-  binding.destruct()
+  // binding.destruct()
 }

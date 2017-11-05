@@ -193,7 +193,7 @@ static void send_cb(uv_udp_send_t *req, int status) {
   free(cb_data->buf_data);
   free(req);
 
-  kcpuv_close_cb cb = cb_data->cb;
+  kcpuv_dgram_cb cb = cb_data->cb;
   if (cb != NULL) {
     cb(cb_data->sess, cb_data->cus_data);
   }
@@ -202,7 +202,7 @@ static void send_cb(uv_udp_send_t *req, int status) {
 }
 
 static void udp_send(kcpuv_sess *sess, char *data, int length,
-                     kcpuv_close_cb cb, char *cus_data) {
+                     kcpuv_dgram_cb cb, char *cus_data) {
   kcpuv_send_cb_data *cb_data = malloc(sizeof(kcpuv_send_cb_data));
   cb_data->buf_data = data;
   cb_data->cb = cb;
@@ -221,7 +221,7 @@ static void udp_send(kcpuv_sess *sess, char *data, int length,
 }
 
 static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
-                                     int len, kcpuv_close_cb cb,
+                                     int len, kcpuv_dgram_cb cb,
                                      char *cus_data) {
   // encode protocol
   int write_len = len + KCPUV_OVERHEAD;
@@ -262,7 +262,7 @@ static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
 }
 
 // Send cmds directly through udp.
-void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd, kcpuv_close_cb cb,
+void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd, kcpuv_dgram_cb cb,
                     void *data) {
   kcpuv_send_with_protocol(sess, cmd, NULL, 0, cb, data);
 }
@@ -502,7 +502,7 @@ int kcpuv_get_address(kcpuv_sess *sess, char *addr, int *namelen, int *port) {
 }
 
 // Set close msg listener
-void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_close_cb cb) {
+void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_dgram_cb cb) {
   sess->on_close_cb = cb;
 }
 
@@ -527,7 +527,7 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
     // // ikcp_update(sess, now);
   } else if (sess->on_close_cb != NULL) {
     // call callback to inform outside
-    kcpuv_close_cb on_close_cb = sess->on_close_cb;
+    kcpuv_dgram_cb on_close_cb = sess->on_close_cb;
     on_close_cb(sess, error_msg);
   }
 }

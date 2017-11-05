@@ -19,11 +19,11 @@ extern uv_loop_t *kcpuv_loop;
 typedef struct KCPUV_SESS kcpuv_sess;
 
 typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, char *data, int len);
-typedef void (*kcpuv_close_cb)(kcpuv_sess *sess, void *data);
+typedef void (*kcpuv_dgram_cb)(kcpuv_sess *sess, void *data);
 
 typedef struct KCPUV_SEND_CB_DATA {
   kcpuv_sess *sess;
-  kcpuv_close_cb cb;
+  kcpuv_dgram_cb cb;
   char *buf_data;
   void *cus_data;
 } kcpuv_send_cb_data;
@@ -41,7 +41,7 @@ struct KCPUV_SESS {
   IUINT32 recv_ts;
   unsigned int timeout;
   kcpuv_listen_cb on_msg_cb;
-  kcpuv_close_cb on_close_cb;
+  kcpuv_dgram_cb on_close_cb;
   kcpuv_cryptor *cryptor;
   // TODO: outher config
 };
@@ -77,7 +77,7 @@ void kcpuv_close(kcpuv_sess *sess,
                  unsigned int should_send_a_close_cmd_to_the_other_side,
                  const char *error_msg);
 
-void kcpuv_bind_close(kcpuv_sess *, kcpuv_close_cb);
+void kcpuv_bind_close(kcpuv_sess *, kcpuv_dgram_cb);
 
 void kcpuv_initialize();
 

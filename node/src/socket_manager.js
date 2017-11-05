@@ -1,5 +1,5 @@
 import { getPort, create, send, close,
-  startKcpuv, listen, setAddr } from './socket'
+  startKcpuv, listen, setAddr, stopKcpuv } from './socket'
 
 const DEFAULT_OPTIONS = {
   targetAddress: '0.0.0.0',
@@ -128,16 +128,11 @@ export function createClient(_options) {
 export function closeClient(client) {
   const { masterSocket, conns } = client
 
-  conns.forEach(conn => close(conn))
+  conns.forEach(conn => close(conn.socket, true))
   close(masterSocket)
 }
 
 export function createManager(_options) {
-  if (!kcpuvStarted) {
-    kcpuvStarted = true
-    startKcpuv()
-  }
-
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { socketAmount, targetPort } = options
   const conns = []
@@ -180,17 +175,17 @@ export function getConnectionPorts(manager) {
 }
 
 if (module === require.main) {
-  startKcpuv()
-  const socket = create()
-  close(socket)
+  if (!kcpuvStarted) {
+    kcpuvStarted = true
+    startKcpuv()
+  }
 
-  // const manager = createManager()
-  //
-  // createClient().then(client => {
-  //   console.log('client', client)
-  //
-  //   setTimeout(() => {
-  //     closeClient(client)
-  //   }, 1000)
-  // })
+  const manager = createManager()
+
+  createClient().then(client => {
+    console.log('client', client)
+
+    closeClient(client)
+    stopKcpuv()
+  })
 }

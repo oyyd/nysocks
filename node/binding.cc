@@ -38,6 +38,7 @@ public:
   static void Create(const FunctionCallbackInfo<Value> &args);
 
   void Free() {
+    cout << "Free ONE\n";
     kcpuv_free(sess);
     is_freed = 1;
   };
@@ -74,20 +75,20 @@ void binding_cb(kcpuv_sess *sess, char *data, int len) {
                     Nan::New(binding->bind_cb), argc, args);
 }
 
-void closing_cb(kcpuv_sess *sess, const char *error_msg) {
+void closing_cb(kcpuv_sess *sess, void *data) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
 
+  Nan::HandleScope scope;
+  Isolate *isolate = Isolate::GetCurrent();
+  const char *error_msg = reinterpret_cast<const char *>(data);
   const int argc = 1;
   Local<Value> args[argc] = {Nan::Undefined()};
+  // if (!isolate) {
+  //   isolate = Isolate::New();
+  //   isolate->Enter();
+  // }
 
   if (error_msg) {
-    Isolate *isolate = Isolate::GetCurrent();
-
-    // if (!isolate) {
-    //   isolate = Isolate::New();
-    //   isolate->Enter();
-    // }
-
     // TODO: memcpy
     args[0] = String::NewFromUtf8(isolate, error_msg);
   }
