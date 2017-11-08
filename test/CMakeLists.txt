@@ -25,6 +25,7 @@ add_executable(unit_test
   KcpuvSessTest.cpp
   UtilsTest.cpp
   ProtocolTest.cpp
+  MuxTest.cpp
 )
 target_link_libraries(unit_test
   kcpuv

@@ -9,6 +9,12 @@ extern "C" {
 #include "kcpuv_sess.h"
 #include "utils.h"
 
+typedef struct KCPUV_MUX kcpuv_mux;
+typedef struct KCPUV_MUX_CONN kcpuv_mux_conn;
+
+typedef void (*conn_on_msg_cb)(kcpuv_mux_conn *conn, char *buffer, int length);
+typedef void (*conn_on_close_cb)(kcpuv_mux_conn *conn, const char *error_msg);
+
 typedef struct KCPUV_MUX {
   unsigned int count;
   kcpuv_link conns;
@@ -22,9 +28,6 @@ typedef struct KCPUV_MUX_CONN {
   conn_on_msg_cb on_msg_cb;
   conn_on_close_cb on_close_cb;
 } kcpuv_mux_conn;
-
-typedef void (*conn_on_msg_cb)(kcpuv_mux_conn *conn, char *buffer, int length);
-typedef void (*conn_on_close_cb)(kcpuv_mux_conn *conn, const char *error_msg);
 
 int kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess);
 
@@ -44,9 +47,9 @@ int kcpuv_mux_conn_bind_close(kcpuv_mux_conn *, conn_on_close_cb);
 
 int kcpuv_mux_send_close(kcpuv_mux_conn *);
 
-int kcpuv__mux_decode(kcpuv_mux *, const char *buffer, int length);
+unsigned int kcpuv__mux_decode(const char *buffer, int *cmd, int *length);
 
-int kcpuv__mux_encode(kcpuv_mux *, char *buffer, int cmd, int length);
+void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length);
 
 #ifdef __cplusplus
 }

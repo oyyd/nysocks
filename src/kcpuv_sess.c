@@ -502,7 +502,7 @@ void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_dgram_cb cb) {
   sess->on_close_cb = cb;
 }
 
-void kcpuv_bind_listen(kcpuv_sess *, kcpuv_listen_cb cb) {
+void kcpuv_bind_listen(kcpuv_sess *sess, kcpuv_listen_cb cb) {
   sess->on_msg_cb = cb;
 }
 
