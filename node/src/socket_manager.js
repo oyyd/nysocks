@@ -1,5 +1,5 @@
-import { getPort, create, send, close,
-  startKcpuv, listen, setAddr } from './socket'
+import { getPort, create, send, close, bindListener,
+  startKcpuv, listen as socketListen, setAddr } from './socket'
 
 const DEFAULT_OPTIONS = {
   targetAddress: '0.0.0.0',
@@ -57,7 +57,7 @@ export function initClientSocket(sess, targetAddress, targetPort) {
     let data = Buffer.allocUnsafe(0)
 
     setAddr(sess, targetAddress, targetPort)
-    listen(sess, 0, (buf) => {
+    socketListen(sess, 0, (buf) => {
       data = Buffer.concat([data, buf])
 
       const res = checkJSONMsg(data)
@@ -84,7 +84,7 @@ export const CLIENT_STATE = {
   1: 'CONNECT',
 }
 
-export function initClientConns(options, client, next) {
+export function initClientConns(options, client) {
   const { targetAddress } = options
   const { ports } = client
   const conns = []
@@ -93,7 +93,7 @@ export function initClientConns(options, client, next) {
     const info = {}
     const socket = create()
 
-    listen(socket, 0, (buf) => next(info, buf))
+    socketListen(socket, 0)
     setAddr(socket, targetAddress, port)
 
     info.socket = socket
@@ -109,7 +109,7 @@ export function initClientConns(options, client, next) {
   })
 }
 
-export function createClient(_options, next) {
+export function createClient(_options) {
   start()
 
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
@@ -129,7 +129,7 @@ export function createClient(_options, next) {
       client.state = 1
       return client
     })
-    .then(c => initClientConns(options, c, next))
+    .then(c => initClientConns(options, c))
 }
 
 export function closeClient(client) {
@@ -143,7 +143,7 @@ export function getConnectionPorts(manager) {
   return manager.conns.map(i => i.port)
 }
 
-export function createManager(_options, next) {
+export function createManager(_options) {
   start()
 
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
@@ -161,7 +161,7 @@ export function createManager(_options, next) {
   for (let i = 0; i < socketAmount; i += 1) {
     const info = {}
     const socket = create()
-    listen(socket, 0, (buf) => next(info, buf))
+    socketListen(socket, 0)
 
     const port = getPort(socket)
     info.socket = socket
@@ -169,7 +169,7 @@ export function createManager(_options, next) {
     conns.push(info)
   }
 
-  listen(masterSocket, targetPort, (buf) => {
+  socketListen(masterSocket, targetPort, (buf) => {
     const shouldReply = checkHandshakeMsg(buf)
 
     if (shouldReply) {
@@ -217,15 +217,22 @@ export function releaseOne(client, info) {
   throw new Error('release an unknown socket')
 }
 
+export function listen(info, next) {
+  bindListener(info.socket, next)
+}
+
 if (module === require.main) {
-  const manager = createManager(null, (info, buf) => {
+  const manager = createManager({ socketAmount: 2 })
+
+  bindListener(manager.conns[0].socket, (buf) => {
     console.log('manager received:', buf.toString('utf8'))
-    sendBuf(info, Buffer.from('I have received'))
+    sendBuf(manager.conns[0], Buffer.from('I have received'))
   })
 
-  createClient(null, (info, buf) => {
-    console.log('client:', buf.toString('utf8'))
-  }).then(client => {
+  createClient(null).then(client => {
+    bindListener(client.conns[0].socket, (buf) => {
+      console.log('client:', buf.toString('utf8'))
+    })
     sendBuf(client.conns[0], Buffer.from('Hello'))
   }).catch(err => {
     console.error(err)

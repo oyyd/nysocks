@@ -3,15 +3,11 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.setAddr = exports.close = exports.send = exports.stopListen = exports.getPort = exports.bindListener = exports.listen = exports.destroy = undefined;
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 exports.create = create;
-exports.destroy = destroy;
-exports.listen = listen;
-exports.bindListener = bindListener;
-exports.getPort = getPort;
-exports.stopListen = stopListen;
-exports.send = send;
-exports.close = close;
-exports.setAddr = setAddr;
 exports.createConnection = createConnection;
 exports.startKcpuv = startKcpuv;
 exports.stopKcpuv = stopKcpuv;
@@ -37,9 +33,27 @@ _addon2.default.initialize();
 //   startLoop, destroyLoop,
 // } = binding
 
+function checkValidSocket(obj) {
+  if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== 'object' || !obj.isKcpuvSocket) {
+    throw new Error('invalid kcpuv socket');
+  }
+}
+
+function wrap(func) {
+  return function (obj) {
+    for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      args[_key - 1] = arguments[_key];
+    }
+
+    checkValidSocket(obj);
+    return func.apply(undefined, [obj].concat(args));
+  };
+}
+
 function create() {
   var sess = _addon2.default.create();
   sess.event = new _events2.default();
+  sess.isKcpuvSocket = true;
 
   _addon2.default.bindClose(sess, function (errorMsg) {
     return sess.event.emit('close', errorMsg);
@@ -48,11 +62,11 @@ function create() {
   return sess;
 }
 
-function destroy(sess) {
+var destroy = exports.destroy = wrap(function (sess) {
   _addon2.default.free(sess);
-}
+});
 
-function listen(sess) {
+var listen = exports.listen = wrap(function (sess) {
   var port = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
   var onMessage = arguments[2];
 
@@ -61,33 +75,37 @@ function listen(sess) {
   if (errMsg) {
     throw new Error(errMsg);
   }
-}
+});
 
-function bindListener(sess, onMessage) {
+var bindListener = exports.bindListener = wrap(function (sess, onMessage) {
+  if (typeof onMessage !== 'function') {
+    throw new Error('expe)ct "onMessage" to be a function');
+  }
+
   _addon2.default.bindListen(sess, onMessage);
-}
+});
 
-function getPort(sess) {
+var getPort = exports.getPort = wrap(function (sess) {
   return _addon2.default.getPort(sess);
-}
+});
 
-function stopListen(sess) {
+var stopListen = exports.stopListen = wrap(function (sess) {
   _addon2.default.stopListen(sess);
-}
+});
 
-function send(sess, buf) {
+var send = exports.send = wrap(function (sess, buf) {
   _addon2.default.send(sess, buf, buf.length);
-}
+});
 
-function close(sess) {
+var close = exports.close = wrap(function (sess) {
   var sendCloseMsg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
   _addon2.default.close(sess, sendCloseMsg);
-}
+});
 
-function setAddr(sess, address, port) {
+var setAddr = exports.setAddr = wrap(function (sess, address, port) {
   _addon2.default.initSend(sess, address, port);
-}
+});
 
 function createConnection(targetAddress, targetPort, onMsg) {
   var sess = create();

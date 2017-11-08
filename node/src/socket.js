@@ -12,50 +12,66 @@ binding.initialize()
 //   startLoop, destroyLoop,
 // } = binding
 
+function checkValidSocket(obj) {
+  if (typeof obj !== 'object' || !obj.isKcpuvSocket) {
+    throw new Error('invalid kcpuv socket')
+  }
+}
+
+function wrap(func) {
+  return (obj, ...args) => {
+    checkValidSocket(obj)
+    return func(obj, ...args)
+  }
+}
+
 export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
+  sess.isKcpuvSocket = true
 
   binding.bindClose(sess, errorMsg => sess.event.emit('close', errorMsg))
 
   return sess
 }
 
-export function destroy(sess) {
+export const destroy = wrap((sess) => {
   binding.free(sess)
-}
+})
 
-export function listen(sess, port = 0, onMessage) {
+export const listen = wrap((sess, port = 0, onMessage) => {
   const errMsg = binding.listen(sess, port, onMessage)
 
   if (errMsg) {
     throw new Error(errMsg)
   }
-}
+})
 
-export function bindListener(sess, onMessage) {
+export const bindListener = wrap((sess, onMessage) => {
+  if (typeof onMessage !== 'function') {
+    throw new Error('expe)ct "onMessage" to be a function')
+  }
+
   binding.bindListen(sess, onMessage)
-}
+})
 
-export function getPort(sess) {
-  return binding.getPort(sess)
-}
+export const getPort = wrap((sess) => binding.getPort(sess))
 
-export function stopListen(sess) {
+export const stopListen = wrap((sess) => {
   binding.stopListen(sess)
-}
+})
 
-export function send(sess, buf) {
+export const send = wrap((sess, buf) => {
   binding.send(sess, buf, buf.length)
-}
+})
 
-export function close(sess, sendCloseMsg = false) {
+export const close = wrap((sess, sendCloseMsg = false) => {
   binding.close(sess, sendCloseMsg)
-}
+})
 
-export function setAddr(sess, address, port) {
+export const setAddr = wrap((sess, address, port) => {
   binding.initSend(sess, address, port)
-}
+})
 
 export function createConnection(targetAddress, targetPort, onMsg) {
   const sess = create()

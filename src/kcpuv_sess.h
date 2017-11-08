@@ -79,6 +79,8 @@ void kcpuv_close(kcpuv_sess *sess,
 
 void kcpuv_bind_close(kcpuv_sess *, kcpuv_dgram_cb);
 
+void kcpuv_bind_listen(kcpuv_sess *, kcpuv_listen_cb);
+
 void kcpuv_initialize();
 
 int kcpuv_destruct();

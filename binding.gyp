@@ -12,6 +12,7 @@
       'src/utils.c',
       'src/protocol.c',
       'src/kcpuv.c',
+      'src/mux.c',
       'node/binding.cc',
     ],
   }]

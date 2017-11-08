@@ -170,11 +170,8 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
     }
 
     unsigned long part_len = e - s;
-    char *data = malloc(sizeof(char) * part_len);
 
-    memcpy(data, msg + s, part_len);
-
-    int rval = ikcp_send(sess->kcp, data, part_len);
+    int rval = ikcp_send(sess->kcp, msg + s, part_len);
 
     if (debug == 1 && rval < 0) {
       // TODO:
@@ -182,7 +179,6 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
     }
 
     s = e;
-    free(data);
   }
 }
 
@@ -506,6 +502,10 @@ void kcpuv_bind_close(kcpuv_sess *sess, kcpuv_dgram_cb cb) {
   sess->on_close_cb = cb;
 }
 
+void kcpuv_bind_listen(kcpuv_sess *, kcpuv_listen_cb cb) {
+  sess->on_msg_cb = cb;
+}
+
 // Sessions won't receive msg anymore after closed.
 // We still need to send the close msg to the other side
 // and then we can free the sess.
@@ -518,13 +518,6 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
 
   if (send_close_msg != 0) {
     kcpuv_send_cmd(sess, KCPUV_CMD_CLS, sess->on_close_cb, error_msg);
-    // // send an packet with empty content
-    // // TODO: Is there any better choices?
-    // char *content = "a";
-    // // TODO: this message may not be sent
-    // kcpuv_send(sess, content, 1);
-    // // IUINT32 now = iclock();
-    // // ikcp_update(sess, now);
   } else if (sess->on_close_cb != NULL) {
     // call callback to inform outside
     kcpuv_dgram_cb on_close_cb = sess->on_close_cb;

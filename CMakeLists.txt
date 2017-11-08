@@ -19,6 +19,7 @@ set(
   src/protocol.h
   src/utils.h
   src/kcpuv.h
+  src/mux.h
 )
 
 set(
@@ -27,6 +28,7 @@ set(
   src/protocol.c
   src/utils.c
   src/kcpuv.c
+  src/mux.c
 )
 
 add_library(kcpuv ${KCPUV_SOURCES} ${KCPUV_HEADERS})
