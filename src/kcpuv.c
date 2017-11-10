@@ -23,8 +23,10 @@ const unsigned int DEFAULT_TIMEOUT = 30000;
 const unsigned short IP4_ADDR_LENTH = 17;
 const unsigned short IP6_ADDR_LENGTH = 68;
 const int KCPUV_MUX_CMD_PUSH = 10;
-const int KPCUV_MUX_CMD_CLS = 40;
+const int KCPUV_MUX_CMD_CLS = 40;
 // one byte for cmd,
 // four byte for id,
 // two byte for length,
 const int KCPUV_MUX_PROTOCOL_OVERHEAD = 7;
+const size_t MAX_MUX_CONTENT_LEN =
+    MAX_SENDING_LEN - KCPUV_MUX_PROTOCOL_OVERHEAD;

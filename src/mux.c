@@ -32,8 +32,47 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
   buf[6] = (length)&0xFF;
 }
 
+// TODO: drop invalid msg
 static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
-  //
+  int cmd;
+  int length;
+  unsigned int id = kcpuv__mux_decode((const char *)data, &cmd, &length);
+  kcpuv_mux *mux = (kcpuv_mux *)sess->data;
+  kcpuv_mux_conn *conn;
+
+  // find conn
+  kcpuv_link *link = mux->conns.next;
+
+  while (link != NULL && ((kcpuv_mux_conn *)link->node)->id != id) {
+    link = link->next;
+  }
+
+  if (link != NULL) {
+    conn = (kcpuv_mux_conn *)link->node;
+  } else {
+    // create new one
+    conn = malloc(sizeof(kcpuv_mux_conn));
+    kcpuv_mux_conn_init(mux, conn);
+
+    if (mux->on_connection_cb != NULL) {
+      mux_on_connection_cb cb = mux->on_connection_cb;
+      cb(conn);
+    }
+  }
+
+  // handle cmd
+  if (cmd == KCPUV_MUX_CMD_PUSH) {
+    if (conn->on_msg_cb != NULL) {
+      conn_on_msg_cb cb = conn->on_msg_cb;
+      cb(conn, data, len);
+    }
+  } else if (cmd == KCPUV_MUX_CMD_CLS) {
+    // TODO: when get a cmd to close a closed conn
+    conn_on_close_cb cb = conn->on_close_cb;
+    cb(conn, NULL);
+  } else {
+    // drop
+  }
 }
 
 // Bind a session that is inited.
@@ -45,7 +84,16 @@ int kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
 }
 
 int kcpuv_mux_free(kcpuv_mux *mux) {
-  // TODO: free all conns
+  kcpuv_link *link = mux->conns.next;
+
+  while (link != NULL) {
+    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
+    kcpuv_mux_conn_free(conn);
+    free(conn);
+    mux->conns.next = link->next;
+    free(link);
+    link = mux->conns.next;
+  }
 }
 
 int kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
@@ -53,16 +101,88 @@ int kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   conn->id = mux->count++;
   conn->timeout = DEFAULT_TIMEOUT;
   conn->ts = 0;
+  conn->mux = mux;
 
   // add to mux conns
   kcpuv_link *link = kcpuv_link_create(conn);
   kcpuv_link_add(&mux->conns, link);
 }
 
-int kcpuv_mux_conn_listen(kcpuv_mux_conn *conn, conn_on_msg_cb cb) {
+void kcpuv_mux_conn_free(kcpuv_mux_conn *conn) {
+  if (conn->on_close_cb != NULL) {
+    conn_on_close_cb cb = (conn_on_close_cb *)conn->on_close_cb;
+    cb(conn, NULL);
+  }
+}
+
+void kcpuv_mux_conn_listen(kcpuv_mux_conn *conn, conn_on_msg_cb cb) {
   conn->on_msg_cb = cb;
 }
 
-int kcpuv_mux_conn_bind_close(kcpuv_mux_conn *conn, conn_on_close_cb cb) {
+void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *conn, conn_on_close_cb cb) {
   conn->on_close_cb = cb;
+}
+
+void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb) {
+  mux->on_connection_cb = cb;
+}
+
+// void kcpuv_mux_check_timeout(kcpuv_mux *mux, IUINT32 ts) {
+//   kcpuv_link *link = mux->conns.next;
+//
+//   IUINT32 current = iclock();
+//
+//   while (link != NULL) {
+//     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
+//
+//     link = link->next;
+//   }
+// }
+
+void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
+                    int cmd) {
+  kcpuv_mux *mux = conn->mux;
+  kcpuv_sess *sess = mux->sess;
+
+  unsigned long s = 0;
+
+  // push by default
+  if (!cmd) {
+    cmd = KCPUV_MUX_CMD_PUSH;
+  }
+
+  // send cmd with empty content
+  if (len == 0) {
+    unsigned total_len = KCPUV_MUX_PROTOCOL_OVERHEAD;
+    char *encoded_content = malloc(sizeof(total_len));
+    kcpuv__mux_encode(encoded_content, conn->id, cmd, len);
+    kcpuv_send(sess, encoded_content, total_len);
+
+    free(encoded_content);
+    return;
+  }
+
+  while (s < len) {
+    unsigned long e = s + MAX_MUX_CONTENT_LEN;
+
+    if (e > len) {
+      e = len;
+    }
+
+    unsigned long part_len = e - s;
+    unsigned total_len = part_len + KCPUV_MUX_PROTOCOL_OVERHEAD;
+
+    // TODO: refactor: copy only once when sending
+    char *encoded_content = malloc(sizeof(total_len));
+    kcpuv__mux_encode(encoded_content, conn->id, cmd, len);
+    memcpy(encoded_content, content + s, part_len);
+    kcpuv_send(sess, encoded_content, total_len);
+
+    free(encoded_content);
+    s = e;
+  }
+}
+
+void kcpuv_mux_send_close(kcpuv_mux_conn *conn) {
+  kcpuv_mux_send(conn, NULL, 0, KCPUV_MUX_CMD_CLS);
 }

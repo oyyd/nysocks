@@ -269,13 +269,13 @@ void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd, kcpuv_dgram_cb cb,
 // TODO: conv
 kcpuv_sess *kcpuv_create() {
   kcpuv_sess *sess = malloc(sizeof(kcpuv_sess));
+  // NOTE: Do not use stream mode.
   sess->kcp = ikcp_create(0, sess);
   // ikcp_nodelay(sess->kcp, 0, 10, 0, 0);
   ikcp_nodelay(sess->kcp, 1, 10, 2, 1);
   ikcp_wndsize(sess->kcp, INIT_WND_SIZE, INIT_WND_SIZE);
   ikcp_setmtu(sess->kcp, MTU_DEF);
   // sess->kcp->rmt_wnd = INIT_WND_SIZE;
-  // sess->kcp->stream = 1;
 
   sess->handle = malloc(sizeof(uv_udp_t));
   uv_udp_init(kcpuv_loop, sess->handle);

@@ -223,9 +223,10 @@ export function listen(info, next) {
 
 if (module === require.main) {
   const manager = createManager({ socketAmount: 2 })
+  const message = Buffer.alloc(4 * 1024 * 1024)
 
   bindListener(manager.conns[0].socket, (buf) => {
-    console.log('manager received:', buf.toString('utf8'))
+    console.log('manager received:', buf.length)
     sendBuf(manager.conns[0], Buffer.from('I have received'))
   })
 
@@ -233,7 +234,7 @@ if (module === require.main) {
     bindListener(client.conns[0].socket, (buf) => {
       console.log('client:', buf.toString('utf8'))
     })
-    sendBuf(client.conns[0], Buffer.from('Hello'))
+    sendBuf(client.conns[0], message)
   }).catch(err => {
     console.error(err)
   })

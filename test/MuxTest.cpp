@@ -1,6 +1,10 @@
 #include "mux.h"
 #include "KcpuvTest.h"
 
+// #define INIT_MUX_TEST() \
+//   kcpuv_initialize(); \
+//   kpcuv_start_loop();
+
 namespace kcpuv_test {
 using namespace std;
 

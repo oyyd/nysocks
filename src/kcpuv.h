@@ -31,9 +31,10 @@ extern const unsigned int DEFAULT_TIMEOUT;
 extern const unsigned short IP4_ADDR_LENTH;
 extern const unsigned short IP6_ADDR_LENGTH;
 extern const int KCPUV_MUX_CMD_PUSH;
-extern const int KPCUV_MUX_CMD_CLS;
+extern const int KCPUV_MUX_CMD_CLS;
 // one byte for cmd, two byte for length
 extern const int KCPUV_MUX_PROTOCOL_OVERHEAD;
+extern const size_t MAX_MUX_CONTENT_LEN;
 
 #ifdef __cplusplus
 }
