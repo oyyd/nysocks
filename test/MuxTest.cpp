@@ -1,9 +1,6 @@
 #include "mux.h"
 #include "KcpuvTest.h"
-
-// #define INIT_MUX_TEST() \
-//   kcpuv_initialize(); \
-//   kpcuv_start_loop();
+#include <iostream>
 
 namespace kcpuv_test {
 using namespace std;
@@ -42,6 +39,72 @@ TEST_F(MuxTest, mux_encode_and_decode) {
   EXPECT_EQ(length, decoded_length);
 
   delete[] buf;
+}
+
+void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
+  EXPECT_EQ(length, 4096);
+  kcpuv_mux_send(conn, "hello", 5, KCPUV_MUX_CMD_PUSH);
+}
+
+void on_p2_conn(kcpuv_mux_conn *conn) {
+  kcpuv_mux_conn_listen(conn, p2_on_msg);
+}
+
+void on_data_return(kcpuv_mux_conn *conn, char *buffer, int length) {
+  EXPECT_EQ(length, 5);
+
+  kcpuv_destroy_loop();
+}
+
+TEST_F(MuxTest, transmission) {
+  kcpuv_initialize();
+
+  kcpuv_sess *sess_p1 = kcpuv_create();
+  kcpuv_sess *sess_p2 = kcpuv_create();
+
+  kcpuv_listen(sess_p1, 0, NULL);
+  kcpuv_listen(sess_p2, 0, NULL);
+
+  char *addr_p1 = new char[16];
+  char *addr_p2 = new char[16];
+  int namelen_p1;
+  int namelen_p2;
+  int port_p1;
+  int port_p2;
+
+  kcpuv_get_address(sess_p1, addr_p1, &namelen_p1, &port_p1);
+  kcpuv_get_address(sess_p2, addr_p2, &namelen_p2, &port_p2);
+  kcpuv_init_send(sess_p1, addr_p2, port_p2);
+  kcpuv_init_send(sess_p2, addr_p1, port_p1);
+
+  // mux
+  kcpuv_mux mux_p1;
+  kcpuv_mux mux_p2;
+
+  kcpuv_mux_init(&mux_p1, sess_p1);
+  kcpuv_mux_init(&mux_p2, sess_p2);
+
+  kcpuv_mux_conn mux_p1_conn_p1;
+  kcpuv_mux_conn_init(&mux_p1, &mux_p1_conn_p1);
+
+  int content_len = 4096;
+  char *content = new char[content_len];
+  memset(content, 65, content_len);
+
+  kcpuv_mux_send(&mux_p1_conn_p1, content, content_len, KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_listen(&mux_p1_conn_p1, on_data_return);
+
+  kcpuv_mux_bind_connection(&mux_p2, on_p2_conn);
+
+  // loop
+  kcpuv_start_loop();
+
+  delete[] content;
+  delete[] addr_p1;
+  delete[] addr_p2;
+  kcpuv_free(sess_p1);
+  kcpuv_free(sess_p2);
+  kcpuv_destruct();
 }
 
 } // namespace kcpuv_test

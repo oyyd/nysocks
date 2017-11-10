@@ -32,11 +32,11 @@ typedef struct KCPUV_MUX_CONN {
   conn_on_close_cb on_close_cb;
 } kcpuv_mux_conn;
 
-int kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess);
+void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess);
 
-int kcpuv_mux_free(kcpuv_mux *mux);
+void kcpuv_mux_free(kcpuv_mux *mux);
 
-int kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
+void kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
 
 void kcpuv_mux_conn_free(kcpuv_mux_conn *);
 

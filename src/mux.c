@@ -64,7 +64,8 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
   if (cmd == KCPUV_MUX_CMD_PUSH) {
     if (conn->on_msg_cb != NULL) {
       conn_on_msg_cb cb = conn->on_msg_cb;
-      cb(conn, data, len);
+      cb(conn, data + KCPUV_MUX_PROTOCOL_OVERHEAD,
+         len - KCPUV_MUX_PROTOCOL_OVERHEAD);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
     // TODO: when get a cmd to close a closed conn
@@ -76,14 +77,15 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
 }
 
 // Bind a session that is inited.
-int kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
+void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
   mux->count = 0;
   mux->sess = sess;
+  mux->conns.next = NULL;
   sess->data = mux;
   kcpuv_bind_listen(sess, &on_recv_msg);
 }
 
-int kcpuv_mux_free(kcpuv_mux *mux) {
+void kcpuv_mux_free(kcpuv_mux *mux) {
   kcpuv_link *link = mux->conns.next;
 
   while (link != NULL) {
@@ -96,7 +98,7 @@ int kcpuv_mux_free(kcpuv_mux *mux) {
   }
 }
 
-int kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
+void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   // init conn data
   conn->id = mux->count++;
   conn->timeout = DEFAULT_TIMEOUT;
@@ -105,7 +107,7 @@ int kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
 
   // add to mux conns
   kcpuv_link *link = kcpuv_link_create(conn);
-  kcpuv_link_add(&mux->conns, link);
+  kcpuv_link_add(&(mux->conns), link);
 }
 
 void kcpuv_mux_conn_free(kcpuv_mux_conn *conn) {
@@ -153,7 +155,7 @@ void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
 
   // send cmd with empty content
   if (len == 0) {
-    unsigned total_len = KCPUV_MUX_PROTOCOL_OVERHEAD;
+    unsigned int total_len = KCPUV_MUX_PROTOCOL_OVERHEAD;
     char *encoded_content = malloc(sizeof(total_len));
     kcpuv__mux_encode(encoded_content, conn->id, cmd, len);
     kcpuv_send(sess, encoded_content, total_len);
@@ -169,13 +171,16 @@ void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
       e = len;
     }
 
-    unsigned long part_len = e - s;
-    unsigned total_len = part_len + KCPUV_MUX_PROTOCOL_OVERHEAD;
+    unsigned int part_len = e - s;
+    unsigned int total_len = part_len + KCPUV_MUX_PROTOCOL_OVERHEAD;
 
     // TODO: refactor: copy only once when sending
-    char *encoded_content = malloc(sizeof(total_len));
-    kcpuv__mux_encode(encoded_content, conn->id, cmd, len);
-    memcpy(encoded_content, content + s, part_len);
+    char *encoded_content = malloc(sizeof(char) * total_len);
+    kcpuv__mux_encode(encoded_content, conn->id, cmd, part_len);
+
+    memcpy(encoded_content + KCPUV_MUX_PROTOCOL_OVERHEAD, content + s,
+           part_len);
+
     kcpuv_send(sess, encoded_content, total_len);
 
     free(encoded_content);
