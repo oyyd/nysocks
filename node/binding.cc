@@ -285,7 +285,7 @@ static NAN_METHOD(Send) {
 
 static NAN_METHOD(StartLoop) { kcpuv_start_loop(); }
 
-static NAN_METHOD(DestroyLoop) { kcpuv_destroy_loop(); }
+static NAN_METHOD(DestroyLoop) { kcpuv_stop_loop(); }
 
 static NAN_MODULE_INIT(Init) {
   Isolate *isolate = target->GetIsolate();

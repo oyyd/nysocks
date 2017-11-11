@@ -5,20 +5,14 @@
 #include <string.h>
 
 // kpcuv_sess
-static int use_default_loop = 0;
 static kcpuv_sess_list *sess_list = NULL;
 static char *buffer = NULL;
-static uv_idle_t *idler = NULL;
 // kcpuv_sess extern
 // TODO: it only accepts int in uv.h
 long kcpuv_udp_buf_size = 4 * 1024 * 1024;
-uv_loop_t *kcpuv_loop = NULL;
 
 // NOTE: Use this after first creation.
 kcpuv_sess_list *kcpuv_get_sess_list() { return sess_list; }
-
-// NOTE: Don't change this while looping.
-void kcpuv_use_default_loop(int value) { use_default_loop = value; }
 
 void kcpuv_initialize() {
   if (sess_list != NULL) {
@@ -32,33 +26,11 @@ void kcpuv_initialize() {
 
   // init buffer
   buffer = malloc(sizeof(char) * BUFFER_LEN);
-
-  // init loop
-  if (!use_default_loop) {
-    kcpuv_loop = malloc(sizeof(uv_loop_t));
-    uv_loop_init(kcpuv_loop);
-  } else {
-    kcpuv_loop = uv_default_loop();
-  }
 }
 
 int kcpuv_destruct() {
   if (sess_list == NULL) {
     return 0;
-  }
-
-  if (!use_default_loop && kcpuv_loop != NULL) {
-    // NOTE: The closing may failed simply because
-    // we don't call the `uv_run` on this loop and
-    // then causes a memory leaking.
-    int rval = uv_loop_close(kcpuv_loop);
-    // if (rval) {
-    //   fprintf(stderr, "failed to close the loop: %s\n", uv_strerror(rval));
-    //   return -1;
-    // }
-
-    free(kcpuv_loop);
-    kcpuv_loop = NULL;
   }
 
   if (buffer != NULL) {
@@ -78,84 +50,11 @@ int kcpuv_destruct() {
   free(sess_list->list);
   free(sess_list);
   sess_list = NULL;
+
+  // TODO: do not bind here
+  kcpuv_destroy_loop();
+
   return 0;
-}
-
-// Iterate the session_list and update kcp
-static void update_kcp_sess(uv_idle_t *idler) {
-  if (!sess_list || !sess_list->list) {
-    return;
-  }
-
-  kcpuv_link *ptr = sess_list->list;
-
-  // TODO: maybe we could assume that ikcp_update won't
-  // cost too much time and get the time once
-  IUINT32 now = iclock();
-
-  while (ptr->next != NULL) {
-    ptr = ptr->next;
-    int size;
-    kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
-
-    if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
-      kcpuv_close(sess, 1, "timeout");
-      continue;
-    }
-
-    IUINT32 time_to_update = ikcp_check(sess->kcp, now);
-
-    if (time_to_update <= now) {
-      ikcp_update(sess->kcp, now);
-    }
-
-    // TODO: consider the expected size
-    size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
-
-    if (size < 0) {
-      // rval == -1 queue is empty
-      // rval == -2 peeksize is zero(or invalid)
-      if (size != -1 && size != -2) {
-        // TODO:
-        fprintf(stderr, "ikcp_recv() < 0: %d\n", size);
-      }
-      continue;
-    }
-
-    if (sess->on_msg_cb == NULL) {
-      continue;
-    }
-
-    // update receive data
-    kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
-    on_msg_cb(sess, buffer, size);
-  }
-}
-
-// Start uv kcpuv_loop and updating kcp.
-void kcpuv_start_loop() {
-  // inited before
-
-  // bind a idle watcher to uv kcpuv_loop for updating kcp
-  // TODO: do we need to delete idler?
-  idler = malloc(sizeof(uv_idle_t));
-  uv_idle_init(kcpuv_loop, idler);
-  uv_idle_start(idler, &update_kcp_sess);
-
-  if (!use_default_loop) {
-    uv_run(kcpuv_loop, UV_RUN_DEFAULT);
-  }
-}
-
-void kcpuv_destroy_loop() {
-  if (idler != NULL) {
-    uv_idle_stop(idler);
-    free(idler);
-  }
-
-  if (!use_default_loop && kcpuv_loop != NULL) {
-    uv_stop(kcpuv_loop);
-  }
 }
 
 // Send content through kcp.
@@ -278,7 +177,7 @@ kcpuv_sess *kcpuv_create() {
   // sess->kcp->rmt_wnd = INIT_WND_SIZE;
 
   sess->handle = malloc(sizeof(uv_udp_t));
-  uv_udp_init(kcpuv_loop, sess->handle);
+  uv_udp_init(kcpuv_get_loop(), sess->handle);
 
   sess->handle->data = sess;
   sess->send_addr = NULL;
@@ -522,5 +421,56 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
     // call callback to inform outside
     kcpuv_dgram_cb on_close_cb = sess->on_close_cb;
     on_close_cb(sess, error_msg);
+  }
+}
+
+// Iterate the session_list and update kcp
+void kcpuv__update_kcp_sess(uv_idle_t *idler) {
+  if (!sess_list || !sess_list->list) {
+    return;
+  }
+
+  kcpuv_link *ptr = sess_list->list;
+
+  // TODO: maybe we could assume that ikcp_update won't
+  // cost too much time and get the time once
+  IUINT32 now = iclock();
+
+  while (ptr->next != NULL) {
+    ptr = ptr->next;
+    int size;
+    kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
+
+    if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
+      kcpuv_close(sess, 1, "timeout");
+      continue;
+    }
+
+    IUINT32 time_to_update = ikcp_check(sess->kcp, now);
+
+    if (time_to_update <= now) {
+      ikcp_update(sess->kcp, now);
+    }
+
+    // TODO: consider the expected size
+    size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
+
+    if (size < 0) {
+      // rval == -1 queue is empty
+      // rval == -2 peeksize is zero(or invalid)
+      if (size != -1 && size != -2) {
+        // TODO:
+        fprintf(stderr, "ikcp_recv() < 0: %d\n", size);
+      }
+      continue;
+    }
+
+    if (sess->on_msg_cb == NULL) {
+      continue;
+    }
+
+    // update receive data
+    kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
+    on_msg_cb(sess, buffer, size);
   }
 }

@@ -35,7 +35,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 void recver_cb(kcpuv_sess *sess, char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
-  kcpuv_destroy_loop();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, transfer_one_packet) {
@@ -56,7 +56,7 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
 
   EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
   kcpuv_free(sender);
   kcpuv_free(recver);
@@ -68,7 +68,7 @@ static testing::MockFunction<void(int)> *test_callback2;
 void recver_cb2(kcpuv_sess *sess, char *data, int len) {
   test_callback2->Call(len);
   delete test_callback2;
-  kcpuv_destroy_loop();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, transfer_multiple_packets) {
@@ -93,7 +93,7 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
 
   EXPECT_CALL(*test_callback2, Call(size)).Times(1);
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
   kcpuv_destruct();
 
   delete msg;
@@ -104,7 +104,7 @@ static testing::MockFunction<void(int)> *test_callback22;
 void recver_cb22(kcpuv_sess *sess, char *data, int len) {
   test_callback22->Call(len);
   delete test_callback22;
-  kcpuv_destroy_loop();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, mock_implementation) {
@@ -128,7 +128,7 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 
   EXPECT_CALL(*test_callback22, Call(_)).Times(1);
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
   kcpuv_destruct();
 }
@@ -167,7 +167,7 @@ static void close_cb2(kcpuv_sess *sess, void *data) {
   const char *error_msg = reinterpret_cast<const char *>(data);
   test_callback4->Call();
   delete test_callback4;
-  kcpuv_destroy_loop();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
@@ -190,7 +190,7 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
   kcpuv_close(sender, 1, NULL);
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
   kcpuv_destruct();
 }
@@ -201,7 +201,7 @@ static void close_cb3(kcpuv_sess *sess, void *data) {
   const char *error_msg = reinterpret_cast<const char *>(data);
   test_callback5->Call();
   delete test_callback5;
-  kcpuv_destroy_loop();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, timeout) {
@@ -221,7 +221,7 @@ TEST_F(KcpuvSessTest, timeout) {
 
   EXPECT_CALL(*test_callback5, Call()).Times(1);
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
   kcpuv_stop_listen(sender);
 
@@ -260,7 +260,7 @@ static void last_packet_addr_cb(kcpuv_sess *sess, char *error_msg, int len) {
   delete last_packet_addr_callback;
 
   delete[] addr;
-  kcpuv_destroy_loop();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, last_packet_addr) {
@@ -284,7 +284,7 @@ TEST_F(KcpuvSessTest, last_packet_addr) {
   kcpuv_init_send(sender, "127.0.0.1", port);
   kcpuv_send(sender, msg, strlen(msg));
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
   delete[] addr;
   kcpuv_stop_listen(sess);

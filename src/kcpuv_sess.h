@@ -7,6 +7,7 @@ extern "C" {
 
 #include "ikcp.h"
 #include "kcpuv.h"
+#include "loop.h"
 #include "protocol.h"
 #include "utils.h"
 #include "uv.h"
@@ -14,7 +15,6 @@ extern "C" {
 extern const int KCPUV_NONCE_LENGTH;
 extern const int KCPUV_PROTOCOL_OVERHEAD;
 extern long kcpuv_udp_buf_size;
-extern uv_loop_t *kcpuv_loop;
 
 typedef struct KCPUV_SESS kcpuv_sess;
 
@@ -53,8 +53,6 @@ typedef struct KCPUV_SESS_LIST {
 
 kcpuv_sess_list *kcpuv_get_sess_list();
 
-void kcpuv_use_default_loop(int value);
-
 kcpuv_sess *kcpuv_create();
 
 void kcpuv_free(kcpuv_sess *sess);
@@ -85,9 +83,7 @@ void kcpuv_initialize();
 
 int kcpuv_destruct();
 
-void kcpuv_start_loop();
-
-void kcpuv_destroy_loop();
+void kcpuv__update_kcp_sess(uv_idle_t *idler);
 
 #ifdef __cplusplus
 }

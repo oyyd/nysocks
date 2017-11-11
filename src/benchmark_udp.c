@@ -117,7 +117,7 @@ static long total_len = 0;
 void recver_cb(kcpuv_sess *sess, char *data, int len) {
   // printf("recv: %d\n", len);
   // printf("content: %s\n", data);
-  // kcpuv_destroy_loop();
+  // kcpuv_stop_loop();
   get_time(&end_time_sec, &end_time_usec);
 
   IUINT32 elapsed = (end_time_sec - start_time_sec) * 1000 +
@@ -130,7 +130,7 @@ void recver_cb(kcpuv_sess *sess, char *data, int len) {
   if (total_len == times * content_size) {
     fprintf(stdout, "time elapsed: %ld\n", elapsed, total_len);
     printf("total len: %ld\n", total_len);
-    kcpuv_destroy_loop();
+    kcpuv_stop_loop();
   }
 }
 
@@ -157,7 +157,7 @@ int benchmark_kcpuv_sess() {
 
   get_time(&start_time_sec, &start_time_usec);
 
-  kcpuv_start_loop();
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
   kcpuv_destruct();
 }
