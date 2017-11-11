@@ -13,9 +13,9 @@ void kcpuv_use_default_loop(int value);
 
 void kcpuv_start_loop(uv_idle_cb cb);
 
-void kcpuv_destroy_loop();
-
 void kcpuv_stop_loop();
+
+void kcpuv__destroy_loop();
 
 #ifdef __cplusplus
 }

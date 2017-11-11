@@ -52,7 +52,7 @@ int kcpuv_destruct() {
   sess_list = NULL;
 
   // TODO: do not bind here
-  kcpuv_destroy_loop();
+  kcpuv__destroy_loop();
 
   return 0;
 }

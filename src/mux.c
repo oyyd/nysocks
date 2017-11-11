@@ -1,4 +1,5 @@
 #include "mux.h"
+#include "kcpuv_sess.h"
 
 static unsigned long MUX_CONN_DEFAULT_TIMEOUT = 30000;
 
@@ -60,6 +61,9 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
     }
   }
 
+  // update ts
+  conn->ts = sess->recv_ts;
+
   // handle cmd
   if (cmd == KCPUV_MUX_CMD_PUSH) {
     if (conn->on_msg_cb != NULL) {
@@ -90,7 +94,7 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
 
   while (link != NULL) {
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
-    kcpuv_mux_conn_free(conn);
+    kcpuv_mux_conn_free(conn, NULL);
     free(conn);
     mux->conns.next = link->next;
     free(link);
@@ -104,17 +108,26 @@ void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   conn->timeout = DEFAULT_TIMEOUT;
   conn->ts = 0;
   conn->mux = mux;
+  conn->on_close_cb = NULL;
 
   // add to mux conns
   kcpuv_link *link = kcpuv_link_create(conn);
   kcpuv_link_add(&(mux->conns), link);
 }
 
-void kcpuv_mux_conn_free(kcpuv_mux_conn *conn) {
+int kcpuv_mux_conn_free(kcpuv_mux_conn *conn, const char *error_msg) {
+  kcpuv_link *ptr = kcpuv_link_get_pointer(&(conn->mux->conns), conn);
+
+  if (ptr == NULL) {
+    return -1;
+  }
+
   if (conn->on_close_cb != NULL) {
     conn_on_close_cb cb = (conn_on_close_cb *)conn->on_close_cb;
-    cb(conn, NULL);
+    cb(conn, error_msg);
   }
+
+  return 0;
 }
 
 void kcpuv_mux_conn_listen(kcpuv_mux_conn *conn, conn_on_msg_cb cb) {
@@ -128,18 +141,6 @@ void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *conn, conn_on_close_cb cb) {
 void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb) {
   mux->on_connection_cb = cb;
 }
-
-// void kcpuv_mux_check_timeout(kcpuv_mux *mux, IUINT32 ts) {
-//   kcpuv_link *link = mux->conns.next;
-//
-//   IUINT32 current = iclock();
-//
-//   while (link != NULL) {
-//     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
-//
-//     link = link->next;
-//   }
-// }
 
 void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
                     int cmd) {
@@ -190,4 +191,33 @@ void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
 
 void kcpuv_mux_send_close(kcpuv_mux_conn *conn) {
   kcpuv_mux_send(conn, NULL, 0, KCPUV_MUX_CMD_CLS);
+}
+
+static void kcpuv_mux_check_timeout(kcpuv_mux *mux) {
+  IUINT32 current = iclock();
+  kcpuv_link *link = mux->conns.next;
+
+  while (link != NULL) {
+    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
+
+    if (conn->ts + conn->timeout <= current) {
+      kcpuv_mux_conn_free(conn, "timeout");
+    }
+
+    link = link->next;
+  }
+}
+
+void kcpuv__mux_updater(uv_idle_t *idler) {
+  // update sessions
+  kcpuv__update_kcp_sess(idler);
+
+  // check conns timeout
+  // TODO: depending on kcpuv_sess_list may cause
+  // some mux without sess to be ignored
+  kcpuv_link *link = kcpuv_get_sess_list()->list;
+  while (link->next != NULL) {
+    link = link->next;
+    kcpuv_mux_check_timeout((kcpuv_mux *)(((kcpuv_sess *)(link->node))->data));
+  }
 }

@@ -106,13 +106,67 @@ TEST_F(MuxTest, transmission) {
   kcpuv_mux_bind_connection(&mux_p2, on_p2_conn);
 
   // loop
-  kcpuv_start_loop(kcpuv__update_kcp_sess);
+  kcpuv_start_loop(kcpuv__mux_updater);
 
   delete[] content;
   delete[] addr_p1;
   delete[] addr_p2;
   kcpuv_free(sess_p1);
   kcpuv_free(sess_p2);
+  kcpuv_destruct();
+}
+
+static int get_mux_conns_count(kcpuv_mux *mux) {
+  int count = 0;
+
+  kcpuv_link *link = &(mux->conns);
+
+  while (link->next != NULL) {
+    count += 1;
+    link = link->next;
+  }
+
+  return count;
+}
+
+void close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
+  kcpuv_mux *mux = conn->mux;
+  EXPECT_EQ(get_mux_conns_count(mux), 1);
+}
+
+void timeout_close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
+  kcpuv_mux *mux = conn->mux;
+  EXPECT_EQ(get_mux_conns_count(mux), 0);
+  kcpuv_stop_loop();
+}
+
+TEST_F(MuxTest, close) {
+  kcpuv_initialize();
+
+  kcpuv_sess *sess_p1 = kcpuv_create();
+  kcpuv_mux mux;
+  kcpuv_mux_init(&mux, sess_p1);
+
+  kcpuv_mux_conn sess_p1_conn_p1;
+  kcpuv_mux_conn sess_p1_conn_p2;
+
+  kcpuv_mux_conn_init(&mux, &sess_p1_conn_p1);
+  kcpuv_mux_conn_init(&mux, &sess_p1_conn_p2);
+
+  EXPECT_EQ(get_mux_conns_count(&mux), 2);
+
+  kcpuv_mux_conn_bind_close(&sess_p1_conn_p1, close_cb);
+
+  kcpuv_mux_conn_free(&sess_p1_conn_p1, NULL);
+
+  sess_p1_conn_p2.timeout = 50;
+
+  kcpuv_mux_conn_bind_close(&sess_p1_conn_p2, timeout_close_cb);
+
+  kcpuv_start_loop(kcpuv__mux_updater);
+
+  // destruction
+  kcpuv_free(sess_p1);
   kcpuv_destruct();
 }
 

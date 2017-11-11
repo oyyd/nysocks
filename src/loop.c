@@ -57,7 +57,7 @@ void kcpuv_stop_loop() {
   }
 }
 
-void kcpuv_destroy_loop() {
+void kcpuv__destroy_loop() {
   if (!use_default_loop && kcpuv_loop != NULL) {
     free(kcpuv_loop);
     kcpuv_loop = NULL;
