@@ -13,6 +13,7 @@ typedef struct KCPUV_MUX kcpuv_mux;
 typedef struct KCPUV_MUX_CONN kcpuv_mux_conn;
 
 typedef void (*mux_on_connection_cb)(kcpuv_mux_conn *);
+typedef void (*mux_on_close_cb)(kcpuv_mux *mux, const char *error_msg);
 typedef void (*conn_on_msg_cb)(kcpuv_mux_conn *conn, char *buffer, int length);
 typedef void (*conn_on_close_cb)(kcpuv_mux_conn *conn, const char *error_msg);
 
@@ -21,6 +22,7 @@ typedef struct KCPUV_MUX {
   kcpuv_link conns;
   kcpuv_sess *sess;
   mux_on_connection_cb on_connection_cb;
+  mux_on_close_cb on_close_cb;
 } kcpuv_mux;
 
 typedef struct KCPUV_MUX_CONN {

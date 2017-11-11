@@ -1,6 +1,7 @@
 #define NDEBUG
 
 #include "kcpuv_sess.h"
+#include "mux.h"
 #include <iostream>
 #include <nan.h>
 #include <node.h>
@@ -38,7 +39,6 @@ public:
   static void Create(const FunctionCallbackInfo<Value> &args);
 
   void Free() {
-    cout << "Free ONE\n";
     kcpuv_free(sess);
     is_freed = 1;
   };
@@ -54,6 +54,70 @@ private:
 };
 
 Persistent<Function> KcpuvSessBinding::constructor;
+
+class KcpuvMuxConnBinding : public Nan::ObjectWrap {
+public:
+  explicit KcpuvMuxConnBinding() {}
+  virtual ~KcpuvMuxConnBinding() {
+    // TODO: free
+  }
+
+  static Persistent<Function> constructor;
+  static void Create(const FunctionCallbackInfo<Value> &args);
+
+  kcpuv_mux_conn conn;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_message;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_close;
+};
+
+Persistent<Function> KcpuvMuxConnBinding::constructor;
+
+void KcpuvMuxConnBinding::Create(const FunctionCallbackInfo<Value> &args) {
+  Isolate *isolate = args.GetIsolate();
+
+  if (args.IsConstructCall()) {
+    KcpuvMuxConnBinding *conn = new KcpuvMuxConnBinding();
+    conn->Wrap(args.This());
+    args.GetReturnValue().Set(args.This());
+  } else {
+    Local<Function> cons =
+        Local<Function>::New(isolate, KcpuvMuxConnBinding::constructor);
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Object> instance = cons->NewInstance(context, 0, 0).ToLocalChecked();
+    args.GetReturnValue().Set(instance);
+  }
+}
+
+class KcpuvMuxBinding : public Nan::ObjectWrap {
+public:
+  explicit KcpuvMuxBinding() {}
+  virtual ~KcpuvMuxBinding() {}
+
+  static Persistent<Function> constructor;
+  static void Create(const FunctionCallbackInfo<Value> &args);
+
+  kcpuv_mux mux;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_close;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_connection;
+};
+
+Persistent<Function> KcpuvMuxBinding::constructor;
+
+void KcpuvMuxBinding::Create(const FunctionCallbackInfo<Value> &args) {
+  Isolate *isolate = args.GetIsolate();
+
+  if (args.IsConstructCall()) {
+    KcpuvMuxBinding *mux = new KcpuvMuxBinding();
+    mux->Wrap(args.This());
+    args.GetReturnValue().Set(args.This());
+  } else {
+    Local<Function> cons =
+        Local<Function>::New(isolate, KcpuvMuxBinding::constructor);
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Object> instance = cons->NewInstance(context, 0, 0).ToLocalChecked();
+    args.GetReturnValue().Set(instance);
+  }
+}
 
 // void buffer_delete_callback(char *data, void *hint) { free(data); }
 
@@ -111,7 +175,6 @@ void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
     Local<Function> cons =
         Local<Function>::New(isolate, KcpuvSessBinding::constructor);
     Local<Context> context = isolate->GetCurrentContext();
-    // TODO: ToLocalChecked
     Local<Object> instance =
         cons->NewInstance(context, argc, argv).ToLocalChecked();
     args.GetReturnValue().Set(instance);
@@ -283,7 +346,7 @@ static NAN_METHOD(Send) {
   kcpuv_send(obj->GetSess(), reinterpret_cast<char *>(buf), size);
 }
 
-static NAN_METHOD(StartLoop) { kcpuv_start_loop(); }
+static NAN_METHOD(StartLoop) { kcpuv_start_loop(kcpuv__mux_updater); }
 
 static NAN_METHOD(DestroyLoop) { kcpuv_stop_loop(); }
 
@@ -294,10 +357,22 @@ static NAN_MODULE_INIT(Init) {
       FunctionTemplate::New(isolate, KcpuvSessBinding::Create);
   tpl->SetClassName(String::NewFromUtf8(isolate, "KcpuvSessBinding"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
   KcpuvSessBinding::constructor.Reset(isolate, tpl->GetFunction());
-
   Nan::Set(target, String::NewFromUtf8(isolate, "create"), tpl->GetFunction());
+
+  tpl = FunctionTemplate::New(isolate, KcpuvMuxConnBinding::Create);
+  tpl->SetClassName(String::NewFromUtf8(isolate, "KcpuvMuxConnBinding"));
+  KcpuvMuxConnBinding::constructor.Reset(isolate, tpl->GetFunction());
+  Nan::Set(target, String::NewFromUtf8(isolate, "createMuxConn"),
+           tpl->GetFunction());
+
+  tpl = FunctionTemplate::New(isolate, KcpuvMuxBinding::Create);
+  tpl->SetClassName(String::NewFromUtf8(isolate, "KcpuvMuxBinding"));
+  KcpuvMuxBinding::constructor.Reset(isolate, tpl->GetFunction());
+  Nan::Set(target, String::NewFromUtf8(isolate, "createMux"),
+           tpl->GetFunction());
+
+  // sess method
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
   Nan::SetMethod(target, "setSaveLastPacketAddr", SetSaveLastPacketAddr);
@@ -314,6 +389,10 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "destruct", Destruct);
   Nan::SetMethod(target, "startLoop", StartLoop);
   Nan::SetMethod(target, "destroyLoop", DestroyLoop);
+
+  // conn method
+
+  // mux method
 }
 
 NODE_MODULE(binding, Init)

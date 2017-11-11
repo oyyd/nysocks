@@ -85,6 +85,8 @@ void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
   mux->count = 0;
   mux->sess = sess;
   mux->conns.next = NULL;
+  mux->on_connection_cb = NULL;
+  mux->on_close_cb = NULL;
   sess->data = mux;
   kcpuv_bind_listen(sess, &on_recv_msg);
 }
