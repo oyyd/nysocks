@@ -45,7 +45,7 @@ static int received_conns = 0;
 
 void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
   EXPECT_EQ(length, 4096);
-  kcpuv_mux_send(conn, "hello", 5, KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_send(conn, "hello", 5, KCPUV_MUX_CMD_PUSH);
 
   received_conns += 1;
 
@@ -99,8 +99,10 @@ TEST_F(MuxTest, transmission) {
   char *content = new char[content_len];
   memset(content, 65, content_len);
 
-  kcpuv_mux_send(&mux_p1_conn_p1, content, content_len, KCPUV_MUX_CMD_PUSH);
-  kcpuv_mux_send(&mux_p1_conn_p2, content, content_len, KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_send(&mux_p1_conn_p1, content, content_len,
+                      KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_send(&mux_p1_conn_p2, content, content_len,
+                      KCPUV_MUX_CMD_PUSH);
   kcpuv_mux_conn_listen(&mux_p1_conn_p1, on_data_return);
 
   kcpuv_mux_bind_connection(&mux_p2, on_p2_conn);

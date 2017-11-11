@@ -38,19 +38,22 @@ void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess);
 
 void kcpuv_mux_free(kcpuv_mux *mux);
 
+void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb);
+
+void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb);
+
+void kcpuv_mux_conn_send_close(kcpuv_mux_conn *);
+
 void kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
 
 int kcpuv_mux_conn_free(kcpuv_mux_conn *, const char *);
 
-void kcpuv_mux_send(kcpuv_mux_conn *, const char *content, int length, int cmd);
-
-void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb);
+void kcpuv_mux_conn_send(kcpuv_mux_conn *, const char *content, int length,
+                         int cmd);
 
 void kcpuv_mux_conn_listen(kcpuv_mux_conn *, conn_on_msg_cb);
 
 void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *, conn_on_close_cb);
-
-void kcpuv_mux_send_close(kcpuv_mux_conn *);
 
 unsigned int kcpuv__mux_decode(const char *buffer, int *cmd, int *length);
 

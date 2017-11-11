@@ -80,6 +80,16 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
   }
 }
 
+static void on_sess_close(kcpuv_sess *sess, void *data) {
+  kcpuv_mux *mux = (kcpuv_mux *)sess->data;
+
+  if (mux->on_close_cb != NULL) {
+    mux_on_close_cb cb = (mux_on_close_cb)mux->on_close_cb;
+    // TODO: invalid type
+    cb(mux, (const char *)data);
+  }
+}
+
 // Bind a session that is inited.
 void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
   mux->count = 0;
@@ -88,7 +98,9 @@ void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
   mux->on_connection_cb = NULL;
   mux->on_close_cb = NULL;
   sess->data = mux;
-  kcpuv_bind_listen(sess, &on_recv_msg);
+
+  kcpuv_bind_listen(sess, on_recv_msg);
+  kcpuv_bind_close(sess, on_sess_close);
 }
 
 void kcpuv_mux_free(kcpuv_mux *mux) {
@@ -102,6 +114,14 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
     free(link);
     link = mux->conns.next;
   }
+}
+
+void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb) {
+  mux->on_connection_cb = cb;
+}
+
+void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb cb) {
+  mux->on_close_cb = cb;
 }
 
 void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
@@ -140,12 +160,8 @@ void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *conn, conn_on_close_cb cb) {
   conn->on_close_cb = cb;
 }
 
-void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb) {
-  mux->on_connection_cb = cb;
-}
-
-void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
-                    int cmd) {
+void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
+                         int cmd) {
   kcpuv_mux *mux = conn->mux;
   kcpuv_sess *sess = mux->sess;
 
@@ -191,8 +207,8 @@ void kcpuv_mux_send(kcpuv_mux_conn *conn, const char *content, int len,
   }
 }
 
-void kcpuv_mux_send_close(kcpuv_mux_conn *conn) {
-  kcpuv_mux_send(conn, NULL, 0, KCPUV_MUX_CMD_CLS);
+void kcpuv_mux_conn_send_close(kcpuv_mux_conn *conn) {
+  kcpuv_mux_conn_send(conn, NULL, 0, KCPUV_MUX_CMD_CLS);
 }
 
 static void kcpuv_mux_check_timeout(kcpuv_mux *mux) {
