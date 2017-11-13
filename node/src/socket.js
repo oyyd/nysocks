@@ -1,5 +1,9 @@
 import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
+import { createBaseSuite } from './utils'
+
+const suite = createBaseSuite('_sess')
+const { wrap } = suite
 
 binding.useDefaultLoop(true)
 
@@ -12,23 +16,10 @@ binding.initialize()
 //   startLoop, destroyLoop,
 // } = binding
 
-function checkValidSocket(obj) {
-  if (typeof obj !== 'object' || !obj.isKcpuvSocket) {
-    throw new Error('invalid kcpuv socket')
-  }
-}
-
-function wrap(func) {
-  return (obj, ...args) => {
-    checkValidSocket(obj)
-    return func(obj, ...args)
-  }
-}
-
 export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
-  sess.isKcpuvSocket = true
+  sess._sess = true
 
   binding.bindClose(sess, errorMsg => sess.event.emit('close', errorMsg))
 

@@ -4,9 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.setAddr = exports.close = exports.send = exports.stopListen = exports.getPort = exports.bindListener = exports.listen = exports.destroy = undefined;
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 exports.create = create;
 exports.createConnection = createConnection;
 exports.startKcpuv = startKcpuv;
@@ -20,7 +17,13 @@ var _addon = require('../../build/Release/addon.node');
 
 var _addon2 = _interopRequireDefault(_addon);
 
+var _utils = require('./utils');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var suite = (0, _utils.createBaseSuite)('_sess');
+var wrap = suite.wrap;
+
 
 _addon2.default.useDefaultLoop(true);
 
@@ -33,27 +36,10 @@ _addon2.default.initialize();
 //   startLoop, destroyLoop,
 // } = binding
 
-function checkValidSocket(obj) {
-  if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== 'object' || !obj.isKcpuvSocket) {
-    throw new Error('invalid kcpuv socket');
-  }
-}
-
-function wrap(func) {
-  return function (obj) {
-    for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-      args[_key - 1] = arguments[_key];
-    }
-
-    checkValidSocket(obj);
-    return func.apply(undefined, [obj].concat(args));
-  };
-}
-
 function create() {
   var sess = _addon2.default.create();
   sess.event = new _events2.default();
-  sess.isKcpuvSocket = true;
+  sess._sess = true;
 
   _addon2.default.bindClose(sess, function (errorMsg) {
     return sess.event.emit('close', errorMsg);
