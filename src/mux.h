@@ -18,6 +18,7 @@ typedef void (*conn_on_msg_cb)(kcpuv_mux_conn *conn, char *buffer, int length);
 typedef void (*conn_on_close_cb)(kcpuv_mux_conn *conn, const char *error_msg);
 
 typedef struct KCPUV_MUX {
+  void *data;
   unsigned int count;
   kcpuv_link conns;
   kcpuv_sess *sess;
@@ -26,6 +27,7 @@ typedef struct KCPUV_MUX {
 } kcpuv_mux;
 
 typedef struct KCPUV_MUX_CONN {
+  void *data;
   kcpuv_mux *mux;
   unsigned int id;
   unsigned long timeout;
@@ -42,14 +44,14 @@ void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb);
 
 void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb);
 
-void kcpuv_mux_conn_send_close(kcpuv_mux_conn *);
-
 void kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
 
 int kcpuv_mux_conn_free(kcpuv_mux_conn *, const char *);
 
 void kcpuv_mux_conn_send(kcpuv_mux_conn *, const char *content, int length,
                          int cmd);
+
+void kcpuv_mux_conn_send_close(kcpuv_mux_conn *);
 
 void kcpuv_mux_conn_listen(kcpuv_mux_conn *, conn_on_msg_cb);
 
