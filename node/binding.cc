@@ -55,15 +55,19 @@ Persistent<Function> KcpuvSessBinding::constructor;
 
 class KcpuvMuxConnBinding : public Nan::ObjectWrap {
 public:
-  explicit KcpuvMuxConnBinding() { conn.data = this; }
-  virtual ~KcpuvMuxConnBinding() {
-    // TODO: free
-  }
+  explicit KcpuvMuxConnBinding() {}
+  virtual ~KcpuvMuxConnBinding() { delete conn; }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
+  // void WrapObject(Local<Object> object) { this->Wrap(object); }
+  // TODO: confusing
+  void WrapConn(kcpuv_mux_conn *default_conn) {
+    conn = default_conn;
+    conn->data = this;
+  }
 
-  kcpuv_mux_conn conn;
+  kcpuv_mux_conn *conn;
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_message;
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_close;
 };
@@ -75,6 +79,8 @@ void KcpuvMuxConnBinding::Create(const FunctionCallbackInfo<Value> &args) {
 
   if (args.IsConstructCall()) {
     KcpuvMuxConnBinding *conn = new KcpuvMuxConnBinding();
+    kcpuv_mux_conn *c = new kcpuv_mux_conn;
+    conn->WrapConn(c);
     conn->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
   } else {
@@ -353,24 +359,24 @@ static NAN_METHOD(DestroyLoop) { kcpuv_stop_loop(); }
 
 static NAN_METHOD(MuxInit) {
   // Isolate *isolate = info.GetIsolate();
-  KcpuvMuxBinding *muxObj =
+  KcpuvMuxBinding *mux_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
   KcpuvSessBinding *sessObj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[1]->ToObject());
 
-  kcpuv_mux_init(&muxObj->mux, sessObj->sess);
+  kcpuv_mux_init(&mux_obj->mux, sessObj->sess);
 }
 
 // TODO:
 static NAN_METHOD(MuxFree) {
-  KcpuvMuxBinding *muxObj =
+  KcpuvMuxBinding *mux_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
 
-  kcpuv_mux_free(&muxObj->mux);
+  kcpuv_mux_free(&mux_obj->mux);
 }
 
 static void mux_binding_on_close_cb(kcpuv_mux *mux, const char *error_msg) {
-  KcpuvMuxBinding *muxObj = static_cast<KcpuvMuxBinding *>(mux->data);
+  KcpuvMuxBinding *mux_obj = static_cast<KcpuvMuxBinding *>(mux->data);
   Nan::HandleScope scope;
   Isolate *isolate = Isolate::GetCurrent();
 
@@ -384,12 +390,12 @@ static void mux_binding_on_close_cb(kcpuv_mux *mux, const char *error_msg) {
   }
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(muxObj->on_close), argc, argv);
+                    Nan::New(mux_obj->on_close), argc, argv);
 }
 
 static NAN_METHOD(MuxBindClose) {
   Isolate *isolate = info.GetIsolate();
-  KcpuvMuxBinding *muxObj =
+  KcpuvMuxBinding *mux_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
 
   if (!info[1]->IsFunction()) {
@@ -398,24 +404,37 @@ static NAN_METHOD(MuxBindClose) {
     return;
   }
 
-  muxObj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
-  kcpuv_mux_bind_close(&muxObj->mux, mux_binding_on_close_cb);
+  mux_obj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
+  kcpuv_mux_bind_close(&mux_obj->mux, mux_binding_on_close_cb);
 }
 
 static void mux_binding_on_connection_cb(kcpuv_mux_conn *conn) {
   kcpuv_mux *mux = static_cast<kcpuv_mux *>(conn->mux);
-  KcpuvMuxBinding *muxObj = static_cast<KcpuvMuxBinding *>(mux->data);
+  KcpuvMuxBinding *mux_obj = static_cast<KcpuvMuxBinding *>(mux->data);
 
   Nan::HandleScope scope;
-  // Isolate *isolate = Isolate::GetCurrent();
+  Isolate *isolate = Isolate::GetCurrent();
+  Local<Context> context = isolate->GetCurrentContext();
+
+  Local<Function> cons =
+      Local<Function>::New(isolate, KcpuvMuxConnBinding::constructor);
+  Local<Object> conn_instance =
+      cons->NewInstance(context, 0, 0).ToLocalChecked();
+  KcpuvMuxConnBinding *conn_obj =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(conn_instance->ToObject());
+
+  conn_obj->WrapConn(conn);
+
+  const int argc = 1;
+  Local<Value> argv[argc] = {conn_instance};
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(muxObj->on_connection), 0, 0);
+                    Nan::New(mux_obj->on_connection), argc, argv);
 }
 
 static NAN_METHOD(MuxBindConnection) {
   Isolate *isolate = info.GetIsolate();
-  KcpuvMuxBinding *muxObj =
+  KcpuvMuxBinding *mux_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
 
   if (!info[1]->IsFunction()) {
@@ -424,47 +443,48 @@ static NAN_METHOD(MuxBindConnection) {
     return;
   }
 
-  muxObj->on_connection = Nan::Persistent<Function>(info[1].As<Function>());
-  kcpuv_mux_bind_connection(&muxObj->mux, mux_binding_on_connection_cb);
+  mux_obj->on_connection = Nan::Persistent<Function>(info[1].As<Function>());
+  kcpuv_mux_bind_connection(&mux_obj->mux, mux_binding_on_connection_cb);
 }
 
 static NAN_METHOD(ConnInit) {
-  KcpuvMuxBinding *muxObj =
+  KcpuvMuxBinding *mux_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
-  KcpuvMuxConnBinding *connObj =
+  KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[1]->ToObject());
 
-  kcpuv_mux_conn_init(&muxObj->mux, &connObj->conn);
+  kcpuv_mux_conn_init(&mux_obj->mux, conn_obj->conn);
 }
 
 static NAN_METHOD(ConnFree) {
-  KcpuvMuxConnBinding *connObj =
+  KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
-  kcpuv_mux_conn_free(&connObj->conn, NULL);
+  kcpuv_mux_conn_free(conn_obj->conn, NULL);
 }
 
 static NAN_METHOD(ConnSend) {
-  KcpuvMuxConnBinding *connObj =
+  KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
   unsigned char *buf = (unsigned char *)node::Buffer::Data(info[1]->ToObject());
   unsigned int size = info[2]->Uint32Value();
 
-  kcpuv_mux_conn_send(&connObj->conn, reinterpret_cast<char *>(buf), size,
+  kcpuv_mux_conn_send(conn_obj->conn, reinterpret_cast<char *>(buf), size,
                       KCPUV_MUX_CMD_PUSH);
 }
 
 static NAN_METHOD(ConnSendClose) {
-  KcpuvMuxConnBinding *connObj =
+  KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
-  kcpuv_mux_conn_send_close(&connObj->conn);
+  kcpuv_mux_conn_send_close(conn_obj->conn);
 }
 
 static void conn_binding_on_message_cb(kcpuv_mux_conn *conn, char *data,
                                        int len) {
-  KcpuvMuxConnBinding *connObj = static_cast<KcpuvMuxConnBinding *>(conn->data);
+  KcpuvMuxConnBinding *conn_obj =
+      static_cast<KcpuvMuxConnBinding *>(conn->data);
   Nan::HandleScope scope;
 
   // NOTE: V8 will free these memories so that we have to
@@ -476,13 +496,13 @@ static void conn_binding_on_message_cb(kcpuv_mux_conn *conn, char *data,
   Local<Value> args[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(connObj->on_message), argc, args);
+                    Nan::New(conn_obj->on_message), argc, args);
 }
 
 static NAN_METHOD(ConnListen) {
   Isolate *isolate = info.GetIsolate();
 
-  KcpuvMuxConnBinding *connObj =
+  KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
   if (!info[1]->IsFunction()) {
@@ -491,13 +511,13 @@ static NAN_METHOD(ConnListen) {
     return;
   }
 
-  connObj->on_message = Nan::Persistent<Function>(info[1].As<Function>());
-  kcpuv_mux_conn_listen(&connObj->conn, conn_binding_on_message_cb);
+  conn_obj->on_message = Nan::Persistent<Function>(info[1].As<Function>());
+  kcpuv_mux_conn_listen(conn_obj->conn, conn_binding_on_message_cb);
 }
 
 static void conn_binding_on_close_cb(kcpuv_mux_conn *conn,
                                      const char *error_msg) {
-  KcpuvMuxBinding *connObj = static_cast<KcpuvMuxBinding *>(conn->data);
+  KcpuvMuxBinding *conn_obj = static_cast<KcpuvMuxBinding *>(conn->data);
   Nan::HandleScope scope;
   Isolate *isolate = Isolate::GetCurrent();
 
@@ -511,14 +531,14 @@ static void conn_binding_on_close_cb(kcpuv_mux_conn *conn,
   }
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(connObj->on_close), argc, argv);
+                    Nan::New(conn_obj->on_close), argc, argv);
 }
 
 static NAN_METHOD(ConnBindClose) {
   //
   // void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *, conn_on_close_cb);
   Isolate *isolate = info.GetIsolate();
-  KcpuvMuxConnBinding *connObj =
+  KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
   if (!info[1]->IsFunction()) {
@@ -527,8 +547,8 @@ static NAN_METHOD(ConnBindClose) {
     return;
   }
 
-  connObj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
-  kcpuv_mux_conn_bind_close(&connObj->conn, conn_binding_on_close_cb);
+  conn_obj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
+  kcpuv_mux_conn_bind_close(conn_obj->conn, conn_binding_on_close_cb);
 }
 
 static NAN_MODULE_INIT(Init) {

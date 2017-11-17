@@ -18,8 +18,8 @@ export function createBaseSuite(name) {
 
   const suite = {
     name,
-    wrap: wrap.bind(name),
-    checkValidSocket: checkValidSocket.bind(name),
+    wrap: wrap.bind(null, name),
+    checkValidSocket: checkValidSocket.bind(null, name),
   }
 
   return suite

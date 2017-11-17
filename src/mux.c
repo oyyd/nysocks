@@ -130,6 +130,7 @@ void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   conn->timeout = DEFAULT_TIMEOUT;
   conn->ts = 0;
   conn->mux = mux;
+  conn->on_msg_cb = NULL;
   conn->on_close_cb = NULL;
 
   // add to mux conns
@@ -233,9 +234,10 @@ void kcpuv__mux_updater(uv_idle_t *idler) {
   // check conns timeout
   // TODO: depending on kcpuv_sess_list may cause
   // some mux without sess to be ignored
-  kcpuv_link *link = kcpuv_get_sess_list()->list;
-  while (link->next != NULL) {
-    link = link->next;
-    kcpuv_mux_check_timeout((kcpuv_mux *)(((kcpuv_sess *)(link->node))->data));
-  }
+  // kcpuv_link *link = kcpuv_get_sess_list()->list;
+  // while (link->next != NULL) {
+  //   link = link->next;
+  //   kcpuv_mux_check_timeout((kcpuv_mux *)(((kcpuv_sess
+  //   *)(link->node))->data));
+  // }
 }
