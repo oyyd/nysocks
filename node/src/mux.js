@@ -88,9 +88,6 @@ if (module === require.main) {
     const {
       startKcpuv, listen, getPort, setAddr,
     } = require('./socket')
-    // eslint-disable-next-line
-    const SegfaultHandler = require('segfault-handler')
-    SegfaultHandler.registerHandler('crash.logfile')
 
     startKcpuv()
 

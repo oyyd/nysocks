@@ -1,3 +1,12 @@
+// TODO:
+export const debug = true
+
+if (debug) {
+  // eslint-disable-next-line
+  const SegfaultHandler = require('segfault-handler')
+  SegfaultHandler.registerHandler('crash.logfile')
+}
+
 function checkValidSocket(name, obj) {
   if (typeof obj !== 'object' || !obj[name]) {
     throw new Error(`try to manipulate invalid ${name}`)

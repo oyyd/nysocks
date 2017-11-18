@@ -1,5 +1,8 @@
 import { getPort, create, send, close, bindListener,
   startKcpuv, listen as socketListen, setAddr } from './socket'
+import { createMux, createMuxConn, muxFree, wrapMuxConn,
+  muxBindConnection, muxBindClose, connFree, connSend,
+  connSendClose, connListen, connBindClose } from './mux'
 
 const DEFAULT_OPTIONS = {
   targetAddress: '0.0.0.0',
@@ -96,10 +99,14 @@ export function initClientConns(options, client) {
     socketListen(socket, 0)
     setAddr(socket, targetAddress, port)
 
+    const mux = createMux({
+      sess: socket,
+    })
+
+    info.mux = mux
     info.socket = socket
     info.targetSocketPort = port
     info.targetSocketAddr = targetAddress
-    info.locked = false
 
     conns.push(info)
   })
@@ -117,8 +124,8 @@ export function createClient(_options) {
   const client = {
     state: 0,
     ports: [],
+    _roundCur: 0,
   }
-
   const masterSocket = create()
 
   client.masterSocket = masterSocket
@@ -143,7 +150,7 @@ export function getConnectionPorts(manager) {
   return manager.conns.map(i => i.port)
 }
 
-export function createManager(_options) {
+export function createManager(_options, onConnection) {
   start()
 
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
@@ -151,6 +158,13 @@ export function createManager(_options) {
   const conns = []
   const manager = {
     conns,
+    onConnection,
+  }
+  const handleConn = (conn) => {
+    wrapMuxConn(conn)
+    if (typeof manager.onConnection === 'function') {
+      manager.onConnection(conn)
+    }
   }
 
   // create master socket
@@ -162,8 +176,19 @@ export function createManager(_options) {
     const info = {}
     const socket = create()
     socketListen(socket, 0)
-
     const port = getPort(socket)
+
+    const mux = createMux({
+      sess: socket,
+    })
+
+    muxBindConnection(mux, handleConn)
+
+    // // TODO:
+    // muxBindClose(() => {
+    //   console.log('mux closed')
+    // })
+    info.mux = mux
     info.socket = socket
     info.port = port
     conns.push(info)
@@ -181,60 +206,46 @@ export function createManager(_options) {
   return manager
 }
 
-export function sendBuf(socketInfo, buf) {
-  send(socketInfo.socket, buf, buf.length)
+export const sendBuf = connSend
+
+export function bindConnection(manager, next) {
+  manager.onConnection = next
 }
 
-export function lockOne(client) {
-  const { conns } = client
+export const listen = connListen
 
-  for (let i = 0; i < conns.length; i += 1) {
-    const conn = conns[i]
+export function createConnection(client) {
+  let i = client._roundCur
+  client._roundCur += 1
 
-    if (!conn.locked) {
-      conn.locked = true
-      return conn
-    }
+  if (i >= client.conns.length) {
+    i = 0
   }
 
-  throw new Error('no availiable socket')
-}
+  const info = client.conns[i]
+  const conn = createMuxConn(info.mux)
 
-export function releaseOne(client, info) {
-  const { conns } = client
-
-  for (let i = 0; i < conns.length; i += 1) {
-    if (conns[i] === info) {
-      if (!conns[i].locked) {
-        throw new Error('release an unlocked socket')
-      } else {
-        conns[i].locked = false
-        return
-      }
-    }
-  }
-
-  throw new Error('release an unknown socket')
-}
-
-export function listen(info, next) {
-  bindListener(info.socket, next)
+  return conn
 }
 
 if (module === require.main) {
-  const manager = createManager({ socketAmount: 2 })
   const message = Buffer.alloc(4 * 1024 * 1024)
 
-  bindListener(manager.conns[0].socket, (buf) => {
-    console.log('manager received:', buf.length)
-    sendBuf(manager.conns[0], Buffer.from('I have received'))
+  const manager = createManager({ socketAmount: 2 }, (conn) => {
+    listen(conn, (buf) => {
+      console.log('manager received:', buf.length)
+      sendBuf(conn, Buffer.from('I have received'))
+    })
   })
 
   createClient(null).then(client => {
-    bindListener(client.conns[0].socket, (buf) => {
+    const conn = createConnection(client)
+
+    listen(conn, (buf) => {
       console.log('client:', buf.toString('utf8'))
     })
-    sendBuf(client.conns[0], message)
+
+    sendBuf(conn, message)
   }).catch(err => {
     console.error(err)
   })

@@ -1,5 +1,8 @@
-import { sendSocket, lockOne, releaseOne,
-  createClient, createManager, listen, sendBuf } from './socket_manager'
+import {
+  sendSocket, lockOne, releaseOne,
+  createClient, createManager, listen,
+  sendBuf,
+} from './socket_manager'
 
 export function client() {
   const clientInfo = {}
