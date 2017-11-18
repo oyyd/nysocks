@@ -34,13 +34,13 @@ export const listen = wrap((sess, port = 0, onMessage) => {
   const errMsg = binding.listen(sess, port, onMessage)
 
   if (errMsg) {
-    throw new Error(errMsg)
+    throw new Error(`${errMsg} (port: ${port})`)
   }
 })
 
 export const bindListener = wrap((sess, onMessage) => {
   if (typeof onMessage !== 'function') {
-    throw new Error('expe)ct "onMessage" to be a function')
+    throw new Error('expect "onMessage" to be a function')
   }
 
   binding.bindListen(sess, onMessage)

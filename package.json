@@ -22,8 +22,9 @@
   "gypfile": true,
   "homepage": "https://bitbucket.org/OYYD/kcpuv#readme",
   "dependencies": {
-    "nan": "^2.7.0",
-    "socksv5": "^0.0.6"
+    "ip": "^1.1.5",
+    "ipv6": "^3.1.3",
+    "nan": "^2.7.0"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
