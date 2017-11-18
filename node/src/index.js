@@ -21,6 +21,8 @@ export function createClient() {
       socket.on('data', buf => {
         sendBuf(conn, buf)
       })
+      // TODO:
+      socket.on('error', () => {})
     })
     client.managerClient = managerClient
     client.socksServer = socksServer
@@ -54,6 +56,8 @@ export function createServer() {
         socket.on('data', buffer => {
           sendBuf(conn, buffer)
         })
+        // TODO:
+        socket.on('error', () => {})
         return
       }
 
