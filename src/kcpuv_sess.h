@@ -12,10 +12,6 @@ extern "C" {
 #include "utils.h"
 #include "uv.h"
 
-extern const int KCPUV_NONCE_LENGTH;
-extern const int KCPUV_PROTOCOL_OVERHEAD;
-extern long kcpuv_udp_buf_size;
-
 typedef struct KCPUV_SESS kcpuv_sess;
 
 typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, char *data, int len);

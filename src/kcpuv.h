@@ -7,35 +7,36 @@ extern "C" {
 
 #include "ikcp.h"
 
-// global
-extern const int debug;
+#define debug 0
 
-extern const int KCPUV_MUX_CONN_TIMEOUT;
-extern const int KCPUV_STATE_CREATED;
-extern const int KCPUV_STATE_ACK;
-extern const int KCPUV_STATE_WAIT_ACK;
-extern const int KCPUV_STATE_READY;
-extern const int KCPUV_STATE_CLOSED;
-extern const int KCPUV_CMD_ACK;
-extern const int KCPUV_CMD_PUSH;
-extern const int KCPUV_CMD_NOO;
-extern const int KCPUV_CMD_CLS;
-extern const int KCPUV_NONCE_LENGTH;
-extern const int KCPUV_PROTOCOL_OVERHEAD;
-extern const int KCPUV_OVERHEAD;
-extern const int INIT_WND_SIZE;
-extern const IUINT32 MTU_DEF;
-// extern IUINT32 IKCP_OVERHEAD;
-extern const size_t MAX_SENDING_LEN;
-extern const size_t BUFFER_LEN;
-extern const unsigned int DEFAULT_TIMEOUT;
-extern const unsigned short IP4_ADDR_LENTH;
-extern const unsigned short IP6_ADDR_LENGTH;
-extern const int KCPUV_MUX_CMD_PUSH;
-extern const int KCPUV_MUX_CMD_CLS;
-// one byte for cmd, two byte for length
-extern const int KCPUV_MUX_PROTOCOL_OVERHEAD;
-extern const size_t MAX_MUX_CONTENT_LEN;
+#define KCPUV_MUX_CONN_TIMEOUT 0
+#define KCPUV_STATE_CREATED 0
+#define KCPUV_STATE_ACK 10
+#define KCPUV_STATE_WAIT_ACK 20
+#define KCPUV_STATE_READY 30
+#define KCPUV_STATE_CLOSED 40
+#define KCPUV_CMD_ACK 10
+#define KCPUV_CMD_PUSH 20
+#define KCPUV_CMD_NOO 30
+#define KCPUV_CMD_CLS 40
+#define KCPUV_NONCE_LENGTH 8
+#define KCPUV_PROTOCOL_OVERHEAD 1
+#define KCPUV_OVERHEAD KCPUV_NONCE_LENGTH + KCPUV_PROTOCOL_OVERHEAD
+#define INIT_WND_SIZE 2048
+#define MTU_DEF 1400 - KCPUV_PROTOCOL_OVERHEAD - KCPUV_NONCE_LENGTH
+// #define IKCP_OVERHEAD  24
+#define MAX_SENDING_LEN 65536
+#define BUFFER_LEN MAX_SENDING_LEN
+#define DEFAULT_TIMEOUT 30000
+#define IP4_ADDR_LENTH 17
+#define IP6_ADDR_LENGTH 68
+#define KCPUV_MUX_CMD_PUSH 10
+#define KCPUV_MUX_CMD_CLS 40
+// one byte for cmd,
+// four byte for id,
+// two byte for length,
+#define KCPUV_MUX_PROTOCOL_OVERHEAD 7
+#define MAX_MUX_CONTENT_LEN MAX_SENDING_LEN - KCPUV_MUX_PROTOCOL_OVERHEAD
 
 #ifdef __cplusplus
 }
