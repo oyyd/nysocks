@@ -7,7 +7,7 @@ extern "C" {
 
 #include "ikcp.h"
 
-#define debug 0
+#define KCPUV_DEBUG 0
 
 #define KCPUV_MUX_CONN_TIMEOUT 0
 #define KCPUV_STATE_CREATED 0

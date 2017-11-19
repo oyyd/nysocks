@@ -72,7 +72,7 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 
     int rval = ikcp_send(sess->kcp, msg + s, part_len);
 
-    if (debug == 1 && rval < 0) {
+    if (KCPUV_DEBUG == 1 && rval < 0) {
       // TODO:
       printf("ikcp_send() < 0: %d", rval);
     }
@@ -144,7 +144,7 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
 // NOTE: Should call `kcpuv_init_send` with the session before udp_output
 // TODO: do not allocate twice
 static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
-  if (debug) {
+  if (KCPUV_DEBUG) {
     printf("output: %d %lld\n", len, iclock64());
     printf("content: ");
     print_as_hex(msg, len);
@@ -286,7 +286,7 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
 
   int rval = ikcp_input(sess->kcp, msg, length);
 
-  if (debug == 1 && rval < 0) {
+  if (KCPUV_DEBUG == 1 && rval < 0) {
     // TODO:
     fprintf(stderr, "ikcp_input() < 0: %d", rval);
   }
@@ -320,7 +320,7 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     char *read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
 
-    if (debug) {
+    if (KCPUV_DEBUG) {
       printf("input: %lld\n", iclock64());
       print_as_hex(read_msg, read_len);
       printf("%s\n", read_msg);
