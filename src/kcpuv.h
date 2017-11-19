@@ -10,6 +10,7 @@ extern "C" {
 // global
 extern const int debug;
 
+extern const int KCPUV_MUX_CONN_TIMEOUT;
 extern const int KCPUV_STATE_CREATED;
 extern const int KCPUV_STATE_ACK;
 extern const int KCPUV_STATE_WAIT_ACK;

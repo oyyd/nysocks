@@ -1,8 +1,8 @@
 {
   "name": "kcpuv",
   "version": "1.0.0",
-  "description": "## Build",
-  "main": "node_lib/index.js",
+  "description": "Kcpuv binds kcp and libuv to provide a tunnel for nodejs.",
+  "main": "node/lib/index.js",
   "directories": {
     "test": "test"
   },
@@ -17,8 +17,8 @@
     "type": "git",
     "url": "git+https://OYYD@bitbucket.org/OYYD/kcpuv.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "oyyd <oyydoibh@gmail.com>",
+  "license": "BSD",
   "gypfile": true,
   "homepage": "https://bitbucket.org/OYYD/kcpuv#readme",
   "dependencies": {

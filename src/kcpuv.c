@@ -2,6 +2,7 @@
 
 const int debug = 0;
 
+const int KCPUV_MUX_CONN_TIMEOUT = 0;
 const int KCPUV_STATE_CREATED = 0;
 const int KCPUV_STATE_ACK = 10;
 const int KCPUV_STATE_WAIT_ACK = 20;

@@ -1,5 +1,4 @@
-// TODO:
-export const debug = true
+export const debug = false
 
 if (debug) {
   // eslint-disable-next-line

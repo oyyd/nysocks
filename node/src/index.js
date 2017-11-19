@@ -39,7 +39,7 @@ export function createClient() {
 export function createServer() {
   const server = {}
 
-  const managerServer = createManager({ socketAmount: 1 }, (conn) => {
+  const managerServer = createManager({ socketAmount: 100 }, (conn) => {
     let firstBuf = true
     let socket = null
 

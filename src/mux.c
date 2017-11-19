@@ -236,13 +236,15 @@ void kcpuv__mux_updater(uv_idle_t *idler) {
   // update sessions
   kcpuv__update_kcp_sess(idler);
 
-  // check conns timeout
-  // TODO: depending on kcpuv_sess_list may cause
-  // some mux without sess to be ignored
-  kcpuv_link *link = kcpuv_get_sess_list()->list;
-  while (link->next != NULL) {
-    link = link->next;
-    kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->data);
-    kcpuv_mux_check_timeout(mux);
+  if (KCPUV_MUX_CONN_TIMEOUT) {
+    // check conns timeout
+    // TODO: depending on kcpuv_sess_list may cause
+    // some mux without sess to be ignored
+    kcpuv_link *link = kcpuv_get_sess_list()->list;
+    while (link->next != NULL) {
+      link = link->next;
+      kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->data);
+      kcpuv_mux_check_timeout(mux);
+    }
   }
 }
