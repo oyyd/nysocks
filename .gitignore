@@ -19,3 +19,4 @@ node_lib
 node/lib/**/*
 WORK.md
 memory.log
+config.json
