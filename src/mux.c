@@ -110,8 +110,6 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
     kcpuv_mux_conn_free(conn, NULL);
     free(conn);
-    mux->conns.next = link->next;
-    free(link);
     link = mux->conns.next;
   }
 }
@@ -138,6 +136,8 @@ void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   kcpuv_link_add(&(mux->conns), link);
 }
 
+// Popout the link from the queue and close it.
+// Users have to free kcpuv_mux_conn mannually.
 int kcpuv_mux_conn_free(kcpuv_mux_conn *conn, const char *error_msg) {
   kcpuv_link *ptr = kcpuv_link_get_pointer(&(conn->mux->conns), conn);
 
@@ -150,6 +150,7 @@ int kcpuv_mux_conn_free(kcpuv_mux_conn *conn, const char *error_msg) {
     cb(conn, error_msg);
   }
 
+  free(ptr);
   return 0;
 }
 
@@ -219,6 +220,10 @@ static void kcpuv_mux_check_timeout(kcpuv_mux *mux) {
   while (link != NULL) {
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
 
+    if (!conn->timeout) {
+      continue;
+    }
+
     if (conn->ts + conn->timeout <= current) {
       kcpuv_mux_conn_free(conn, "timeout");
     }
@@ -234,10 +239,10 @@ void kcpuv__mux_updater(uv_idle_t *idler) {
   // check conns timeout
   // TODO: depending on kcpuv_sess_list may cause
   // some mux without sess to be ignored
-  // kcpuv_link *link = kcpuv_get_sess_list()->list;
-  // while (link->next != NULL) {
-  //   link = link->next;
-  //   kcpuv_mux_check_timeout((kcpuv_mux *)(((kcpuv_sess
-  //   *)(link->node))->data));
-  // }
+  kcpuv_link *link = kcpuv_get_sess_list()->list;
+  while (link->next != NULL) {
+    link = link->next;
+    kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->data);
+    kcpuv_mux_check_timeout(mux);
+  }
 }

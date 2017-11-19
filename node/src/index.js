@@ -2,7 +2,8 @@ import ip from 'ip'
 import { createServer as createSocksServer,
   createProxyConnection, parseDstInfo } from './socks_proxy_server'
 import { createManager, createClient as createManagerClient,
-  listen, sendBuf, createConnection } from './socket_manager'
+  listen, sendBuf, close, createConnection } from './socket_manager'
+import { logger } from './logger'
 
 export function createClient() {
   return createManagerClient(null).then((managerClient) => {
@@ -21,8 +22,12 @@ export function createClient() {
       socket.on('data', buf => {
         sendBuf(conn, buf)
       })
-      // TODO:
-      socket.on('error', () => {})
+      socket.on('error', (err) => {
+        logger.error(err.message)
+      })
+      socket.on('close', () => {
+        close(conn)
+      })
     })
     client.managerClient = managerClient
     client.socksServer = socksServer
@@ -34,7 +39,7 @@ export function createClient() {
 export function createServer() {
   const server = {}
 
-  const managerServer = createManager({ socketAmount: 10 }, (conn) => {
+  const managerServer = createManager({ socketAmount: 1 }, (conn) => {
     let firstBuf = true
     let socket = null
 
@@ -43,8 +48,11 @@ export function createServer() {
         firstBuf = false
         const dstInfo = parseDstInfo(buf)
 
+        // drop invalid msg
         if (!dstInfo) {
-          throw new Error('invalid dstInfo')
+          // throw new Error('invalid dstInfo')
+          close(conn)
+          return
         }
 
         const options = {
@@ -56,8 +64,12 @@ export function createServer() {
         socket.on('data', buffer => {
           sendBuf(conn, buffer)
         })
-        // TODO:
-        socket.on('error', () => {})
+        socket.on('error', (err) => {
+          logger.error(err.message)
+        })
+        socket.on('close', () => {
+          close(conn)
+        })
         return
       }
 

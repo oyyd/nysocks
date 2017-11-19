@@ -1,4 +1,4 @@
-import { getPort, create, send, close, bindListener,
+import { getPort, create, send, close as sessClose, bindListener,
   startKcpuv, listen as socketListen, setAddr } from './socket'
 import { createMux, createMuxConn, muxFree, wrapMuxConn,
   muxBindConnection, muxBindClose, connFree, connSend,
@@ -142,8 +142,8 @@ export function createClient(_options) {
 export function closeClient(client) {
   const { masterSocket, conns } = client
 
-  conns.forEach(conn => close(conn.socket, true))
-  close(masterSocket)
+  conns.forEach(conn => sessClose(conn.socket, true))
+  sessClose(masterSocket)
 }
 
 export function getConnectionPorts(manager) {
@@ -208,11 +208,13 @@ export function createManager(_options, onConnection) {
 
 export const sendBuf = connSend
 
+export const listen = connListen
+
+export const close = connFree
+
 export function bindConnection(manager, next) {
   manager.onConnection = next
 }
-
-export const listen = connListen
 
 export function createConnection(client) {
   let i = client._roundCur

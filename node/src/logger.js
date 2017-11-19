@@ -1,8 +1,16 @@
-export const logger = {}
+import winston from 'winston'
+import fecha from 'fecha'
 
-const logFunc = (...args) => console.log(...args)
+const { format } = winston
 
-logger.info = logFunc
-logger.debug = logFunc
-logger.warn = logFunc
-logger.error = logFunc
+export const logger = winston.createLogger({
+  level: 'info',
+  format: format.combine(
+    format.timestamp(),
+    format.printf(info =>
+      `${info.level} ${fecha.format(new Date(info.timestamp), 'YYYY-MM-DD HH:mm:ss')}: ${info.message}`),
+  ),
+  transports: [
+    new winston.transports.Console(),
+  ],
+})

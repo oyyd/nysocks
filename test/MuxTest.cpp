@@ -41,7 +41,14 @@ TEST_F(MuxTest, mux_encode_and_decode) {
   delete[] buf;
 }
 
+uv_idle_t close_idle;
 static int received_conns = 0;
+
+static void try_to_close_loop(uv_idle_t *idle) {
+  if (!kcpuv_stop_loop()) {
+    uv_idle_stop(idle);
+  }
+}
 
 void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
   EXPECT_EQ(length, 4096);
@@ -49,21 +56,26 @@ void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
 
   received_conns += 1;
 
+  free(buffer);
+
   if (received_conns == 2) {
-    kcpuv_stop_loop();
+    uv_idle_start(&close_idle, try_to_close_loop);
   }
 }
 
-void on_p2_conn(kcpuv_mux_conn *conn) {
+static void on_p2_conn(kcpuv_mux_conn *conn) {
   kcpuv_mux_conn_listen(conn, p2_on_msg);
 }
 
-void on_data_return(kcpuv_mux_conn *conn, char *buffer, int length) {
+static void on_data_return(kcpuv_mux_conn *conn, char *buffer, int length) {
+  free(buffer);
   EXPECT_EQ(length, 5);
 }
 
 TEST_F(MuxTest, transmission) {
   kcpuv_initialize();
+
+  kcpuv__add_idle(&close_idle);
 
   kcpuv_sess *sess_p1 = kcpuv_create();
   kcpuv_sess *sess_p2 = kcpuv_create();
@@ -113,6 +125,10 @@ TEST_F(MuxTest, transmission) {
   delete[] content;
   delete[] addr_p1;
   delete[] addr_p2;
+  kcpuv_mux_conn_free(&mux_p1_conn_p1, NULL);
+  kcpuv_mux_conn_free(&mux_p1_conn_p2, NULL);
+  kcpuv_mux_free(&mux_p1);
+  kcpuv_mux_free(&mux_p2);
   kcpuv_free(sess_p1);
   kcpuv_free(sess_p2);
   kcpuv_destruct();

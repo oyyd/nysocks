@@ -1,8 +1,10 @@
 # kcpuv
 
+Kcpuv binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tunnel for nodejs.
+
 ## Build
 
-### Build
+### Build with CMAKE
 
 **OSX**
 

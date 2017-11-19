@@ -89,10 +89,12 @@ static void send_cb(uv_udp_send_t *req, int status) {
   free(req);
 
   kcpuv_dgram_cb cb = cb_data->cb;
+
   if (cb != NULL) {
     cb(cb_data->sess, cb_data->cus_data);
   }
 
+  free(cb_data->cus_data);
   free(cb_data);
 }
 

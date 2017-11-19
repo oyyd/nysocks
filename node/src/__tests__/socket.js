@@ -1,27 +1,47 @@
-import * as binding from '../socket'
+import net from 'net'
 
 function main() {
-  binding.startKcpuv()
+  const host = '0.0.0.0'
+  const port = 20010
 
-  const sess = binding.create()
-  const sender = binding.create()
-
-  binding.listen(sess, 0, (msg) => {
-    console.log('msg', msg.toString('utf8'))
+  const s2 = net.createServer((c) => {
+    console.log('c created')
+    c.setTimeout(3000)
+    c.on('data', (data) => {
+      console.log('c data: ', data)
+    })
+    c.on('error', (err) => {
+      console.log('c error: ', err)
+    })
+    c.on('close', () => {
+      console.log('c closed')
+    })
   })
-  binding.listen(sender, 0, () => {})
 
-  const senderPort = binding.getPort(sender)
-  const sessPort = binding.getPort(sess)
+  s2.listen({
+    port,
+    host,
+  })
 
-  console.log('port', sessPort, senderPort)
+  const s1 = net.createConnection({
+    host,
+    port,
+  })
 
-  binding.setAddr(sender, '0.0.0.0', sessPort)
-  binding.setAddr(sess, '0.0.0.0', senderPort)
+  s1.on('data', (data) => {
+    console.log('s1 data: ', data)
+  })
+  s1.on('error', (err) => {
+    console.log('s1 error: ', err)
+  })
+  s1.on('close', () => {
+    console.log('s1 closed')
+  })
 
-  const msg = Buffer.from('hello')
-  binding.send(sender, msg, msg.length)
+  s1.write(Buffer.from('Hello'))
+  // s1.end()
 }
+
 if (module === require.main) {
   main()
 }

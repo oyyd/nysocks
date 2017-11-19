@@ -17,3 +17,4 @@ CTestTestfile.cmake
 node_modules
 node_lib
 node/lib/**/*
+WORK.md

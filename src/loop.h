@@ -11,9 +11,11 @@ uv_loop_t *kcpuv_get_loop();
 
 void kcpuv_use_default_loop(int value);
 
+void kcpuv__add_idle(uv_idle_t *idle);
+
 void kcpuv_start_loop(uv_idle_cb cb);
 
-void kcpuv_stop_loop();
+int kcpuv_stop_loop();
 
 void kcpuv__destroy_loop();
 
