@@ -1,5 +1,3 @@
-import dns from 'dns'
-import ip from 'ip'
 import {
   getPort, create, send, close as sessClose,
   startKcpuv, listen as socketListen, setAddr,
@@ -10,6 +8,7 @@ import { createMux, createMuxConn, wrapMuxConn,
   muxBindConnection, connFree, connSend, connListen,
   // connSendClose, muxFree, connBindClose, muxBindClose,
 } from './mux'
+import { getIP } from './utils'
 
 const DEFAULT_OPTIONS = {
   serverAddr: '0.0.0.0',
@@ -21,23 +20,6 @@ const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
 
 let kcpuvStarted = false
-
-function getIP(address) {
-  if (ip.isV4Format(address) || ip.isV6Format(address)) {
-    return Promise.resolve(address)
-  }
-
-  return new Promise((resolve, reject) => {
-    dns.lookup(address, (err, ipAddr) => {
-      if (err) {
-        reject(err)
-        return
-      }
-
-      resolve(ipAddr)
-    })
-  })
-}
 
 function start() {
   if (!kcpuvStarted) {
@@ -77,12 +59,12 @@ export function checkJSONMsg(buf) {
   return msg
 }
 
-export function initClientSocket(sess, serverAddr, serverPort) {
+export function initClientSocket(sess /* , serverAddr, serverPort */) {
   return new Promise((resolve) => {
     const msg = Buffer.from(CONVERSATION_START_CHAR)
     let data = Buffer.allocUnsafe(0)
 
-    setAddr(sess, serverAddr, serverPort)
+    // setAddr(sess, serverAddr, serverPort)
     socketListen(sess, 0, (buf) => {
       data = Buffer.concat([data, buf])
 
@@ -110,7 +92,7 @@ export const CLIENT_STATE = {
   1: 'CONNECT',
 }
 
-export function initClientConns(options, client) {
+export function initClientConns(options, client, ipAddr) {
   const { serverAddr } = options
   const { ports } = client
   const conns = []
@@ -121,7 +103,7 @@ export function initClientConns(options, client) {
 
     initCryptor(socket, options.password)
     socketListen(socket, 0)
-    setAddr(socket, serverAddr, port)
+    setAddr(socket, ipAddr, port)
 
     const mux = createMux({
       sess: socket,
@@ -151,19 +133,23 @@ export function createClient(_options) {
     ports: [],
     _roundCur: 0,
   }
+  let ipAddr = null
   const masterSocket = create()
   initCryptor(masterSocket, options.password)
 
   client.masterSocket = masterSocket
 
   return getIP(serverAddr)
-    .then(ipAddr => initClientSocket(masterSocket, ipAddr, serverPort))
+    .then((_ipAddr) => {
+      ipAddr = _ipAddr
+      initClientSocket(masterSocket, ipAddr, serverPort)
+    })
     .then((ports) => {
       client.ports = ports
       client.state = 1
       return client
     })
-    .then(c => initClientConns(options, c))
+    .then(c => initClientConns(options, c, ipAddr))
 }
 
 export function closeClient(client) {

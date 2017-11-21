@@ -1,3 +1,6 @@
+import dns from 'dns'
+import ip from 'ip'
+
 export const debug = false
 
 if (debug) {
@@ -31,4 +34,29 @@ export function createBaseSuite(name) {
   }
 
   return suite
+}
+
+const IP_CACHE = {}
+
+export function getIP(address) {
+  if (ip.isV4Format(address) || ip.isV6Format(address)) {
+    return Promise.resolve(address)
+  }
+
+  if (IP_CACHE[address]) {
+    return Promise.resolve(IP_CACHE[address])
+  }
+
+  return new Promise((resolve, reject) => {
+    dns.lookup(address, (err, ipAddr) => {
+      if (err) {
+        reject(err)
+        return
+      }
+
+      IP_CACHE[address] = ipAddr
+
+      resolve(IP_CACHE[address])
+    })
+  })
 }
