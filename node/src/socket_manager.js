@@ -1,3 +1,5 @@
+import dns from 'dns'
+import ip from 'ip'
 import {
   getPort, create, send, close as sessClose,
   startKcpuv, listen as socketListen, setAddr,
@@ -19,6 +21,23 @@ const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
 
 let kcpuvStarted = false
+
+function getIP(address) {
+  if (ip.isV4Format(address) || ip.isV6Format(address)) {
+    return Promise.resolve(address)
+  }
+
+  return new Promise((resolve, reject) => {
+    dns.lookup(address, (err, ipAddr) => {
+      if (err) {
+        reject(err)
+        return
+      }
+
+      resolve(ipAddr)
+    })
+  })
+}
 
 function start() {
   if (!kcpuvStarted) {
@@ -99,6 +118,7 @@ export function initClientConns(options, client) {
   ports.forEach((port) => {
     const info = {}
     const socket = create()
+
     initCryptor(socket, options.password)
     socketListen(socket, 0)
     setAddr(socket, serverAddr, port)
@@ -136,7 +156,8 @@ export function createClient(_options) {
 
   client.masterSocket = masterSocket
 
-  return initClientSocket(masterSocket, serverAddr, serverPort)
+  return getIP(serverAddr)
+    .then(ipAddr => initClientSocket(masterSocket, ipAddr, serverPort))
     .then((ports) => {
       client.ports = ports
       client.state = 1
@@ -166,6 +187,7 @@ export function createManager(_options, onConnection) {
     conns,
     onConnection,
   }
+
   const handleConn = (conn) => {
     wrapMuxConn(conn)
     if (typeof manager.onConnection === 'function') {

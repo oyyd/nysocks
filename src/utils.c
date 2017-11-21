@@ -59,13 +59,14 @@ static int protocol_len[8] = {4, 1, 1, 2, 4, 4, 4, 4};
 
 void print_as_hex(const char *msg, int len) {
   int i;
+  int j;
   int cur = 0;
 
   for (i = 0; i < 8; i += 1) {
     // char *name = protocol_name[i];
     int len = protocol_len[i];
 
-    for (int j = 0; j < len; j += 1) {
+    for (j = 0; j < len; j += 1) {
       printf("%x ", (unsigned)(unsigned char)msg[cur + j]);
     }
     printf(" ");

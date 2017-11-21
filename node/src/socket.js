@@ -35,7 +35,7 @@ export function create() {
 }
 
 export const initCryptor = wrap((sess, key) => {
-  if (typeof key !== 'string' && key.length > 0) {
+  if (typeof key !== 'string' || key.length === 0) {
     throw new Error('expect a string "key"')
   }
 
