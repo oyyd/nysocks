@@ -1,7 +1,8 @@
 import path from 'path'
 import fs from 'fs'
 import yargs from 'yargs'
-// import { createClient, createServer } from './index'
+import { createPACServer } from 'pac-server'
+import { createClient, createServer } from './index'
 
 function getConfigFile(configFile) {
   if (!configFile) {
@@ -38,12 +39,16 @@ function main() {
     .command({
       command: 'server',
       desc: 'Start a tunnel server.',
-      handler: (argv) => console.log('ENTER', parseConfig(argv)),
+      handler: (argv) => createServer(parseConfig(argv)),
     })
     .command({
       command: 'client',
       desc: 'Start a tunnel client.',
-      handler: (argv) => console.log('ENTER', parseConfig(argv)),
+      handler: (argv) => {
+        const config = parseConfig(argv)
+        createPACServer(config.pac)
+        createClient(config)
+      },
     })
     .demandCommand(1, 'You need at least one command before moving on')
     .help()

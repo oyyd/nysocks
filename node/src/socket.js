@@ -5,8 +5,16 @@ import { createBaseSuite } from './utils'
 const suite = createBaseSuite('_sess')
 const { wrap } = suite
 
-binding.useDefaultLoop(true)
+const DEFAULT_KCP_OPTIONS = {
+  sndwnd: 128,
+  rcvwnd: 128,
+  nodelay: 1,
+  interval: 10,
+  resend: 2,
+  nc: 1,
+}
 
+binding.useDefaultLoop(true)
 binding.initialize()
 
 // const {
@@ -22,6 +30,40 @@ export function create() {
   sess._sess = true
 
   binding.bindClose(sess, errorMsg => sess.event.emit('close', errorMsg))
+
+  return sess
+}
+
+export const initCryptor = wrap((sess, key) => {
+  if (typeof key !== 'string' && key.length > 0) {
+    throw new Error('expect a string "key"')
+  }
+
+  binding.initCryptor(sess, key, key.length)
+})
+
+export const setWndSize = wrap((sess, sndWns, rcvWnd) => {
+  binding.setWndSize(sess, sndWns, rcvWnd)
+})
+
+export const setNoDelay = wrap((sess, nodelay, interval, resend, nc) => {
+  binding.setNoDelay(sess, nodelay, interval, resend, nc)
+})
+
+export function createWithOptions(_options) {
+  const sess = create()
+  const options = Object.assign({}, DEFAULT_KCP_OPTIONS, _options)
+  const {
+    sndwnd,
+    rcvwnd,
+    nodelay,
+    interval,
+    resend,
+    nc,
+  } = options
+
+  setWndSize(sess, sndwnd, rcvwnd)
+  setNoDelay(sess, nodelay, interval, resend, nc)
 
   return sess
 }

@@ -19,6 +19,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
   kcpuv_initialize();
 
   kcpuv_sess *sess = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sess);
   kcpuv_sess_list *sess_list = kcpuv_get_sess_list();
 
   EXPECT_EQ(sess_list->len, 1);
@@ -44,6 +45,8 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
   test_callback1 = new testing::MockFunction<void(const char *)>();
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *recver = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sender);
+  KCPUV_INIT_ENCRYPTOR(recver);
   int send_port = 12305;
   int receive_port = 12306;
   char *msg = "Hello";
@@ -78,6 +81,8 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
 
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *recver = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sender);
+  KCPUV_INIT_ENCRYPTOR(recver);
   int send_port = 12002;
   int receive_port = 12003;
   int size = 4096;
@@ -120,6 +125,8 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *receiver = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sender);
+  KCPUV_INIT_ENCRYPTOR(receiver);
 
   kcpuv_listen(receiver, receiver_port, &recver_cb22);
   kcpuv_init_send(sender, addr, receiver_port);
@@ -151,6 +158,7 @@ TEST_F(KcpuvSessTest, on_close_cb) {
   test_callback3 = new testing::MockFunction<void(void)>();
 
   kcpuv_sess *sender = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sender);
 
   kcpuv_bind_close(sender, &close_cb);
 
@@ -177,6 +185,8 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
 
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *recver = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sender);
+  KCPUV_INIT_ENCRYPTOR(recver);
   int send_port = 12004;
   int receive_port = 12005;
 
@@ -210,6 +220,8 @@ TEST_F(KcpuvSessTest, timeout) {
   test_callback5 = new testing::MockFunction<void(void)>();
 
   kcpuv_sess *sender = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sender);
+
   int send_port = 12007;
   int receive_port = 12306;
 
@@ -233,6 +245,7 @@ TEST_F(KcpuvSessTest, kcpuv_get_address) {
 
   int bind_port = 8990;
   kcpuv_sess *sess = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sess);
   kcpuv_listen(sess, bind_port, NULL);
 
   char *ip_addr = new char[16];
@@ -271,6 +284,8 @@ TEST_F(KcpuvSessTest, last_packet_addr) {
 
   kcpuv_sess *sess = kcpuv_create();
   kcpuv_sess *sender = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sess);
+  KCPUV_INIT_ENCRYPTOR(sender);
 
   kcpuv_set_save_last_packet_addr(sess, 1);
   kcpuv_listen(sess, 0, &last_packet_addr_cb);

@@ -12,6 +12,10 @@ Kcpuv binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github
 
 ## Build
 
+## Encryption
+
+`aes_256_cbc`
+
 ### Build with CMAKE
 
 **OSX**

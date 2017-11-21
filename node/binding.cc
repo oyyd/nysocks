@@ -202,6 +202,42 @@ static NAN_METHOD(Initialize) { kcpuv_initialize(); }
 
 static NAN_METHOD(Destruct) { kcpuv_destruct(); }
 
+static NAN_METHOD(InitCryptor) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  String::Utf8Value utf8Str(info[1]->ToString());
+  const char *key = *utf8Str;
+  int keylen = info[2]->ToNumber(isolate)->Int32Value();
+
+  kcpuv_sess_init_cryptor(obj->GetSess(), key, keylen);
+}
+
+static NAN_METHOD(SetWndSize) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  int snd_wnd = info[1]->ToNumber(isolate)->Int32Value();
+  int rcv_wnd = info[2]->ToNumber(isolate)->Int32Value();
+
+  ikcp_wndsize(obj->GetSess()->kcp, snd_wnd, rcv_wnd);
+}
+
+static NAN_METHOD(SetNoDelay) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  int nodelay = info[1]->ToNumber(isolate)->Int32Value();
+  int interval = info[2]->ToNumber(isolate)->Int32Value();
+  int resend = info[3]->ToNumber(isolate)->Int32Value();
+  int nc = info[4]->ToNumber(isolate)->Int32Value();
+
+  ikcp_nodelay(obj->GetSess()->kcp, nodelay, interval, resend, nc);
+}
+
 static NAN_METHOD(Free) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
@@ -576,6 +612,9 @@ static NAN_MODULE_INIT(Init) {
            tpl->GetFunction());
 
   // sess method
+  Nan::SetMethod(target, "initCryptor", InitCryptor);
+  Nan::SetMethod(target, "setWndSize", SetWndSize);
+  Nan::SetMethod(target, "setNoDelay", SetNoDelay);
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
   Nan::SetMethod(target, "setSaveLastPacketAddr", SetSaveLastPacketAddr);

@@ -1,14 +1,18 @@
-import { getPort, create, send, close as sessClose, bindListener,
-  startKcpuv, listen as socketListen, setAddr } from './socket'
-import { createMux, createMuxConn, muxFree, wrapMuxConn,
-  muxBindConnection, muxBindClose, connFree, connSend,
-  connSendClose, connListen, connBindClose } from './mux'
+import {
+  getPort, create, send, close as sessClose,
+  startKcpuv, listen as socketListen, setAddr,
+  initCryptor,
+  // bindListener,
+} from './socket'
+import { createMux, createMuxConn, wrapMuxConn,
+  muxBindConnection, connFree, connSend, connListen,
+  // connSendClose, muxFree, connBindClose, muxBindClose,
+} from './mux'
 
 const DEFAULT_OPTIONS = {
-  targetAddress: '0.0.0.0',
-  targetPort: 20000,
-  // socketAmount: 100,
-  socketAmount: 1,
+  serverAddr: '0.0.0.0',
+  serverPort: 20000,
+  socketAmount: 100,
 }
 
 const CONVERSATION_START_CHAR = '\\\\start'
@@ -54,12 +58,12 @@ export function checkJSONMsg(buf) {
   return msg
 }
 
-export function initClientSocket(sess, targetAddress, targetPort) {
+export function initClientSocket(sess, serverAddr, serverPort) {
   return new Promise((resolve) => {
     const msg = Buffer.from(CONVERSATION_START_CHAR)
     let data = Buffer.allocUnsafe(0)
 
-    setAddr(sess, targetAddress, targetPort)
+    setAddr(sess, serverAddr, serverPort)
     socketListen(sess, 0, (buf) => {
       data = Buffer.concat([data, buf])
 
@@ -88,16 +92,16 @@ export const CLIENT_STATE = {
 }
 
 export function initClientConns(options, client) {
-  const { targetAddress } = options
+  const { serverAddr } = options
   const { ports } = client
   const conns = []
 
   ports.forEach((port) => {
     const info = {}
     const socket = create()
-
+    initCryptor(socket, options.password)
     socketListen(socket, 0)
-    setAddr(socket, targetAddress, port)
+    setAddr(socket, serverAddr, port)
 
     const mux = createMux({
       sess: socket,
@@ -106,7 +110,7 @@ export function initClientConns(options, client) {
     info.mux = mux
     info.socket = socket
     info.targetSocketPort = port
-    info.targetSocketAddr = targetAddress
+    info.targetSocketAddr = serverAddr
 
     conns.push(info)
   })
@@ -116,21 +120,23 @@ export function initClientConns(options, client) {
   })
 }
 
+// TODO: throw when failed to connect
 export function createClient(_options) {
   start()
 
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
-  const { targetAddress, targetPort } = options
+  const { serverAddr, serverPort } = options
   const client = {
     state: 0,
     ports: [],
     _roundCur: 0,
   }
   const masterSocket = create()
+  initCryptor(masterSocket, options.password)
 
   client.masterSocket = masterSocket
 
-  return initClientSocket(masterSocket, targetAddress, targetPort)
+  return initClientSocket(masterSocket, serverAddr, serverPort)
     .then((ports) => {
       client.ports = ports
       client.state = 1
@@ -154,7 +160,7 @@ export function createManager(_options, onConnection) {
   start()
 
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
-  const { socketAmount, targetPort } = options
+  const { socketAmount, serverPort } = options
   const conns = []
   const manager = {
     conns,
@@ -169,12 +175,14 @@ export function createManager(_options, onConnection) {
 
   // create master socket
   const masterSocket = create()
+  initCryptor(masterSocket, options.password)
   manager.masterSocket = masterSocket
 
   // create sockets for tunneling
   for (let i = 0; i < socketAmount; i += 1) {
     const info = {}
     const socket = create()
+    initCryptor(socket, options.password)
     socketListen(socket, 0)
     const port = getPort(socket)
 
@@ -194,7 +202,7 @@ export function createManager(_options, onConnection) {
     conns.push(info)
   }
 
-  socketListen(masterSocket, targetPort, (buf) => {
+  socketListen(masterSocket, serverPort, (buf) => {
     const shouldReply = checkHandshakeMsg(buf)
 
     if (shouldReply) {
@@ -230,25 +238,25 @@ export function createConnection(client) {
   return conn
 }
 
-if (module === require.main) {
-  const message = Buffer.alloc(4 * 1024 * 1024)
-
-  const manager = createManager({ socketAmount: 2 }, (conn) => {
-    listen(conn, (buf) => {
-      console.log('manager received:', buf.length)
-      sendBuf(conn, Buffer.from('I have received'))
-    })
-  })
-
-  createClient(null).then(client => {
-    const conn = createConnection(client)
-
-    listen(conn, (buf) => {
-      console.log('client:', buf.toString('utf8'))
-    })
-
-    sendBuf(conn, message)
-  }).catch(err => {
-    console.error(err)
-  })
-}
+// if (module === require.main) {
+//   const message = Buffer.alloc(4 * 1024 * 1024)
+//
+//   const manager = createManager({ socketAmount: 2 }, (conn) => {
+//     listen(conn, (buf) => {
+//       console.log('manager received:', buf.length)
+//       sendBuf(conn, Buffer.from('I have received'))
+//     })
+//   })
+//
+//   createClient(null).then(client => {
+//     const conn = createConnection(client)
+//
+//     listen(conn, (buf) => {
+//       console.log('client:', buf.toString('utf8'))
+//     })
+//
+//     sendBuf(conn, message)
+//   }).catch(err => {
+//     console.error(err)
+//   })
+// }

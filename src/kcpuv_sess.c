@@ -81,6 +81,7 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
   }
 }
 
+// NOTE: don't free cus_data here
 // TODO: should check status?
 static void send_cb(uv_udp_send_t *req, int status) {
   kcpuv_send_cb_data *cb_data = (kcpuv_send_cb_data *)req->data;
@@ -94,7 +95,6 @@ static void send_cb(uv_udp_send_t *req, int status) {
     cb(cb_data->sess, cb_data->cus_data);
   }
 
-  free(cb_data->cus_data);
   free(cb_data);
 }
 
@@ -191,12 +191,7 @@ kcpuv_sess *kcpuv_create() {
   sess->state = KCPUV_STATE_CREATED;
   sess->recv_ts = iclock();
   sess->timeout = DEFAULT_TIMEOUT;
-
-  sess->cryptor = malloc(sizeof(kcpuv_cryptor));
-  // TODO:
-  char *key = "Hello";
-  unsigned int salt[] = {1, 2};
-  kcpuv_cryptor_init(sess->cryptor, key, strlen(key), salt);
+  sess->cryptor = NULL;
 
   // set output func for kcp
   sess->kcp->output = udp_output;
@@ -210,6 +205,13 @@ kcpuv_sess *kcpuv_create() {
   return sess;
 }
 
+// TODO: export salt
+void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len) {
+  unsigned int salt[] = {1, 2};
+  sess->cryptor = malloc(sizeof(kcpuv_cryptor));
+  kcpuv_cryptor_init(sess->cryptor, key, len, salt);
+}
+
 // Free a kcpuv session.
 void kcpuv_free(kcpuv_sess *sess) {
   if (sess_list != NULL && sess_list->list != NULL) {
@@ -220,8 +222,10 @@ void kcpuv_free(kcpuv_sess *sess) {
     sess_list->len -= 1;
   }
 
-  kcpuv_cryptor_clean(sess->cryptor);
-  free(sess->cryptor);
+  if (sess->cryptor != NULL) {
+    kcpuv_cryptor_clean(sess->cryptor);
+    free(sess->cryptor);
+  }
 
   if (sess->last_packet_addr != NULL) {
     free(sess->last_packet_addr);

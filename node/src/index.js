@@ -5,8 +5,8 @@ import { createManager, createClient as createManagerClient,
   listen, sendBuf, close, createConnection } from './socket_manager'
 import { logger } from './logger'
 
-export function createClient() {
-  return createManagerClient(null).then((managerClient) => {
+export function createClient(config) {
+  return createManagerClient(config).then((managerClient) => {
     const client = {}
     const socksServer = createSocksServer({}, (info, socket) => {
       const { chunk } = info
@@ -36,10 +36,10 @@ export function createClient() {
   })
 }
 
-export function createServer() {
+export function createServer(config) {
   const server = {}
 
-  const managerServer = createManager({ socketAmount: 100 }, (conn) => {
+  const managerServer = createManager(config, (conn) => {
     let firstBuf = true
     let socket = null
 

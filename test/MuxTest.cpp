@@ -56,7 +56,7 @@ void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
 
   received_conns += 1;
 
-  free(buffer);
+  // free(buffer);
 
   if (received_conns == 2) {
     uv_idle_start(&close_idle, try_to_close_loop);
@@ -79,6 +79,8 @@ TEST_F(MuxTest, transmission) {
 
   kcpuv_sess *sess_p1 = kcpuv_create();
   kcpuv_sess *sess_p2 = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sess_p1);
+  KCPUV_INIT_ENCRYPTOR(sess_p2);
 
   kcpuv_listen(sess_p1, 0, NULL);
   kcpuv_listen(sess_p2, 0, NULL);
@@ -162,6 +164,8 @@ TEST_F(MuxTest, close) {
   kcpuv_initialize();
 
   kcpuv_sess *sess_p1 = kcpuv_create();
+  KCPUV_INIT_ENCRYPTOR(sess_p1);
+
   kcpuv_mux mux;
   kcpuv_mux_init(&mux, sess_p1);
 
