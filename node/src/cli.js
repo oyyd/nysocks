@@ -28,7 +28,7 @@ function parseConfig(argv) {
   return Object.assign({}, configJson, argv)
 }
 
-function main() {
+export default function main() {
   // eslint-disable-next-line
   yargs
     .detectLocale(false)
@@ -54,8 +54,4 @@ function main() {
     .help()
     // NOTE: We have to access the "argv" property in order to trigger "yargs"
     .argv
-}
-
-if (module === require.main) {
-  main()
 }

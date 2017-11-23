@@ -1,10 +1,11 @@
 import {
-  getPort, create, send, close as sessClose,
+  getPort, create, close as sessClose,
   startKcpuv, listen as socketListen, setAddr,
   initCryptor,
-  // bindListener,
+  // bindListener, send,
 } from './socket'
-import { createMux, createMuxConn, wrapMuxConn,
+import {
+  createMux, createMuxConn, wrapMuxConn,
   muxBindConnection, connFree, connSend, connListen,
   // connSendClose, muxFree, connBindClose, muxBindClose,
 } from './mux'
@@ -18,6 +19,7 @@ const DEFAULT_OPTIONS = {
 
 const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
+// const MSG_END_SIGNAL = '\\\\end'
 
 let kcpuvStarted = false
 
@@ -28,9 +30,17 @@ function start() {
   }
 }
 
-function sendJson(sess, jsonMsg) {
+// function checkMsgEnd(pre, cur) {
+//   const next = Buffer.concat([pre, cur])
+//   const isEnd = next.slice(0, MSG_END_SIGNAL.length)
+//     .toString('utf8') === MSG_END_SIGNAL
+//
+//   return [next, isEnd]
+// }
+
+function sendJson(conn, jsonMsg) {
   const content = Buffer.from(`${JSON.stringify(jsonMsg)}${CONVERSATION_END_CHAR}`)
-  send(sess, content, content.length)
+  connSend(conn, content)
 }
 
 export function checkHandshakeMsg(buf) {
@@ -59,13 +69,13 @@ export function checkJSONMsg(buf) {
   return msg
 }
 
-export function initClientSocket(sess /* , serverAddr, serverPort */) {
+export function initClientSocket(mux) {
   return new Promise((resolve) => {
     const msg = Buffer.from(CONVERSATION_START_CHAR)
     let data = Buffer.allocUnsafe(0)
 
-    // setAddr(sess, serverAddr, serverPort)
-    socketListen(sess, 0, (buf) => {
+    const conn = createMuxConn(mux)
+    connListen(conn, (buf) => {
       data = Buffer.concat([data, buf])
 
       const res = checkJSONMsg(data)
@@ -75,21 +85,21 @@ export function initClientSocket(sess /* , serverAddr, serverPort */) {
       }
     })
 
-    sess.event.on('close', (errorMsg) => {
-      if (errorMsg) {
-        throw new Error(errorMsg)
-      }
+    // sess.event.on('close', (errorMsg) => {
+    //   if (errorMsg) {
+    //     throw new Error(errorMsg)
+    //   }
+    //
+    //   // resolve(data)
+    // })
 
-      // resolve(data)
-    })
-
-    send(sess, msg, msg.length)
+    connSend(conn, msg)
   })
 }
 
-export const CLIENT_STATE = {
-  0: 'NOT_CONNECT',
-  1: 'CONNECT',
+export const STATE = {
+  NOT_CONNECT: 0,
+  CONNECT: 1,
 }
 
 export function initClientConns(options, client, ipAddr) {
@@ -136,13 +146,19 @@ export function createClient(_options) {
   let ipAddr = null
   const masterSocket = create()
   initCryptor(masterSocket, options.password)
+  socketListen(masterSocket, 0)
+  const masterMux = createMux({
+    sess: masterSocket,
+  })
 
   client.masterSocket = masterSocket
+  client.masterMux = masterMux
 
   return getIP(serverAddr)
     .then((_ipAddr) => {
       ipAddr = _ipAddr
-      initClientSocket(masterSocket, ipAddr, serverPort)
+      setAddr(masterSocket, ipAddr, serverPort)
+      return initClientSocket(masterMux)
     })
     .then((ports) => {
       client.ports = ports
@@ -159,20 +175,13 @@ export function closeClient(client) {
   sessClose(masterSocket)
 }
 
-export function getConnectionPorts(manager) {
-  return manager.conns.map(i => i.port)
+export function getConnectionPorts(sockets) {
+  return sockets.map(i => i.port)
 }
 
-export function createManager(_options, onConnection) {
-  start()
-
-  const options = Object.assign({}, DEFAULT_OPTIONS, _options)
-  const { socketAmount, serverPort } = options
-  const conns = []
-  const manager = {
-    conns,
-    onConnection,
-  }
+function createPassiveSockets(manager, options) {
+  const { socketAmount } = options
+  const sockets = []
 
   const handleConn = (conn) => {
     wrapMuxConn(conn)
@@ -180,11 +189,6 @@ export function createManager(_options, onConnection) {
       manager.onConnection(conn)
     }
   }
-
-  // create master socket
-  const masterSocket = create()
-  initCryptor(masterSocket, options.password)
-  manager.masterSocket = masterSocket
 
   // create sockets for tunneling
   for (let i = 0; i < socketAmount; i += 1) {
@@ -207,16 +211,51 @@ export function createManager(_options, onConnection) {
     info.mux = mux
     info.socket = socket
     info.port = port
-    conns.push(info)
+    sockets.push(info)
   }
 
-  socketListen(masterSocket, serverPort, (buf) => {
-    const shouldReply = checkHandshakeMsg(buf)
+  return sockets
+}
 
-    if (shouldReply) {
-      // TODO:
-      sendJson(masterSocket, getConnectionPorts(manager))
-    }
+export function createManager(_options, onConnection) {
+  start()
+
+  const options = Object.assign({}, DEFAULT_OPTIONS, _options)
+  const { serverPort } = options
+  const conns = []
+  const manager = {
+    conns,
+    onConnection,
+  }
+
+  // create master socket
+  const masterSocket = create()
+  initCryptor(masterSocket, options.password)
+  socketListen(masterSocket, serverPort)
+  const masterMux = createMux({
+    sess: masterSocket,
+  })
+  manager.masterSocket = masterSocket
+  manager.masterMux = masterMux
+
+  // TODO:
+  muxBindConnection(masterMux, (conn) => {
+    wrapMuxConn(conn)
+    connListen(conn, (buf) => {
+      const shouldReply = checkHandshakeMsg(buf)
+
+      if (!shouldReply) {
+        return
+      }
+
+      const sockets = createPassiveSockets(manager, options)
+      const connInfo = {
+        sockets,
+      }
+
+      conns.push(connInfo)
+      sendJson(conn, getConnectionPorts(sockets))
+    })
   })
 
   return manager

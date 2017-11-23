@@ -145,6 +145,7 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
 // TODO: do not allocate twice
 static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   if (KCPUV_DEBUG) {
+    kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
     printf("output: %d %lld\n", len, iclock64());
     printf("content: ");
     print_as_hex(msg, len);
@@ -292,7 +293,7 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
 
   if (KCPUV_DEBUG == 1 && rval < 0) {
     // TODO:
-    fprintf(stderr, "ikcp_input() < 0: %d", rval);
+    fprintf(stderr, "ikcp_input() < 0: %d\n", rval);
   }
 }
 
