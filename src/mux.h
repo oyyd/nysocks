@@ -61,7 +61,7 @@ unsigned int kcpuv__mux_decode(const char *buffer, int *cmd, int *length);
 
 void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length);
 
-void kcpuv__mux_updater(uv_idle_t *idler);
+void kcpuv__mux_updater(uv_timer_t *timer);
 
 #ifdef __cplusplus
 }

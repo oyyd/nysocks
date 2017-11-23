@@ -432,7 +432,7 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
 }
 
 // Iterate the session_list and update kcp
-void kcpuv__update_kcp_sess(uv_idle_t *idler) {
+void kcpuv__update_kcp_sess(uv_timer_t *timer) {
   if (!sess_list || !sess_list->list) {
     return;
   }

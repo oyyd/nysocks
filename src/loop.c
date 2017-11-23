@@ -1,8 +1,10 @@
 #include "loop.h"
+#include "kcpuv.h"
 
 static uv_loop_t *kcpuv_loop = NULL;
 static int use_default_loop = 0;
 static uv_idle_t *idle = NULL;
+static uv_timer_t *timer = NULL;
 
 // NOTE: Don't change this while looping.
 void kcpuv_use_default_loop(int value) { use_default_loop = value; }
@@ -32,15 +34,13 @@ void kcpuv__add_idle(uv_idle_t *idle) {
 }
 
 // Start uv kcpuv_loop and updating kcp.
-void kcpuv_start_loop(uv_idle_cb cb) {
+void kcpuv_start_loop(uv_timer_cb cb) {
   init_loop();
   // inited before
 
-  // bind a idle watcher to uv kcpuv_loop for updating kcp
-  // TODO: do we need to delete idle?
-  idle = malloc(sizeof(uv_idle_t));
-  uv_idle_init(kcpuv_get_loop(), idle);
-  uv_idle_start(idle, cb);
+  timer = malloc(sizeof(uv_timer_t));
+  uv_timer_init(kcpuv_get_loop(), timer);
+  uv_timer_start(timer, cb, 0, KCPUV_TIMER_INTERVAL);
 
   if (!use_default_loop) {
     uv_run(kcpuv_get_loop(), UV_RUN_DEFAULT);
@@ -48,9 +48,9 @@ void kcpuv_start_loop(uv_idle_cb cb) {
 }
 
 int kcpuv_stop_loop() {
-  if (idle != NULL) {
-    uv_idle_stop(idle);
-    free(idle);
+  if (timer != NULL) {
+    uv_timer_stop(timer);
+    free(timer);
   }
 
   if (!use_default_loop && kcpuv_get_loop() != NULL) {

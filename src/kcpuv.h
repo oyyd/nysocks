@@ -9,6 +9,7 @@ extern "C" {
 
 #define KCPUV_DEBUG 0
 
+#define KCPUV_TIMER_INTERVAL 10
 #define KCPUV_MUX_CONN_TIMEOUT 0
 #define KCPUV_STATE_CREATED 0
 #define KCPUV_STATE_ACK 10

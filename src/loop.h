@@ -13,7 +13,7 @@ void kcpuv_use_default_loop(int value);
 
 void kcpuv__add_idle(uv_idle_t *idle);
 
-void kcpuv_start_loop(uv_idle_cb cb);
+void kcpuv_start_loop(uv_timer_cb cb);
 
 int kcpuv_stop_loop();
 

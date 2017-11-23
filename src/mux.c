@@ -232,9 +232,9 @@ static void kcpuv_mux_check_timeout(kcpuv_mux *mux) {
   }
 }
 
-void kcpuv__mux_updater(uv_idle_t *idler) {
+void kcpuv__mux_updater(uv_timer_t *timer) {
   // update sessions
-  kcpuv__update_kcp_sess(idler);
+  kcpuv__update_kcp_sess(timer);
 
   if (KCPUV_MUX_CONN_TIMEOUT) {
     // check conns timeout

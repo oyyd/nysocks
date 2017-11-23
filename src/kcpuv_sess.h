@@ -81,7 +81,7 @@ void kcpuv_initialize();
 
 int kcpuv_destruct();
 
-void kcpuv__update_kcp_sess(uv_idle_t *idler);
+void kcpuv__update_kcp_sess(uv_timer_t *timer);
 
 #ifdef __cplusplus
 }
