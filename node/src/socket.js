@@ -1,6 +1,7 @@
 import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
 import { createBaseSuite } from './utils'
+// import { record, get } from './monitor'
 
 const suite = createBaseSuite('_sess')
 const { wrap } = suite

@@ -2,6 +2,7 @@ import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
 import { create as createSess } from './socket'
 import { createBaseSuite } from './utils'
+import { record, get } from './monitor'
 
 const muxSuite = createBaseSuite('_mux')
 const connSuite = createBaseSuite('_conn')
@@ -28,11 +29,14 @@ export function createMux(_options) {
 
   binding.muxInit(mux, sess)
 
+  record('mux', get('mux') + 1)
+
   return mux
 }
 
 export const muxFree = muxSuite.wrap((mux) => {
   binding.muxFree(mux)
+  record('mux', get('mux') - 1)
 })
 
 export const muxBindClose = muxSuite.wrap((mux, onClose) => {
@@ -45,26 +49,26 @@ export const muxBindConnection = muxSuite.wrap((mux, onConnection) => {
   binding.muxBindConnection(mux, onConnection)
 })
 
+export function wrapMuxConn(conn) {
+  // eslint-disable-next-line
+  conn._conn = true
+  record('conn', get('conn') + 1)
+}
+
 export const createMuxConn = muxSuite.wrap((mux, _options) => {
   // eslint-disable-next-line
   const options = Object.assign({}, DEFAULT_CONN_OPTIONS, _options)
   const conn = binding.createMuxConn()
-  conn._conn = true
+  wrapMuxConn(conn)
 
   binding.connInit(mux, conn)
 
   return conn
 })
 
-export function wrapMuxConn(conn) {
-  // eslint-disable-next-line
-  conn._conn = true
-
-  return conn
-}
-
 export const connFree = connSuite.wrap((conn) => {
   binding.connFree(conn)
+  record('conn', get('conn') - 1)
 })
 
 export const connSend = connSuite.wrap((conn, buffer) => {
@@ -83,42 +87,42 @@ export const connBindClose = connSuite.wrap((conn, onClose) => {
   binding.connBindClose(conn, onClose)
 })
 
-if (module === require.main) {
-  (() => {
-    const {
-      startKcpuv, listen, getPort, setAddr,
-    } = require('./socket')
-
-    startKcpuv()
-
-    const addr = '0.0.0.0'
-    const sess1 = createSess()
-    const sess2 = createSess()
-    listen(sess1, 0)
-    listen(sess2, 0)
-    const port1 = getPort(sess1)
-    const port2 = getPort(sess2)
-
-    setAddr(sess1, addr, port2)
-    setAddr(sess2, addr, port1)
-
-    const mux1 = createMux({
-      sess: sess1,
-    })
-
-    const mux2 = createMux({
-      sess: sess2,
-    })
-
-    muxBindConnection(mux2, (conn) => {
-      wrapMuxConn(conn)
-      connListen(conn, (data) => {
-        console.log('mux2_conn_msg: ', data.toString('utf8'))
-      })
-    })
-
-    const conn1 = createMuxConn(mux1)
-    const buffer = Buffer.from('hello')
-    connSend(conn1, buffer)
-  })()
-}
+// if (module === require.main) {
+//   (() => {
+//     const {
+//       startKcpuv, listen, getPort, setAddr,
+//     } = require('./socket')
+//
+//     startKcpuv()
+//
+//     const addr = '0.0.0.0'
+//     const sess1 = createSess()
+//     const sess2 = createSess()
+//     listen(sess1, 0)
+//     listen(sess2, 0)
+//     const port1 = getPort(sess1)
+//     const port2 = getPort(sess2)
+//
+//     setAddr(sess1, addr, port2)
+//     setAddr(sess2, addr, port1)
+//
+//     const mux1 = createMux({
+//       sess: sess1,
+//     })
+//
+//     const mux2 = createMux({
+//       sess: sess2,
+//     })
+//
+//     muxBindConnection(mux2, (conn) => {
+//       wrapMuxConn(conn)
+//       connListen(conn, (data) => {
+//         console.log('mux2_conn_msg: ', data.toString('utf8'))
+//       })
+//     })
+//
+//     const conn1 = createMuxConn(mux1)
+//     const buffer = Buffer.from('hello')
+//     connSend(conn1, buffer)
+//   })()
+// }

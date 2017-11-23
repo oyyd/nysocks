@@ -1,5 +1,5 @@
 import {
-  getPort, create, close as sessClose,
+  getPort, createWithOptions, close as sessClose,
   startKcpuv, listen as socketListen, setAddr,
   initCryptor,
   // bindListener, send,
@@ -109,7 +109,7 @@ export function initClientConns(options, client, ipAddr) {
 
   ports.forEach((port) => {
     const info = {}
-    const socket = create()
+    const socket = createWithOptions(options.kcp)
 
     initCryptor(socket, options.password)
     socketListen(socket, 0)
@@ -144,7 +144,7 @@ export function createClient(_options) {
     _roundCur: 0,
   }
   let ipAddr = null
-  const masterSocket = create()
+  const masterSocket = createWithOptions(options.kcp)
   initCryptor(masterSocket, options.password)
   socketListen(masterSocket, 0)
   const masterMux = createMux({
@@ -193,7 +193,7 @@ function createPassiveSockets(manager, options) {
   // create sockets for tunneling
   for (let i = 0; i < socketAmount; i += 1) {
     const info = {}
-    const socket = create()
+    const socket = createWithOptions(options.kcp)
     initCryptor(socket, options.password)
     socketListen(socket, 0)
     const port = getPort(socket)
@@ -229,7 +229,7 @@ export function createManager(_options, onConnection) {
   }
 
   // create master socket
-  const masterSocket = create()
+  const masterSocket = createWithOptions(options.kcp)
   initCryptor(masterSocket, options.password)
   socketListen(masterSocket, serverPort)
   const masterMux = createMux({

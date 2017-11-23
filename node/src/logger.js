@@ -28,10 +28,21 @@ export const memoryLogger = winston.createLogger({
   ],
 })
 
+export const monitorLogger = winston.createLogger({
+  level: 'info',
+  format: format.simple(),
+  transports: [
+    new winston.transports.File({
+      filename: path.resolve(process.cwd(), './monitor.log'),
+    }),
+  ],
+})
+
+
 function logMemory() {
   memoryLogger.info(JSON.stringify(process.memoryUsage()))
 }
 
 setInterval(() => {
   logMemory()
-}, 5 * 60 * 1000)
+}, 60 * 1000)
