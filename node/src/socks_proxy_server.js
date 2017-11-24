@@ -3,7 +3,7 @@
  * 2. redirect to another local port
  */
 import net from 'net'
-import socks from '../socksv5'
+import socks from 'socksv5-kcpuv'
 import { logger } from './logger'
 import { createManager } from './socket_manager'
 
