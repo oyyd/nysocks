@@ -7,8 +7,9 @@ const suite = createBaseSuite('_sess')
 const { wrap } = suite
 
 const DEFAULT_KCP_OPTIONS = {
-  sndwnd: 128,
-  rcvwnd: 128,
+  // TODO:
+  sndwnd: 2048,
+  rcvwnd: 2048,
   nodelay: 1,
   interval: 10,
   resend: 2,
@@ -51,6 +52,7 @@ export const setNoDelay = wrap((sess, nodelay, interval, resend, nc) => {
   binding.setNoDelay(sess, nodelay, interval, resend, nc)
 })
 
+// Accept kcp options.
 export function createWithOptions(_options) {
   const sess = create()
   const options = Object.assign({}, DEFAULT_KCP_OPTIONS, _options)

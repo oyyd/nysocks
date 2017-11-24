@@ -1,6 +1,7 @@
 import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
-import { create as createSess } from './socket'
+import { createWithOptions, initCryptor,
+  listen as socketListen, setAddr } from './socket'
 import { createBaseSuite } from './utils'
 import { record, get } from './monitor'
 
@@ -10,17 +11,51 @@ const connSuite = createBaseSuite('_conn')
 const DEFAULT_MUX_OPTIONS = {
   sess: null,
   event: null,
+  // bind to a random port by default
+  port: 0,
+  password: null,
+  targetPort: null,
+  targetAddr: null,
+  kcp: null,
 }
 
 const DEFAULT_CONN_OPTIONS = {
   mux: null,
 }
 
+function isValidProperty(value) {
+  if (typeof value === 'number') {
+    return true
+  }
+
+  return !!value
+}
+
 export function createMux(_options) {
   const options = Object.assign({}, DEFAULT_MUX_OPTIONS, _options)
 
   // create default sess
-  const sess = options.sess ? options.sess : createSess()
+  const hasSess = options.sess
+  let sess = null
+
+  if (hasSess) {
+    // eslint-disable-next-line
+    sess = options.sess
+  } else {
+    const {
+      port, password, targetPort, targetAddr,
+    } = options
+
+    if (!isValidProperty(port) || !isValidProperty(password)) {
+      throw new Error('invalid mux options')
+    }
+    sess = createWithOptions(options.kcp)
+    initCryptor(sess, password)
+    socketListen(sess, port)
+    if (isValidProperty(targetPort) && isValidProperty(targetAddr)) {
+      setAddr(sess, targetAddr, targetPort)
+    }
+  }
 
   const mux = binding.createMux()
   mux.event = new EventEmitter()
@@ -43,17 +78,24 @@ export const muxBindClose = muxSuite.wrap((mux, onClose) => {
   binding.muxBindClose(mux, onClose)
 })
 
-// NOTE: user should bind listen synchronously
-// for the comming msg
-export const muxBindConnection = muxSuite.wrap((mux, onConnection) => {
-  binding.muxBindConnection(mux, onConnection)
-})
-
 export function wrapMuxConn(conn) {
   // eslint-disable-next-line
   conn._conn = true
   record('conn', get('conn') + 1)
 }
+
+// NOTE: user should bind listen synchronously
+// for the comming msg
+export const muxBindConnection = muxSuite.wrap((mux, onConnection) => {
+  if (typeof onConnection !== 'function') {
+    throw new Error('muxBindConnection expect an "onConnection" function')
+  }
+
+  binding.muxBindConnection(mux, (conn) => {
+    wrapMuxConn(conn)
+    onConnection(conn)
+  })
+})
 
 export const createMuxConn = muxSuite.wrap((mux, _options) => {
   // eslint-disable-next-line

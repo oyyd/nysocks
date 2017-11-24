@@ -5,7 +5,7 @@ import {
   // bindListener, send,
 } from './socket'
 import {
-  createMux, createMuxConn, wrapMuxConn,
+  createMux, createMuxConn,
   muxBindConnection, connFree, connSend, connListen,
   // connSendClose, muxFree, connBindClose, muxBindClose,
 } from './mux'
@@ -184,7 +184,6 @@ function createPassiveSockets(manager, options) {
   const sockets = []
 
   const handleConn = (conn) => {
-    wrapMuxConn(conn)
     if (typeof manager.onConnection === 'function') {
       manager.onConnection(conn)
     }
@@ -240,7 +239,6 @@ export function createManager(_options, onConnection) {
 
   // TODO:
   muxBindConnection(masterMux, (conn) => {
-    wrapMuxConn(conn)
     connListen(conn, (buf) => {
       const shouldReply = checkHandshakeMsg(buf)
 

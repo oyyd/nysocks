@@ -113,8 +113,12 @@ static void udp_send(kcpuv_sess *sess, char *data, int length,
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, length);
 
-  uv_udp_send(req, sess->handle, &buf, 1,
-              (const struct sockaddr *)sess->send_addr, &send_cb);
+  // TODO:
+  // uv_udp_send(req, sess->handle, &buf, 1,
+  //             (const struct sockaddr *)sess->send_addr, &send_cb);
+  uv_udp_try_send(sess->handle, &buf, 1,
+                  (const struct sockaddr *)sess->send_addr);
+  send_cb(req, 0);
 }
 
 static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
@@ -153,7 +157,6 @@ static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   }
 
   kcpuv_sess *sess = (kcpuv_sess *)user;
-
   kcpuv_send_with_protocol(sess, KCPUV_CMD_PUSH, msg, len, NULL, NULL);
 
   return 0;
@@ -459,8 +462,19 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       ikcp_update(sess->kcp, now);
     }
 
-    // TODO: consider the expected size
     size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
+
+    // TODO: consider the expected size
+    while (size > 0) {
+      if (sess->on_msg_cb == NULL) {
+        continue;
+      }
+
+      // update receive data
+      kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
+      on_msg_cb(sess, buffer, size);
+      size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
+    }
 
     if (size < 0) {
       // rval == -1 queue is empty
@@ -469,15 +483,6 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
         // TODO:
         fprintf(stderr, "ikcp_recv() < 0: %d\n", size);
       }
-      continue;
     }
-
-    if (sess->on_msg_cb == NULL) {
-      continue;
-    }
-
-    // update receive data
-    kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
-    on_msg_cb(sess, buffer, size);
   }
 }
