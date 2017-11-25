@@ -1,4 +1,4 @@
-# kcpuv
+# nysocks
 
 Kcpuv binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tunnel for nodejs.
 
@@ -10,9 +10,13 @@ Kcpuv binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github
 
 ## CLI Options
 
-## Build
-
 ## Encryption
+
+## Known Issues
+
+- Do not support ipv6 currently.
+
+## Build
 
 `aes_256_cbc`
 

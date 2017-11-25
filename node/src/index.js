@@ -1,12 +1,22 @@
 import ip from 'ip'
-import { createServer as createSocksServer,
-  createProxyConnection, parseDstInfo } from './socks_proxy_server'
-import { createManager, createClient as createManagerClient,
-  listen, sendBuf, close, createConnection } from './socket_manager'
+import {
+  createServer as createSocksServer,
+  createProxyConnection,
+  parseDstInfo,
+} from './socks_proxy_server'
+import {
+  createManager,
+  createClient as createManagerClient,
+  listen,
+  sendBuf,
+  close,
+  createConnection,
+} from './socket_manager'
+import { createRouter } from './router'
 import { logger } from './logger'
 
 export function createClient(config) {
-  return createManagerClient(config).then((managerClient) => {
+  return createManagerClient(config).then(managerClient => {
     const client = {}
     const socksServer = createSocksServer({}, (info, socket) => {
       const { chunk } = info
@@ -22,7 +32,7 @@ export function createClient(config) {
       socket.on('data', buf => {
         sendBuf(conn, buf)
       })
-      socket.on('error', (err) => {
+      socket.on('error', err => {
         logger.error(err.message)
       })
       socket.on('close', () => {
@@ -39,7 +49,7 @@ export function createClient(config) {
 export function createServer(config) {
   const server = {}
 
-  const managerServer = createManager(config, (conn) => {
+  const managerServer = createManager(config, conn => {
     let firstBuf = true
     let socket = null
 
@@ -57,14 +67,15 @@ export function createServer(config) {
 
         const options = {
           port: dstInfo.dstPort.readUInt16BE(),
-          host: (dstInfo.atyp === 3
-            ? dstInfo.dstAddr.toString('ascii') : ip.toString(dstInfo.dstAddr)),
+          host: dstInfo.atyp === 3
+            ? dstInfo.dstAddr.toString('ascii')
+            : ip.toString(dstInfo.dstAddr),
         }
         socket = createProxyConnection(options)
         socket.on('data', buffer => {
           sendBuf(conn, buffer)
         })
-        socket.on('error', (err) => {
+        socket.on('error', err => {
           logger.error(err.message)
         })
         socket.on('close', () => {
@@ -81,7 +92,44 @@ export function createServer(config) {
   return server
 }
 
+export function createServerRouter(config) {
+  const router = createRouter(
+    {
+      listenPort: config.serverPort,
+    },
+    () => {
+      const serverConfig = Object.assign({}, config, {
+        serverPort: 0,
+      })
+      const server = createServer(serverConfig)
+
+      return server.managerServer.masterSocket
+    },
+  )
+
+  return router
+}
+
 if (module === require.main) {
-  createClient()
-  createServer()
+  const config = {
+    serverAddr: '0.0.0.0',
+    serverPort: 20000,
+    socketAmount: 100,
+    password: 'HELLO',
+    kcp: {
+      sndwnd: 2048,
+      rcvwnd: 2048,
+      nodelay: 1,
+      interval: 10,
+      resend: 2,
+      nc: 1,
+    },
+    pac: {
+      pacServerPort: 8091,
+    },
+    SOCKS: {},
+  }
+
+  createServerRouter(config)
+  createClient(config)
 }

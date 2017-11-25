@@ -2,7 +2,7 @@ import path from 'path'
 import fs from 'fs'
 import yargs from 'yargs'
 import { createPACServer } from 'pac-server'
-import { createClient, createServer } from './index'
+import { createClient, createServerRouter } from './index'
 
 function getConfigFile(configFile) {
   if (!configFile) {
@@ -39,7 +39,7 @@ export default function main() {
     .command({
       command: 'server',
       desc: 'Start a tunnel server.',
-      handler: (argv) => createServer(parseConfig(argv)),
+      handler: (argv) => createServerRouter(parseConfig(argv)),
     })
     .command({
       command: 'client',

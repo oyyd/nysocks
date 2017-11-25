@@ -71,8 +71,18 @@ export function createWithOptions(_options) {
   return sess
 }
 
+// NOTE: Do not use this for the transforming of proxy data.
+export const input = wrap((sess, buffer, address, port) =>
+  binding.input(sess, buffer, buffer.length, address, port))
+
+// TODO:
 export const destroy = wrap((sess) => {
   binding.free(sess)
+})
+
+// TODO:
+export const close = wrap((sess, sendCloseMsg = false) => {
+  binding.close(sess, sendCloseMsg)
 })
 
 export const listen = wrap((sess, port = 0, onMessage) => {
@@ -99,10 +109,6 @@ export const stopListen = wrap((sess) => {
 
 export const send = wrap((sess, buf) => {
   binding.send(sess, buf, buf.length)
-})
-
-export const close = wrap((sess, sendCloseMsg = false) => {
-  binding.close(sess, sendCloseMsg)
 })
 
 export const setAddr = wrap((sess, address, port) => {

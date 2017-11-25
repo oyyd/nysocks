@@ -33,14 +33,21 @@ public:
     sess->data = this;
     sess->timeout = 0;
   }
-  virtual ~KcpuvSessBinding() {}
+
+  virtual ~KcpuvSessBinding() {
+    if (sess) {
+      Free();
+    }
+  }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
 
   void Free() {
+    kcpuv_stop_listen(sess);
     kcpuv_free(sess);
     is_freed = 1;
+    sess = 0;
   };
 
   kcpuv_sess *GetSess() { return sess; }
@@ -241,37 +248,30 @@ static NAN_METHOD(SetNoDelay) {
 static NAN_METHOD(Free) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
   obj->Free();
 }
 
-static NAN_METHOD(SetSaveLastPacketAddr) {
+static NAN_METHOD(Input) {
   Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
-  int save_value = info[1]->ToNumber(isolate)->Int32Value();
+  char *js_content = node::Buffer::Data(info[1]->ToObject());
+  unsigned int content_size = info[2]->Uint32Value();
+  char *content = new char[content_size];
+  memcpy(content, js_content, content_size);
+  const uv_buf_t content_buf = uv_buf_init(content, content_size);
 
-  kcpuv_set_save_last_packet_addr(obj->GetSess(), save_value);
-}
+  String::Utf8Value utf8Str(info[3]->ToString());
+  char *ip = *utf8Str;
+  unsigned int port = info[4]->Uint32Value();
 
-static NAN_METHOD(GetLastPacketAddr) {
-  Isolate *isolate = info.GetIsolate();
-  KcpuvSessBinding *obj =
-      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+  struct sockaddr addr;
+  uv_ip4_addr(reinterpret_cast<const char *>(ip), port,
+              reinterpret_cast<struct sockaddr_in *>(&addr));
 
-  char *addr = new char[17];
-  int port = 0;
-
-  kcpuv_get_last_packet_addr(obj->GetSess(), addr, &port);
-
-  Local<Object> returnObj = Object::New(isolate);
-  returnObj->Set(String::NewFromUtf8(isolate, "port"),
-                 Number::New(isolate, port));
-  returnObj->Set(String::NewFromUtf8(isolate, "address"),
-                 String::NewFromUtf8(isolate, addr));
-
-  delete[] addr;
-  return info.GetReturnValue().Set(returnObj);
+  kcpuv_input(obj->GetSess(), content_size, &content_buf, &addr);
 }
 
 static NAN_METHOD(Listen) {
@@ -373,6 +373,7 @@ static NAN_METHOD(InitSend) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
   String::Utf8Value utf8Str(info[1]->ToString());
+  // TODO: Do we need to free strings from js?
   char *addr = *utf8Str;
   int port = static_cast<double>(info[2]->ToNumber(isolate)->Value());
 
@@ -617,8 +618,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "setNoDelay", SetNoDelay);
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
-  Nan::SetMethod(target, "setSaveLastPacketAddr", SetSaveLastPacketAddr);
-  Nan::SetMethod(target, "getLastPacketAddr", GetLastPacketAddr);
+  Nan::SetMethod(target, "input", Input);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "getPort", GetPort);
   Nan::SetMethod(target, "stopListen", StopListen);

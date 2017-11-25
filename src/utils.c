@@ -121,7 +121,7 @@ void kcpuv_link_add(kcpuv_link *head, kcpuv_link *next) {
   next->next = NULL;
 }
 
-// Return -1 if the pointer is not in the queue.
+// Return `NULL` if the pointer is not in the queue.
 kcpuv_link *kcpuv_link_get_pointer(kcpuv_link *head, void *node) {
   kcpuv_link *current = head;
   kcpuv_link *ptr = NULL;

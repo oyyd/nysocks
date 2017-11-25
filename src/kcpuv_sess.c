@@ -81,44 +81,17 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
   }
 }
 
-// NOTE: don't free cus_data here
-// TODO: should check status?
-static void send_cb(uv_udp_send_t *req, int status) {
-  kcpuv_send_cb_data *cb_data = (kcpuv_send_cb_data *)req->data;
-  // free buffer and request
-  free(cb_data->buf_data);
-  free(req);
-
-  kcpuv_dgram_cb cb = cb_data->cb;
-
-  if (cb != NULL) {
-    cb(cb_data->sess, cb_data->cus_data);
-  }
-
-  free(cb_data);
-}
-
+// TODO: We don't need a callback to notify the end of sending now.
 static void udp_send(kcpuv_sess *sess, char *data, int length,
                      kcpuv_dgram_cb cb, char *cus_data) {
-  kcpuv_send_cb_data *cb_data = malloc(sizeof(kcpuv_send_cb_data));
-  cb_data->buf_data = data;
-  cb_data->cb = cb;
-  cb_data->sess = sess;
-  cb_data->cus_data = cus_data;
-
-  uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
-  // for freeing the buf latter
-  req->data = cb_data;
-
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, length);
-
-  // TODO:
-  // uv_udp_send(req, sess->handle, &buf, 1,
-  //             (const struct sockaddr *)sess->send_addr, &send_cb);
   uv_udp_try_send(sess->handle, &buf, 1,
                   (const struct sockaddr *)sess->send_addr);
-  send_cb(req, 0);
+  free(data);
+  if (cb != NULL) {
+    cb(sess, cus_data);
+  }
 }
 
 static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
@@ -188,10 +161,8 @@ kcpuv_sess *kcpuv_create() {
   sess->handle->data = sess;
   sess->send_addr = NULL;
   sess->recv_addr = NULL;
-  sess->last_packet_addr = NULL;
   sess->on_msg_cb = NULL;
   sess->on_close_cb = NULL;
-  sess->save_last_packet_addr = 0;
   sess->state = KCPUV_STATE_CREATED;
   sess->recv_ts = iclock();
   sess->timeout = DEFAULT_TIMEOUT;
@@ -231,10 +202,6 @@ void kcpuv_free(kcpuv_sess *sess) {
     free(sess->cryptor);
   }
 
-  if (sess->last_packet_addr != NULL) {
-    free(sess->last_packet_addr);
-  }
-
   if (sess->send_addr != NULL) {
     free(sess->send_addr);
   }
@@ -248,27 +215,23 @@ void kcpuv_free(kcpuv_sess *sess) {
   free(sess);
 }
 
-void kcpuv_set_save_last_packet_addr(kcpuv_sess *sess, unsigned short value) {
-  sess->save_last_packet_addr = value;
-}
-
-int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
-  if (sess->last_packet_addr == NULL) {
-    return 0;
-  }
-
-  if (sess->last_packet_addr->sa_family == AF_INET) {
-    uv_ip4_name((const struct sockaddr_in *)sess->last_packet_addr, name,
-                IP4_ADDR_LENTH);
-    *port = ntohs(((struct sockaddr_in *)sess->last_packet_addr)->sin_port);
-    return IP4_ADDR_LENTH;
-  }
-
-  uv_ip6_name((const struct sockaddr_in6 *)sess->last_packet_addr, name,
-              IP6_ADDR_LENGTH);
-  *port = ntohs(((struct sockaddr_in6 *)sess->last_packet_addr)->sin6_port);
-  return IP6_ADDR_LENGTH;
-}
+// int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
+//   if (sess->last_packet_addr == NULL) {
+//     return 0;
+//   }
+//
+//   if (sess->last_packet_addr->sa_family == AF_INET) {
+//     uv_ip4_name((const struct sockaddr_in *)sess->last_packet_addr, name,
+//                 IP4_ADDR_LENTH);
+//     *port = ntohs(((struct sockaddr_in *)sess->last_packet_addr)->sin_port);
+//     return IP4_ADDR_LENTH;
+//   }
+//
+//   uv_ip6_name((const struct sockaddr_in6 *)sess->last_packet_addr, name,
+//               IP6_ADDR_LENGTH);
+//   *port = ntohs(((struct sockaddr_in6 *)sess->last_packet_addr)->sin6_port);
+//   return IP6_ADDR_LENGTH;
+// }
 
 void init_send(kcpuv_sess *sess, const struct sockaddr *addr) {
   if (sess->send_addr != NULL) {
@@ -300,28 +263,18 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
   }
 }
 
-// Called when uv receives a msg and pass.
-static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
-                    const struct sockaddr *addr, unsigned flags) {
+// Input dgram mannualy
+void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
+                 const struct sockaddr *addr) {
   if (nread < 0) {
     // TODO:
     fprintf(stderr, "uv error: %s\n", uv_strerror(nread));
   }
 
   if (nread > 0) {
-    kcpuv_sess *sess = (kcpuv_sess *)handle->data;
-
     if (sess->state == KCPUV_STATE_WAIT_ACK) {
       sess->state = KCPUV_STATE_READY;
       init_send(sess, addr);
-    }
-
-    if (sess->save_last_packet_addr) {
-      if (sess->last_packet_addr == NULL) {
-        sess->last_packet_addr = malloc(sizeof(struct sockaddr));
-      }
-
-      memcpy(sess->last_packet_addr, addr, sizeof(struct sockaddr));
     }
 
     int read_len = nread;
@@ -350,6 +303,13 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
   // release uv buf
   free(buf->base);
+}
+
+// Called when uv receives a msg and pass.
+static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
+                    const struct sockaddr *addr, unsigned flags) {
+  kcpuv_sess *sess = (kcpuv_sess *)handle->data;
+  kcpuv_input(sess, nread, buf, addr);
 }
 
 // Set receiving info.

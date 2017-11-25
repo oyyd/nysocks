@@ -1,0 +1,9 @@
+PID 97075 received SIGSEGV for address: 0x0
+0   segfault-handler.node               0x0000000101dede58 _ZL16segfault_handleriP9__siginfoPv + 280
+1   libsystem_platform.dylib            0x00007fff918f752a _sigtramp + 26
+2   ???                                 0x0000000000000002 0x0 + 2
+3   node                                0x0000000100a641b2 uv__run_timers + 38
+4   node                                0x0000000100a597ca uv_run + 580
+5   node                                0x00000001008d0755 _ZN4node5StartEiPPc + 660
+6   node                                0x0000000100001734 start + 52
+7   ???                                 0x0000000000000002 0x0 + 2

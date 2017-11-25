@@ -11,7 +11,7 @@
     "build": "babel node/src --out-dir node/lib",
     "install": "node-gyp rebuild",
     "test:js": "jest",
-    "test:packet": "node node/lib/__tests__/send_a_buf"
+    "test:one": "jest -t 'should put some data to a sess by calling input'"
   },
   "repository": {
     "type": "git",

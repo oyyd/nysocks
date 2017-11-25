@@ -11,9 +11,11 @@ import {
 } from './mux'
 import { getIP } from './utils'
 
+export const DEFAULT_SERVER_PORT = 20000
+
 const DEFAULT_OPTIONS = {
   serverAddr: '0.0.0.0',
-  serverPort: 20000,
+  serverPort: DEFAULT_SERVER_PORT,
   socketAmount: 100,
 }
 

@@ -17,29 +17,19 @@ typedef struct KCPUV_SESS kcpuv_sess;
 typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, char *data, int len);
 typedef void (*kcpuv_dgram_cb)(kcpuv_sess *sess, void *data);
 
-typedef struct KCPUV_SEND_CB_DATA {
-  kcpuv_sess *sess;
-  kcpuv_dgram_cb cb;
-  char *buf_data;
-  void *cus_data;
-} kcpuv_send_cb_data;
-
 struct KCPUV_SESS {
   // user defined
   void *data;
   ikcpcb *kcp;
   uv_udp_t *handle;
-  unsigned short save_last_packet_addr;
   struct sockaddr *send_addr;
   struct sockaddr *recv_addr;
-  struct sockaddr *last_packet_addr;
   int state;
   IUINT32 recv_ts;
   unsigned int timeout;
   kcpuv_listen_cb on_msg_cb;
   kcpuv_dgram_cb on_close_cb;
   kcpuv_cryptor *cryptor;
-  // TODO: outher config
 };
 
 typedef struct KCPUV_SESS_LIST {
@@ -55,9 +45,8 @@ void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len);
 
 void kcpuv_free(kcpuv_sess *sess);
 
-void kcpuv_set_save_last_packet_addr(kcpuv_sess *sess, unsigned short value);
-
-int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port);
+void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
+                 const struct sockaddr *addr);
 
 void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port);
 
