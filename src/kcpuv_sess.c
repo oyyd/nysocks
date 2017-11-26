@@ -233,7 +233,7 @@ void kcpuv_free(kcpuv_sess *sess) {
 //   return IP6_ADDR_LENGTH;
 // }
 
-void init_send(kcpuv_sess *sess, const struct sockaddr *addr) {
+static void init_send(kcpuv_sess *sess, const struct sockaddr *addr) {
   if (sess->send_addr != NULL) {
     free(sess->send_addr);
   }
@@ -275,6 +275,9 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
     if (sess->state == KCPUV_STATE_WAIT_ACK) {
       sess->state = KCPUV_STATE_READY;
       init_send(sess, addr);
+      if (KCPUV_DEBUG) {
+        kcpuv__print_sockaddr(addr);
+      }
     }
 
     int read_len = nread;

@@ -110,26 +110,26 @@ export function createServerRouter(config) {
   return router
 }
 
-if (module === require.main) {
-  const config = {
-    serverAddr: '0.0.0.0',
-    serverPort: 20000,
-    socketAmount: 100,
-    password: 'HELLO',
-    kcp: {
-      sndwnd: 2048,
-      rcvwnd: 2048,
-      nodelay: 1,
-      interval: 10,
-      resend: 2,
-      nc: 1,
-    },
-    pac: {
-      pacServerPort: 8091,
-    },
-    SOCKS: {},
-  }
-
-  createServerRouter(config)
-  createClient(config)
-}
+// if (module === require.main) {
+//   const config = {
+//     serverAddr: '0.0.0.0',
+//     serverPort: 20000,
+//     socketAmount: 100,
+//     password: 'HELLO',
+//     kcp: {
+//       sndwnd: 2048,
+//       rcvwnd: 2048,
+//       nodelay: 1,
+//       interval: 10,
+//       resend: 2,
+//       nc: 1,
+//     },
+//     pac: {
+//       pacServerPort: 8091,
+//     },
+//     SOCKS: {},
+//   }
+//
+//   createServerRouter(config)
+//   createClient(config)
+// }

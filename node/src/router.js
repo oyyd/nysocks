@@ -40,3 +40,18 @@ export function createRouter(_options, createASess) {
     managerMaps,
   }
 }
+
+// if (module === require.main) {
+//   import dgram from 'dgram'
+//
+//   const socket = dgram.createSocket({
+//     type: 'udp4',
+//     reuseAddr: false,
+//   })
+//
+//   socket.on('message', (m, rinfo) => {
+//     console.log('rinfo', rinfo)
+//   })
+//
+//   socket.listen(20001)
+// }

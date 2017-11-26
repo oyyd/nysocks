@@ -71,7 +71,7 @@ export function checkJSONMsg(buf) {
   return msg
 }
 
-export function initClientSocket(mux) {
+export function initClientMasterSocket(mux) {
   return new Promise((resolve) => {
     const msg = Buffer.from(CONVERSATION_START_CHAR)
     let data = Buffer.allocUnsafe(0)
@@ -149,6 +149,8 @@ export function createClient(_options) {
   const masterSocket = createWithOptions(options.kcp)
   initCryptor(masterSocket, options.password)
   socketListen(masterSocket, 0)
+  // console.log('client_port', getPort(masterSocket))
+
   const masterMux = createMux({
     sess: masterSocket,
   })
@@ -160,7 +162,7 @@ export function createClient(_options) {
     .then((_ipAddr) => {
       ipAddr = _ipAddr
       setAddr(masterSocket, ipAddr, serverPort)
-      return initClientSocket(masterMux)
+      return initClientMasterSocket(masterMux)
     })
     .then((ports) => {
       client.ports = ports
