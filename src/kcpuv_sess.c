@@ -82,8 +82,8 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 }
 
 // TODO: We don't need a callback to notify the end of sending now.
-static void udp_send(kcpuv_sess *sess, char *data, int length,
-                     kcpuv_dgram_cb cb, char *cus_data) {
+static void sess_send(kcpuv_sess *sess, char *data, int length,
+                      kcpuv_dgram_cb cb, char *cus_data) {
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, length);
 
@@ -121,7 +121,7 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
 
   free(plaintext);
 
-  udp_send(sess, data, write_len, cb, cus_data);
+  sess_send(sess, data, write_len, cb, cus_data);
 }
 
 // Func to output data for kcp through udp.

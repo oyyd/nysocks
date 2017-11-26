@@ -38,7 +38,7 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
   int cmd;
   int length;
   unsigned int id = kcpuv__mux_decode((const char *)data, &cmd, &length);
-  kcpuv_mux *mux = (kcpuv_mux *)sess->data;
+  kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
   kcpuv_mux_conn *conn;
 
   // find conn
@@ -81,7 +81,7 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
 }
 
 static void on_sess_close(kcpuv_sess *sess, void *data) {
-  kcpuv_mux *mux = (kcpuv_mux *)sess->data;
+  kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
 
   if (mux->on_close_cb != NULL) {
     mux_on_close_cb cb = (mux_on_close_cb)mux->on_close_cb;
@@ -97,7 +97,7 @@ void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
   mux->conns.next = NULL;
   mux->on_connection_cb = NULL;
   mux->on_close_cb = NULL;
-  sess->data = mux;
+  sess->mux = mux;
 
   kcpuv_bind_listen(sess, on_recv_msg);
   kcpuv_bind_close(sess, on_sess_close);

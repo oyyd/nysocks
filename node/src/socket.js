@@ -1,3 +1,4 @@
+// TODO: throw when create socket without starting loops
 import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
 import { createBaseSuite } from './utils'

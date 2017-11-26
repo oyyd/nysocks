@@ -22,6 +22,8 @@ typedef void (*kcpuv_udp_send)(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
 struct KCPUV_SESS {
   // user defined
   void *data;
+  // TODO: make mux store sess if a clearer solution
+  void *mux;
   ikcpcb *kcp;
   uv_udp_t *handle;
   struct sockaddr *send_addr;

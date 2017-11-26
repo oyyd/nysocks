@@ -54,7 +54,7 @@ public:
 
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent listen_cb;
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent close_cb;
-  Nan::CopyablePersistentTraits<Function>::CopyablePersistent udp_send;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent udp_send_cb;
   kcpuv_sess *sess;
   int is_freed = 0;
 };
@@ -176,7 +176,7 @@ static void closing_cb(kcpuv_sess *sess, void *data) {
                     Nan::New(binding->close_cb), argc, args);
 }
 
-static void udp_send_cb(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
+static void on_udp_send(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
                         const struct sockaddr *addr) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
   Nan::HandleScope scope;
@@ -196,8 +196,9 @@ static void udp_send_cb(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
   const int argc = 3;
   Local<Value> args[argc] = {
       Nan::NewBuffer(buf_data, buf->len).ToLocalChecked(), js_address, js_port};
+
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->udp_send), argc, args);
+                    Nan::New(binding->udp_send_cb), argc, args);
 }
 
 void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
@@ -390,8 +391,8 @@ static NAN_METHOD(BindUdpSend) {
     return;
   }
 
-  obj->udp_send = Nan::Persistent<Function>(info[1].As<Function>());
-  kcpuv_bind_udp_send(obj->GetSess(), &udp_send_cb);
+  obj->udp_send_cb = Nan::Persistent<Function>(info[1].As<Function>());
+  kcpuv_bind_udp_send(obj->GetSess(), &on_udp_send);
 }
 
 static NAN_METHOD(Close) {
