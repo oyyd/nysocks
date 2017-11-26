@@ -1,6 +1,6 @@
 import dgram from 'dgram'
 import { DEFAULT_SERVER_PORT } from './socket_manager'
-import { input } from './socket'
+import { input, bindUdpSend } from './socket'
 
 const DEFAULT_OPTIONS = {
   listenPort: DEFAULT_SERVER_PORT,
@@ -21,6 +21,10 @@ export function createRouter(_options, createASess) {
     reuseAddr: false,
   })
 
+  // NOTE: For some network environments, thouse udp sockets
+  // with different sending and receiving address/port won't
+  // work properly. For these environments we make their sending
+  // and receiving address/port same by proxy.
   routerSocket.on('message', (msg, { address, port }) => {
     const key = `${address}:${port}`
 
@@ -28,6 +32,10 @@ export function createRouter(_options, createASess) {
     if (!managerMaps[key]) {
       const sess = createASess({ address, port })
       managerMaps[key] = sess
+
+      bindUdpSend(sess, (msgToBeSend, remoteAddr, remotePort) => {
+        routerSocket.send(msgToBeSend, remotePort, remoteAddr)
+      })
     }
 
     const sess = managerMaps[key]

@@ -54,6 +54,7 @@ public:
 
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent listen_cb;
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent close_cb;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent udp_send;
   kcpuv_sess *sess;
   int is_freed = 0;
 };
@@ -135,7 +136,7 @@ void KcpuvMuxBinding::Create(const FunctionCallbackInfo<Value> &args) {
 
 // void buffer_delete_callback(char *data, void *hint) { free(data); }
 
-void on_listen_cb(kcpuv_sess *sess, char *data, int len) {
+static void on_listen_cb(kcpuv_sess *sess, char *data, int len) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
   // NOTE: Create a scope for the allocation of v8 memories
   // as we are calling a js function outside the v8
@@ -153,7 +154,7 @@ void on_listen_cb(kcpuv_sess *sess, char *data, int len) {
                     Nan::New(binding->listen_cb), argc, args);
 }
 
-void closing_cb(kcpuv_sess *sess, void *data) {
+static void closing_cb(kcpuv_sess *sess, void *data) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
 
   Nan::HandleScope scope;
@@ -173,6 +174,30 @@ void closing_cb(kcpuv_sess *sess, void *data) {
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
                     Nan::New(binding->close_cb), argc, args);
+}
+
+static void udp_send_cb(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
+                        const struct sockaddr *addr) {
+  KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
+  Nan::HandleScope scope;
+  Isolate *isolate = Isolate::GetCurrent();
+
+  char *buf_data = new char[buf->len];
+  memcpy(buf_data, buf->base, buf->len);
+
+  char address[16];
+  uv_ip4_name(reinterpret_cast<const struct sockaddr_in *>(addr), address, 16);
+  int port =
+      ntohs((reinterpret_cast<const struct sockaddr_in *>(addr))->sin_port);
+
+  Local<Value> js_address = String::NewFromUtf8(isolate, address);
+  Local<Value> js_port = Number::New(isolate, port);
+
+  const int argc = 3;
+  Local<Value> args[argc] = {
+      Nan::NewBuffer(buf_data, buf->len).ToLocalChecked(), js_address, js_port};
+  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
+                    Nan::New(binding->udp_send), argc, args);
 }
 
 void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
@@ -253,7 +278,7 @@ static NAN_METHOD(Free) {
 }
 
 static NAN_METHOD(Input) {
-  Isolate *isolate = info.GetIsolate();
+  // Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
@@ -352,6 +377,21 @@ static NAN_METHOD(BindClose) {
 
   kcpuv_sess *sess = obj->GetSess();
   kcpuv_bind_close(sess, &closing_cb);
+}
+
+static NAN_METHOD(BindUdpSend) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  if (!info[1]->IsFunction()) {
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(
+        isolate, "`BindUdpSend` expect a callback function")));
+    return;
+  }
+
+  obj->udp_send = Nan::Persistent<Function>(info[1].As<Function>());
+  kcpuv_bind_udp_send(obj->GetSess(), &udp_send_cb);
 }
 
 static NAN_METHOD(Close) {
@@ -626,6 +666,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "send", Send);
   Nan::SetMethod(target, "bindClose", BindClose);
   Nan::SetMethod(target, "bindListen", BindListen);
+  Nan::SetMethod(target, "bindUdpSend", BindUdpSend);
   Nan::SetMethod(target, "close", Close);
   Nan::SetMethod(target, "initialize", Initialize);
   Nan::SetMethod(target, "destruct", Destruct);

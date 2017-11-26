@@ -86,8 +86,15 @@ static void udp_send(kcpuv_sess *sess, char *data, int length,
                      kcpuv_dgram_cb cb, char *cus_data) {
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, length);
-  uv_udp_try_send(sess->handle, &buf, 1,
-                  (const struct sockaddr *)sess->send_addr);
+
+  if (sess->udp_send != NULL) {
+    kcpuv_udp_send udp_send = sess->udp_send;
+    udp_send(sess, &buf, 1, (const struct sockaddr *)sess->send_addr);
+  } else {
+    uv_udp_try_send(sess->handle, &buf, 1,
+                    (const struct sockaddr *)sess->send_addr);
+  }
+
   free(data);
   if (cb != NULL) {
     cb(sess, cus_data);
@@ -118,9 +125,9 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
 }
 
 // Func to output data for kcp through udp.
-// NOTE: Should call `kcpuv_init_send` with the session before udp_output
+// NOTE: Should call `kcpuv_init_send` with the session before kcp_output
 // TODO: do not allocate twice
-static int udp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
+static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   if (KCPUV_DEBUG) {
     kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
     printf("output: %d %lld\n", len, iclock64());
@@ -163,13 +170,14 @@ kcpuv_sess *kcpuv_create() {
   sess->recv_addr = NULL;
   sess->on_msg_cb = NULL;
   sess->on_close_cb = NULL;
+  sess->udp_send = NULL;
   sess->state = KCPUV_STATE_CREATED;
   sess->recv_ts = iclock();
   sess->timeout = DEFAULT_TIMEOUT;
   sess->cryptor = NULL;
 
   // set output func for kcp
-  sess->kcp->output = udp_output;
+  sess->kcp->output = kcp_output;
 
   // create link and push to the queue
   kcpuv_link *link = kcpuv_link_create(sess);
@@ -306,6 +314,11 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
 
   // release uv buf
   free(buf->base);
+}
+
+// Bind a proxy function for sending udp.
+void kcpuv_bind_udp_send(kcpuv_sess *sess, kcpuv_udp_send udp_send) {
+  sess->udp_send = udp_send;
 }
 
 // Called when uv receives a msg and pass.

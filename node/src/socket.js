@@ -75,6 +75,11 @@ export function createWithOptions(_options) {
 export const input = wrap((sess, buffer, address, port) =>
   binding.input(sess, buffer, buffer.length, address, port))
 
+// NOTE: Do not use this for the transforming of proxy data.
+export const bindUdpSend = wrap((sess, next) => {
+  binding.bindUdpSend(sess, next)
+})
+
 // TODO:
 export const destroy = wrap((sess) => {
   binding.free(sess)
