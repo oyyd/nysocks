@@ -3,11 +3,11 @@
     'target_name': 'addon',
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
-      'deps/kcp',
+      'lib/kcp',
       'src',
     ],
     'sources': [
-      'deps/kcp/ikcp.c',
+      'lib/kcp/ikcp.c',
       'src/kcpuv.c',
       'src/kcpuv_sess.c',
       'src/utils.c',

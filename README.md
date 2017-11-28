@@ -1,4 +1,4 @@
-# <img src='https://raw.githubusercontent.com/oyyd/nysocks/40e4ed4a/imgs/icon.png' height='40'> nysocks
+# nysocks
 
 Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tunnel for nodejs that focus on packet loss.
 

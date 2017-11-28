@@ -52,7 +52,7 @@ static void try_to_close_loop(uv_idle_t *idle) {
 
 void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
   EXPECT_EQ(length, 4096);
-  kcpuv_mux_conn_send(conn, "hello", 5, KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_send(conn, "hello", 5, 0);
 
   received_conns += 1;
 
@@ -113,10 +113,8 @@ TEST_F(MuxTest, transmission) {
   char *content = new char[content_len];
   memset(content, 65, content_len);
 
-  kcpuv_mux_conn_send(&mux_p1_conn_p1, content, content_len,
-                      KCPUV_MUX_CMD_PUSH);
-  kcpuv_mux_conn_send(&mux_p1_conn_p2, content, content_len,
-                      KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_send(&mux_p1_conn_p1, content, content_len, 0);
+  kcpuv_mux_conn_send(&mux_p1_conn_p2, content, content_len, 0);
   kcpuv_mux_conn_listen(&mux_p1_conn_p1, on_data_return);
 
   kcpuv_mux_bind_connection(&mux_p2, on_p2_conn);
@@ -149,15 +147,16 @@ static int get_mux_conns_count(kcpuv_mux *mux) {
   return count;
 }
 
-void close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
-  kcpuv_mux *mux = conn->mux;
-  EXPECT_EQ(get_mux_conns_count(mux), 1);
-}
+// void close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
+//   kcpuv_mux *mux = conn->mux;
+//   EXPECT_EQ(get_mux_conns_count(mux), 1);
+// }
 
 void timeout_close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
-  kcpuv_mux *mux = conn->mux;
-  EXPECT_EQ(get_mux_conns_count(mux), 0);
   kcpuv_stop_loop();
+  kcpuv_mux *mux = conn->mux;
+  kcpuv_mux_conn_free(conn, NULL);
+  EXPECT_EQ(get_mux_conns_count(mux), 0);
 }
 
 TEST_F(MuxTest, close) {
@@ -169,19 +168,18 @@ TEST_F(MuxTest, close) {
   kcpuv_mux mux;
   kcpuv_mux_init(&mux, sess_p1);
 
-  kcpuv_mux_conn sess_p1_conn_p1;
+  // kcpuv_mux_conn sess_p1_conn_p1;
   kcpuv_mux_conn sess_p1_conn_p2;
 
-  kcpuv_mux_conn_init(&mux, &sess_p1_conn_p1);
+  // kcpuv_mux_conn_init(&mux, &sess_p1_conn_p1);
   kcpuv_mux_conn_init(&mux, &sess_p1_conn_p2);
-
-  EXPECT_EQ(get_mux_conns_count(&mux), 2);
-
-  kcpuv_mux_conn_bind_close(&sess_p1_conn_p1, close_cb);
-
-  kcpuv_mux_conn_free(&sess_p1_conn_p1, NULL);
-
   sess_p1_conn_p2.timeout = 50;
+  sess_p1_conn_p2.ts = iclock() + 50;
+
+  EXPECT_EQ(get_mux_conns_count(&mux), 1);
+
+  // kcpuv_mux_conn_bind_close(&sess_p1_conn_p1, close_cb);
+  // kcpuv_mux_conn_free(&sess_p1_conn_p1, NULL);
 
   kcpuv_mux_conn_bind_close(&sess_p1_conn_p2, timeout_close_cb);
 

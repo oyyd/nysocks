@@ -31,6 +31,7 @@ extern "C" {
 #define DEFAULT_TIMEOUT 30000
 #define IP4_ADDR_LENTH 17
 #define IP6_ADDR_LENGTH 68
+#define KCPUV_MUX_CMD_CONNECT 1
 #define KCPUV_MUX_CMD_PUSH 10
 #define KCPUV_MUX_CMD_CLS 40
 // one byte for cmd,

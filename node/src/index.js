@@ -9,21 +9,33 @@ import {
   createClient as createManagerClient,
   listen,
   sendBuf,
-  close,
   createConnection,
+  close,
+  bindClose,
+  sendClose,
 } from './socket_manager'
 import { createRouter } from './router'
 import { logger } from './logger'
+
+let i = 0
 
 export function createClient(config) {
   return createManagerClient(config).then(managerClient => {
     const client = {}
     const socksServer = createSocksServer({}, (info, socket) => {
+      i += 1
       const { chunk } = info
 
       // tunnel
       const conn = createConnection(managerClient)
       sendBuf(conn, chunk)
+      conn.i = i
+
+      bindClose(conn, () => {
+        // TODO: error msg
+        socket.destroy()
+        close(conn)
+      })
 
       // bind
       listen(conn, buf => {
@@ -36,6 +48,7 @@ export function createClient(config) {
         logger.error(err.message)
       })
       socket.on('close', () => {
+        sendClose(conn)
         close(conn)
       })
     })
@@ -79,6 +92,13 @@ export function createServer(config) {
           logger.error(err.message)
         })
         socket.on('close', () => {
+          sendClose(conn)
+          close(conn)
+        })
+
+        bindClose(conn, () => {
+          // TODO: error msg
+          socket.destroy()
           close(conn)
         })
         return

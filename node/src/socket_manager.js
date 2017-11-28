@@ -7,7 +7,8 @@ import {
 import {
   createMux, createMuxConn,
   muxBindConnection, connFree, connSend, connListen,
-  // connSendClose, muxFree, connBindClose, muxBindClose,
+  connSendClose, connBindClose, connSetTimeout,
+  // muxBindClose, muxFree,
 } from './mux'
 import { getIP } from './utils'
 
@@ -77,6 +78,7 @@ export function initClientMasterSocket(mux) {
     let data = Buffer.allocUnsafe(0)
 
     const conn = createMuxConn(mux)
+    connSetTimeout(conn, 0)
     connListen(conn, (buf) => {
       data = Buffer.concat([data, buf])
 
@@ -85,6 +87,10 @@ export function initClientMasterSocket(mux) {
       if (res) {
         resolve(res)
       }
+    })
+
+    connBindClose(conn, () => {
+      console.log('client master closed')
     })
 
     // sess.event.on('close', (errorMsg) => {
@@ -149,7 +155,6 @@ export function createClient(_options) {
   const masterSocket = createWithOptions(options.kcp)
   initCryptor(masterSocket, options.password)
   socketListen(masterSocket, 0)
-  // console.log('client_port', getPort(masterSocket))
 
   const masterMux = createMux({
     sess: masterSocket,
@@ -244,6 +249,7 @@ export function createManager(_options, onConnection) {
   // TODO:
   muxBindConnection(masterMux, (conn) => {
     connListen(conn, (buf) => {
+      connSetTimeout(conn, 0)
       const shouldReply = checkHandshakeMsg(buf)
 
       if (!shouldReply) {
@@ -258,6 +264,10 @@ export function createManager(_options, onConnection) {
       conns.push(connInfo)
       sendJson(conn, getConnectionPorts(sockets))
     })
+
+    connBindClose(conn, () => {
+      console.log('server master closed')
+    })
   })
 
   return manager
@@ -268,6 +278,10 @@ export const sendBuf = connSend
 export const listen = connListen
 
 export const close = connFree
+
+export const bindClose = connBindClose
+
+export const sendClose = connSendClose
 
 export function bindConnection(manager, next) {
   manager.onConnection = next

@@ -1,7 +1,18 @@
-import { bindUdpSend } from '../socket'
-import { connSend, createMux, createMuxConn, muxFree } from '../mux'
+import { startKcpuv, stopKcpuv, setAddr, getPort, bindUdpSend } from '../socket'
+import { connListen, connBindClose, muxBindConnection, connSendClose,
+  connSend, createMux, createMuxConn, muxFree, connFree } from '../mux'
 
 describe('mux', () => {
+  const ADDR = '0.0.0.0'
+
+  beforeEach(() => {
+    startKcpuv()
+  })
+
+  afterEach(() => {
+    stopKcpuv()
+  })
+
   describe('createMux', () => {
     it('should create a wrapped mux object', () => {
       const obj = createMux({
@@ -12,6 +23,39 @@ describe('mux', () => {
       expect(obj).toBeTruthy()
 
       muxFree(obj)
+    })
+  })
+
+  describe('connSendClose', () => {
+    it('should send a close msg to the other side', (done) => {
+      const mux1 = createMux({
+        password: 'hello',
+        port: 0,
+      })
+      const mux2 = createMux({
+        password: 'hello',
+        port: 0,
+      })
+      const port1 = getPort(mux1.sess)
+      const port2 = getPort(mux2.sess)
+      setAddr(mux1.sess, ADDR, port2)
+      setAddr(mux2.sess, ADDR, port1)
+
+      const conn1 = createMuxConn(mux1)
+
+      muxBindConnection(mux2, (conn2) => {
+        connListen(conn2, (msg) => {
+          expect(msg.toString('utf8')).toBe('hello')
+        })
+        connBindClose(conn2, () => {
+          connFree(conn2)
+          done()
+        })
+      })
+
+      connSend(conn1, Buffer.from('hello'))
+      connSendClose(conn1)
+      connFree(conn1)
     })
   })
 

@@ -18,4 +18,4 @@ export function record(key, value) {
 
 setInterval(() => {
   monitorLogger.info(JSON.stringify(statistic))
-}, 60 * 1000)
+}, 5 * 1000)

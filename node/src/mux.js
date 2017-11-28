@@ -81,6 +81,7 @@ export const muxBindClose = muxSuite.wrap((mux, onClose) => {
 export function wrapMuxConn(conn) {
   // eslint-disable-next-line
   conn._conn = true
+  conn.isClosed = false
   record('conn', get('conn') + 1)
 }
 
@@ -109,6 +110,10 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
 })
 
 export const connFree = connSuite.wrap((conn) => {
+  if (conn.isClosed) {
+    return
+  }
+  conn.isClosed = true
   binding.connFree(conn)
   record('conn', get('conn') - 1)
 })
@@ -128,6 +133,14 @@ export const connListen = connSuite.wrap((conn, onMessage) => {
 export const connBindClose = connSuite.wrap((conn, onClose) => {
   binding.connBindClose(conn, onClose)
 })
+
+export const connSetTimeout = connSuite.wrap((conn, timeout) => {
+  if (typeof timeout !== 'number' && timeout > 0) {
+    throw new Error('invalid timeout')
+  }
+  binding.connSetTimeout(conn, timeout)
+})
+
 
 // if (module === require.main) {
 //   (() => {

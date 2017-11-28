@@ -33,13 +33,26 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
   buf[6] = (length)&0xFF;
 }
 
+static void conn_emit_close(kcpuv_mux_conn *conn) {
+  // TODO: when get a cmd to close a closed conn
+  conn_on_close_cb cb = conn->on_close_cb;
+  conn->recv_state = 2;
+
+  if (conn->on_close_cb == NULL) {
+    fprintf(stderr, "%s\n", "expect 'on_close_cb' to be specified in the conn");
+    abort();
+  }
+
+  cb(conn, NULL);
+}
+
 // TODO: drop invalid msg
 static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
   int cmd;
   int length;
   unsigned int id = kcpuv__mux_decode((const char *)data, &cmd, &length);
   kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
-  kcpuv_mux_conn *conn;
+  kcpuv_mux_conn *conn = NULL;
 
   // find conn
   kcpuv_link *link = mux->conns.next;
@@ -50,33 +63,57 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
 
   if (link != NULL) {
     conn = (kcpuv_mux_conn *)link->node;
-  } else {
-    // create new one
-    conn = malloc(sizeof(kcpuv_mux_conn));
-    kcpuv_mux_conn_init(mux, conn);
+  }
 
-    if (mux->on_connection_cb != NULL) {
-      mux_on_connection_cb cb = mux->on_connection_cb;
-      cb(conn);
+  if (cmd == KCPUV_MUX_CMD_CONNECT) {
+    // when the conn is connected
+    if (conn != NULL) {
+      if (conn->recv_state != 0) {
+        // NOTE: drop invalid conn
+        fprintf(stderr, "%s: %d\n", "receive invalid CONNECT cmd, state",
+                conn->recv_state);
+        return;
+      }
+    } else {
+      // create new one
+      conn = malloc(sizeof(kcpuv_mux_conn));
+      kcpuv_mux_conn_init(mux, conn);
+
+      if (mux->on_connection_cb != NULL) {
+        mux_on_connection_cb cb = mux->on_connection_cb;
+        cb(conn);
+      }
     }
   }
 
+  // NOTE: happend when the conn has been freed
+  if (conn == NULL || conn->recv_state == 2) {
+    if (KCPUV_DEBUG) {
+      fprintf(stderr, "%s\n", "DROP");
+    }
+    return;
+  }
+
+  // ready for data
+  conn->recv_state = 1;
   // update ts
   conn->ts = sess->recv_ts;
 
   // handle cmd
-  if (cmd == KCPUV_MUX_CMD_PUSH) {
+  if (cmd == KCPUV_MUX_CMD_PUSH || cmd == KCPUV_MUX_CMD_CONNECT) {
     if (conn->on_msg_cb != NULL) {
       conn_on_msg_cb cb = conn->on_msg_cb;
       cb(conn, data + KCPUV_MUX_PROTOCOL_OVERHEAD,
          len - KCPUV_MUX_PROTOCOL_OVERHEAD);
+    } else {
+      // TODO: there would be conns are not with on_msg_cb unexpectly
+      fprintf(stderr, "%s\n", "NO_CB");
+      conn_emit_close(conn);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
-    // TODO: when get a cmd to close a closed conn
-    conn_on_close_cb cb = conn->on_close_cb;
-    cb(conn, NULL);
+    conn_emit_close(conn);
   } else {
-    // drop
+    // drop invalid cmd
   }
 }
 
@@ -124,12 +161,16 @@ void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb cb) {
 
 void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   // init conn data
+  // TODO: should use the id from the remote
+  // side when connecting
   conn->id = mux->count++;
-  conn->timeout = DEFAULT_TIMEOUT;
-  conn->ts = 0;
+  conn->timeout = MUX_CONN_DEFAULT_TIMEOUT;
+  conn->ts = iclock();
   conn->mux = mux;
   conn->on_msg_cb = NULL;
   conn->on_close_cb = NULL;
+  conn->recv_state = 0;
+  conn->send_state = 0;
 
   // add to mux conns
   kcpuv_link *link = kcpuv_link_create(conn);
@@ -145,10 +186,10 @@ int kcpuv_mux_conn_free(kcpuv_mux_conn *conn, const char *error_msg) {
     return -1;
   }
 
-  if (conn->on_close_cb != NULL) {
-    conn_on_close_cb cb = (conn_on_close_cb *)conn->on_close_cb;
-    cb(conn, error_msg);
-  }
+  // if (conn->on_close_cb != NULL) {
+  //   conn_on_close_cb cb = (conn_on_close_cb *)conn->on_close_cb;
+  //   cb(conn, error_msg);
+  // }
 
   free(ptr);
   return 0;
@@ -162,6 +203,7 @@ void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *conn, conn_on_close_cb cb) {
   conn->on_close_cb = cb;
 }
 
+// NOTE: Conns don't need complex mechannisms to close.
 void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
                          int cmd) {
   kcpuv_mux *mux = conn->mux;
@@ -169,13 +211,17 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
 
   unsigned long s = 0;
 
-  // push by default
-  if (!cmd) {
-    cmd = KCPUV_MUX_CMD_PUSH;
-  }
-
   // send cmd with empty content
   if (len == 0) {
+    if (!cmd) {
+      if (conn->send_state == 0) {
+        conn->send_state = 1;
+        cmd = KCPUV_MUX_CMD_CONNECT;
+      } else {
+        cmd = KCPUV_MUX_CMD_PUSH;
+      }
+    }
+
     unsigned int total_len = KCPUV_MUX_PROTOCOL_OVERHEAD;
     char *encoded_content = malloc(sizeof(total_len));
     kcpuv__mux_encode(encoded_content, conn->id, cmd, len);
@@ -186,6 +232,15 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
   }
 
   while (s < len) {
+    if (!cmd) {
+      if (conn->send_state == 0) {
+        conn->send_state = 1;
+        cmd = KCPUV_MUX_CMD_CONNECT;
+      } else {
+        cmd = KCPUV_MUX_CMD_PUSH;
+      }
+    }
+
     unsigned long e = s + MAX_MUX_CONTENT_LEN;
 
     if (e > len) {
@@ -224,8 +279,11 @@ static void kcpuv_mux_check_timeout(kcpuv_mux *mux) {
       continue;
     }
 
+    // fprintf(stderr, "%ld %ld %ld\n", conn->ts, conn->timeout, current);
+
     if (conn->ts + conn->timeout <= current) {
-      kcpuv_mux_conn_free(conn, "timeout");
+      conn_emit_close(conn);
+      // kcpuv_mux_conn_free(conn, "timeout");
     }
 
     link = link->next;
@@ -240,10 +298,14 @@ void kcpuv__mux_updater(uv_timer_t *timer) {
     // check conns timeout
     // TODO: depending on kcpuv_sess_list may cause
     // some mux without sess to be ignored
+    if (kcpuv_get_sess_list() == NULL) {
+      return;
+    }
+
     kcpuv_link *link = kcpuv_get_sess_list()->list;
     while (link->next != NULL) {
       link = link->next;
-      kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->data);
+      kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->mux);
       kcpuv_mux_check_timeout(mux);
     }
   }

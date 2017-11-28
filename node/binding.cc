@@ -548,8 +548,7 @@ static NAN_METHOD(ConnSend) {
   unsigned char *buf = (unsigned char *)node::Buffer::Data(info[1]->ToObject());
   unsigned int size = info[2]->Uint32Value();
 
-  kcpuv_mux_conn_send(conn_obj->conn, reinterpret_cast<char *>(buf), size,
-                      KCPUV_MUX_CMD_PUSH);
+  kcpuv_mux_conn_send(conn_obj->conn, reinterpret_cast<char *>(buf), size, 0);
 }
 
 static NAN_METHOD(ConnSendClose) {
@@ -595,7 +594,8 @@ static NAN_METHOD(ConnListen) {
 
 static void conn_binding_on_close_cb(kcpuv_mux_conn *conn,
                                      const char *error_msg) {
-  KcpuvMuxBinding *conn_obj = static_cast<KcpuvMuxBinding *>(conn->data);
+  KcpuvMuxConnBinding *conn_obj =
+      static_cast<KcpuvMuxConnBinding *>(conn->data);
   Nan::HandleScope scope;
   Isolate *isolate = Isolate::GetCurrent();
 
@@ -613,8 +613,6 @@ static void conn_binding_on_close_cb(kcpuv_mux_conn *conn,
 }
 
 static NAN_METHOD(ConnBindClose) {
-  //
-  // void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *, conn_on_close_cb);
   Isolate *isolate = info.GetIsolate();
   KcpuvMuxConnBinding *conn_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
@@ -627,6 +625,14 @@ static NAN_METHOD(ConnBindClose) {
 
   conn_obj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
   kcpuv_mux_conn_bind_close(conn_obj->conn, conn_binding_on_close_cb);
+}
+
+static NAN_METHOD(ConnSetTimeout) {
+  KcpuvMuxConnBinding *conn_obj =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
+
+  unsigned int timeout = info[1]->Uint32Value();
+  conn_obj->conn->timeout = timeout;
 }
 
 static NAN_MODULE_INIT(Init) {
@@ -687,6 +693,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "connSendClose", ConnSendClose);
   Nan::SetMethod(target, "connListen", ConnListen);
   Nan::SetMethod(target, "connBindClose", ConnBindClose);
+  Nan::SetMethod(target, "connSetTimeout", ConnSetTimeout);
 }
 
 NODE_MODULE(binding, Init)

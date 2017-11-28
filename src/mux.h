@@ -29,6 +29,8 @@ typedef struct KCPUV_MUX {
 typedef struct KCPUV_MUX_CONN {
   void *data;
   kcpuv_mux *mux;
+  short send_state;
+  short recv_state;
   unsigned int id;
   unsigned long timeout;
   IUINT32 ts;

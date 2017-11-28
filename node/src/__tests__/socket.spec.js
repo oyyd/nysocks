@@ -1,13 +1,19 @@
 import dgram from 'dgram'
 import {
-  startKcpuv, create, send, bindListener,
+  startKcpuv, stopKcpuv, create, send, bindListener,
   input, getPort, listen, initCryptor, setAddr,
   destroy, bindUdpSend,
 } from '../socket'
 
-startKcpuv()
-
 describe('socket', () => {
+  beforeEach(() => {
+    startKcpuv()
+  })
+
+  afterEach(() => {
+    stopKcpuv()
+  })
+
   it('should send some data from a to b', (done) => {
     const addr = '0.0.0.0'
     const password = 'hello'
