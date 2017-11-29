@@ -9,7 +9,7 @@ import { createManager } from './socket_manager'
 
 const DEFAULT_OPTIONS = {
   address: '127.0.0.1',
-  port: 1081,
+  port: 1080,
   targetAddress: '127.0.0.1',
   targetPort: 8022,
 }

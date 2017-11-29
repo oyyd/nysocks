@@ -12,6 +12,8 @@ import {
 } from './mux'
 import { getIP } from './utils'
 
+const TOTAL_TIMEOUT = 2 * 60 * 1000
+const BEATING_INTERVAL = TOTAL_TIMEOUT / 4
 export const DEFAULT_SERVER_PORT = 20000
 
 const DEFAULT_OPTIONS = {
@@ -20,6 +22,7 @@ const DEFAULT_OPTIONS = {
   socketAmount: 100,
 }
 
+const BEATING_MSG = '\\\\beat'
 const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
 // const MSG_END_SIGNAL = '\\\\end'
@@ -90,6 +93,7 @@ export function initClientMasterSocket(mux) {
     })
 
     connBindClose(conn, () => {
+      // eslint-disable-next-line
       console.log('client master closed')
     })
 
@@ -266,6 +270,7 @@ export function createManager(_options, onConnection) {
     })
 
     connBindClose(conn, () => {
+      // eslint-disable-next-line
       console.log('server master closed')
     })
   })

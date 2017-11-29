@@ -3,14 +3,13 @@ import winston from 'winston'
 import fecha from 'fecha'
 
 const { format } = winston
-
 const kcpuvFormat = format.combine(
   format.timestamp(),
   format.printf(info =>
     `${info.level} ${fecha.format(new Date(info.timestamp), 'YYYY-MM-DD HH:mm:ss')}: ${info.message}`),
 )
 
-export const logger = winston.createLogger({
+let _logger = winston.createLogger({
   level: 'info',
   format: kcpuvFormat,
   transports: [
@@ -38,6 +37,30 @@ export const monitorLogger = winston.createLogger({
   ],
 })
 
+export const logger = {};
+
+([
+  'debug',
+  'info',
+  'error',
+  'warning',
+]).forEach(level => {
+  Object.defineProperty(logger, level, {
+    get: () => _logger[level].bind(_logger),
+  })
+})
+
+export function changeLogger(logPath) {
+  _logger = winston.createLogger({
+    level: 'info',
+    format: format.simple(),
+    transports: [
+      new winston.transports.File({
+        filename: path.resolve(process.cwd(), logPath),
+      }),
+    ],
+  })
+}
 
 function logMemory() {
   memoryLogger.info(JSON.stringify(process.memoryUsage()))

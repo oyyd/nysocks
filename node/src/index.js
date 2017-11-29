@@ -22,20 +22,21 @@ let i = 0
 export function createClient(config) {
   return createManagerClient(config).then(managerClient => {
     const client = {}
-    const socksServer = createSocksServer({}, (info, socket) => {
+    const socksServer = createSocksServer(config.SOCKS, (info, socket) => {
       i += 1
       const { chunk } = info
 
       // tunnel
       const conn = createConnection(managerClient)
-      sendBuf(conn, chunk)
-      conn.i = i
 
       bindClose(conn, () => {
         // TODO: error msg
         socket.destroy()
         close(conn)
       })
+
+      sendBuf(conn, chunk)
+      conn.i = i
 
       // bind
       listen(conn, buf => {
@@ -93,12 +94,6 @@ export function createServer(config) {
         })
         socket.on('close', () => {
           sendClose(conn)
-          close(conn)
-        })
-
-        bindClose(conn, () => {
-          // TODO: error msg
-          socket.destroy()
           close(conn)
         })
         return

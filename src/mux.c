@@ -40,7 +40,9 @@ static void conn_emit_close(kcpuv_mux_conn *conn) {
 
   if (conn->on_close_cb == NULL) {
     fprintf(stderr, "%s\n", "expect 'on_close_cb' to be specified in the conn");
-    abort();
+    // abort();
+    kcpuv_mux_conn_free(conn, NULL);
+    return;
   }
 
   cb(conn, NULL);

@@ -18,6 +18,5 @@ node_modules
 node_lib
 node/lib/**/*
 WORK.md
-memory.log
-monitor.log
 config.json
+*.log
