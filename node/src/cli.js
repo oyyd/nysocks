@@ -5,6 +5,15 @@ import { createPACServer } from 'pac-server'
 import { createClient, createServerRouter } from './index'
 import { MODES } from './modes'
 import { changeLogger } from './logger'
+import * as pm from './pm'
+
+const DEFAULT_SOCKS_CONFIG = {
+  port: 1080,
+}
+
+const DEFAULT_PAC_SERVER = {
+  pacServerPort: 8090,
+}
 
 function getConfigFile(configFile) {
   if (!configFile) {
@@ -36,10 +45,19 @@ function getMode(mode) {
   return MODES[mode]
 }
 
+function checkRequiredConfig(config) {
+  if (!config.password) {
+    throw new Error('you have to specify a valid "password"')
+  }
+}
+
 function parseConfig(argv) {
-  const configJsonFromFile = getConfigFile(formatConfig(argv.config))
+  const configJsonFromFile = getConfigFile(formatConfig(argv.config)) || {}
   const modeKcpOptions = getMode(argv.mode ? argv.mode : configJsonFromFile.mode)
-  let config = {}
+  let config = {
+    pac: DEFAULT_PAC_SERVER,
+    SOCKS: DEFAULT_SOCKS_CONFIG,
+  }
   config.kcp = {}
   config.kcp = Object.assign(config.kcp, modeKcpOptions)
   config = Object.assign(config, configJsonFromFile, argv)
@@ -51,10 +69,26 @@ function parseConfig(argv) {
   return config
 }
 
+function runAsDaemon(config) {
+  const { daemon } = config
+
+  if (!Object.hasOwnProperty.apply(pm, [daemon])) {
+    throw new Error('invalid daemon options')
+  }
+
+  const argv = String(process.argv.slice(2).join(' ')).replace(/-d\s+[^\s]+/, '')
+
+  pm[daemon](argv)
+}
+
 export default function main() {
   // eslint-disable-next-line
   yargs
     .detectLocale(false)
+    .option('daemon', {
+      alias: 'd',
+      describe: 'Run with a daemon(pm2): start, stop, restart',
+    })
     .option('mode', {
       alias: 'm',
       describe: 'Like kcptun: normal, fast, fast2, fast3',
@@ -64,18 +98,34 @@ export default function main() {
       describe: 'The path of a json file that describe your configuration',
     })
     .options('log_path', {
-      describe: 'The file path for logging. If not set, will log to the console.',
+      describe: 'The file path for logging. If not set, will log to the console',
     })
     .command({
       command: 'server',
       desc: 'Start a tunnel server.',
-      handler: (argv) => createServerRouter(parseConfig(argv)),
+      handler: (argv) => {
+        const config = parseConfig(argv)
+
+        if (config.daemon) {
+          runAsDaemon(config)
+          return
+        }
+
+        checkRequiredConfig(config)
+        createServerRouter(config)
+      },
     })
     .command({
       command: 'client',
       desc: 'Start a tunnel client.',
       handler: (argv) => {
         const config = parseConfig(argv)
+        if (config.daemon) {
+          runAsDaemon(config)
+          return
+        }
+
+        checkRequiredConfig(config)
         createPACServer(Object.assign({ port: config.SOCKS.port }, config.pac))
         createClient(config)
       },

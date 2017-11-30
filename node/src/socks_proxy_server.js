@@ -5,7 +5,6 @@
 import net from 'net'
 import socks from 'socksv5-kcpuv'
 import { logger } from './logger'
-import { createManager } from './socket_manager'
 
 const DEFAULT_OPTIONS = {
   address: '127.0.0.1',

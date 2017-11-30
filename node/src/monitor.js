@@ -16,6 +16,8 @@ export function record(key, value) {
   statistic[key] = value
 }
 
-setInterval(() => {
-  monitorLogger.info(JSON.stringify(statistic))
-}, 5 * 1000)
+export function logConnections() {
+  setInterval(() => {
+    monitorLogger.info(JSON.stringify(statistic))
+  }, 5 * 1000)
+}

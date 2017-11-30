@@ -62,10 +62,12 @@ export function changeLogger(logPath) {
   })
 }
 
-function logMemory() {
+function memoryLogOnce() {
   memoryLogger.info(JSON.stringify(process.memoryUsage()))
 }
 
-setInterval(() => {
-  logMemory()
-}, 60 * 1000)
+export function logMemory() {
+  setInterval(() => {
+    memoryLogOnce()
+  }, 60 * 1000)
+}

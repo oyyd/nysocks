@@ -20,13 +20,6 @@ const DEFAULT_KCP_OPTIONS = {
 binding.useDefaultLoop(true)
 binding.initialize()
 
-// const {
-//   create, free,
-//   listen, stopListen, initSend, send, bindClose, close,
-//   initialize, destruct,
-//   startLoop, destroyLoop,
-// } = binding
-
 export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
