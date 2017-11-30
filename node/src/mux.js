@@ -110,9 +110,9 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
 })
 
 export const connFree = connSuite.wrap((conn) => {
-  if (conn.isClosed) {
-    return
-  }
+  // if (conn.isClosed) {
+  //   return
+  // }
   conn.isClosed = true
   binding.connFree(conn)
   record('conn', get('conn') - 1)

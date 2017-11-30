@@ -4,7 +4,8 @@ import yargs from 'yargs'
 import { createPACServer } from 'pac-server'
 import { createClient, createServerRouter } from './index'
 import { MODES } from './modes'
-import { changeLogger } from './logger'
+import { changeLogger, logMemory } from './logger'
+import { logConnections } from './monitor'
 import * as pm from './pm'
 
 const DEFAULT_SOCKS_CONFIG = {
@@ -49,6 +50,14 @@ function checkRequiredConfig(config) {
   if (!config.password) {
     throw new Error('you have to specify a valid "password"')
   }
+
+  if (config.log_memory) {
+    logMemory()
+  }
+
+  if (config.log_conn) {
+    logConnections()
+  }
 }
 
 function parseConfig(argv) {
@@ -69,7 +78,7 @@ function parseConfig(argv) {
   return config
 }
 
-function runAsDaemon(config) {
+function runAsDaemon(config, type) {
   const { daemon } = config
 
   if (!Object.hasOwnProperty.apply(pm, [daemon])) {
@@ -78,7 +87,7 @@ function runAsDaemon(config) {
 
   const argv = String(process.argv.slice(2).join(' ')).replace(/-d\s+[^\s]+/, '')
 
-  pm[daemon](argv)
+  pm[daemon](argv, type)
 }
 
 export default function main() {
@@ -100,6 +109,12 @@ export default function main() {
     .options('log_path', {
       describe: 'The file path for logging. If not set, will log to the console',
     })
+    .options('log_memory', {
+      describe: 'Log memory info',
+    })
+    .options('log_conn', {
+      describe: 'Log connections info',
+    })
     .command({
       command: 'server',
       desc: 'Start a tunnel server.',
@@ -107,7 +122,7 @@ export default function main() {
         const config = parseConfig(argv)
 
         if (config.daemon) {
-          runAsDaemon(config)
+          runAsDaemon(config, 'server')
           return
         }
 
@@ -121,7 +136,7 @@ export default function main() {
       handler: (argv) => {
         const config = parseConfig(argv)
         if (config.daemon) {
-          runAsDaemon(config)
+          runAsDaemon(config, 'client')
           return
         }
 

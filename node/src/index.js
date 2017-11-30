@@ -96,6 +96,11 @@ export function createServer(config) {
           sendClose(conn)
           close(conn)
         })
+        bindClose(conn, () => {
+          // TODO: error msg
+          socket.destroy()
+          close(conn)
+        })
         return
       }
 

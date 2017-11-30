@@ -36,11 +36,11 @@ function handleError(err) {
   })
 }
 
-function getPM2Config(argv) {
+function getPM2Config(argv, type) {
   return connect().then(() => {
     const filePath = path.resolve(__dirname, '../../bin/nysocks')
     const pm2Config = {
-      name: 'nysocks',
+      name: `nysocks:${type}`,
       script: filePath,
       exec_mode: 'fork',
       instances: 1,
@@ -56,8 +56,8 @@ function getPM2Config(argv) {
   })
 }
 
-function _start(argv) {
-  return getPM2Config(argv)
+function _start(argv, type) {
+  return getPM2Config(argv, type)
     .then(({ pm2Config }) => new Promise(resolve => {
       pm2.start(pm2Config, (err, apps) => {
         if (err) {
@@ -92,10 +92,10 @@ function getRunningInfo(name) {
   })
 }
 
-function _stop(argv) {
+function _stop(argv, type) {
   let config = null
 
-  return getPM2Config(argv)
+  return getPM2Config(argv, type)
     .then(conf => {
       config = conf
       const { name } = config.pm2Config

@@ -1,7 +1,7 @@
 import dns from 'dns'
 import ip from 'ip'
 
-export const debug = true
+export const debug = false
 
 if (debug) {
   // eslint-disable-next-line
