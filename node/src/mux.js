@@ -78,8 +78,13 @@ export const muxBindClose = muxSuite.wrap((mux, onClose) => {
   binding.muxBindClose(mux, onClose)
 })
 
+let id = 0
+
 export function wrapMuxConn(conn) {
   // eslint-disable-next-line
+  conn.id = id++
+  console.log('create', conn.id)
+
   conn._conn = true
   conn.isClosed = false
   record('conn', get('conn') + 1)
@@ -110,9 +115,10 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
 })
 
 export const connFree = connSuite.wrap((conn) => {
-  // if (conn.isClosed) {
-  //   return
-  // }
+  if (conn.isClosed) {
+    return
+  }
+  console.log('free', conn.id)
   conn.isClosed = true
   binding.connFree(conn)
   record('conn', get('conn') - 1)
@@ -131,6 +137,7 @@ export const connListen = connSuite.wrap((conn, onMessage) => {
 })
 
 export const connBindClose = connSuite.wrap((conn, onClose) => {
+  console.log('bind_close', conn.id)
   binding.connBindClose(conn, onClose)
 })
 

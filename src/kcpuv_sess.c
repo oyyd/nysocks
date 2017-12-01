@@ -426,9 +426,11 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     int size;
     kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
 
-    if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
-      kcpuv_close(sess, 1, "timeout");
-      continue;
+    if (KCPUV_SESS_TIMEOUT) {
+      if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
+        kcpuv_close(sess, 1, "timeout");
+        continue;
+      }
     }
 
     IUINT32 time_to_update = ikcp_check(sess->kcp, now);

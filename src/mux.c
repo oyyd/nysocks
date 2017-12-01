@@ -84,6 +84,8 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
       if (mux->on_connection_cb != NULL) {
         mux_on_connection_cb cb = mux->on_connection_cb;
         cb(conn);
+      } else {
+        fprintf(stderr, "%s\n", "'on_connection_cb' is not specified");
       }
     }
   }
