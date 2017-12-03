@@ -1,18 +1,22 @@
 import {
   getPort, createWithOptions, close as sessClose,
-  startKcpuv, listen as socketListen, setAddr,
-  initCryptor,
+  listen as socketListen, setAddr,
+  initCryptor, markFree, stopListen,
   // bindListener, send,
+  startKcpuv,
 } from './socket'
 import {
   createMux, createMuxConn,
   muxBindConnection, connFree, connSend, connListen,
   connSendClose, connBindClose, connSetTimeout,
-  // muxBindClose, muxFree,
+  muxFree,
 } from './mux'
 import { getIP } from './utils'
 
+export { startKcpuv, stopKcpuv } from './socket'
+
 const TOTAL_TIMEOUT = 2 * 60 * 1000
+// const TOTAL_TIMEOUT = 12 * 1000
 const BEATING_INTERVAL = TOTAL_TIMEOUT / 4
 export const DEFAULT_SERVER_PORT = 20000
 
@@ -25,24 +29,6 @@ const DEFAULT_OPTIONS = {
 const BEATING_MSG = '\\\\beat'
 const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
-// const MSG_END_SIGNAL = '\\\\end'
-
-let kcpuvStarted = false
-
-function start() {
-  if (!kcpuvStarted) {
-    kcpuvStarted = true
-    startKcpuv()
-  }
-}
-
-// function checkMsgEnd(pre, cur) {
-//   const next = Buffer.concat([pre, cur])
-//   const isEnd = next.slice(0, MSG_END_SIGNAL.length)
-//     .toString('utf8') === MSG_END_SIGNAL
-//
-//   return [next, isEnd]
-// }
 
 function sendJson(conn, jsonMsg) {
   const content = Buffer.from(`${JSON.stringify(jsonMsg)}${CONVERSATION_END_CHAR}`)
@@ -75,6 +61,54 @@ export function checkJSONMsg(buf) {
   return msg
 }
 
+function initBeat(conn, next) {
+  if (typeof next !== 'function') {
+    throw new Error('expect next to be a function')
+  }
+
+  let timeoutTimerID = null
+  let intervalID = null
+
+  const resetTimeout = () => {
+    clearTimeout(timeoutTimerID)
+    timeoutTimerID = setTimeout(() => {
+      // console.log('timeout')
+      clearInterval(intervalID)
+      next()
+    }, TOTAL_TIMEOUT)
+  }
+
+  connListen(conn, (buf) => {
+    // console.log(buf.toString('utf8'))
+    if (buf.toString('utf8') === BEATING_MSG) {
+      resetTimeout()
+    }
+  })
+
+  resetTimeout()
+  intervalID = setInterval(() => {
+    connSend(conn, Buffer.from(BEATING_MSG))
+  }, BEATING_INTERVAL)
+}
+
+
+export function freeManager(manager) {
+  const { conns, masterMux, masterSocket } = manager
+
+  if (Array.isArray(conns)) {
+    conns.forEach((conn) => {
+      const { mux, socket } = conn
+      muxFree(mux)
+      stopListen(socket)
+      markFree(socket)
+    })
+  }
+
+  muxFree(masterMux)
+  stopListen(masterSocket)
+  markFree(masterSocket)
+}
+
 export function initClientMasterSocket(mux) {
   return new Promise((resolve) => {
     const msg = Buffer.from(CONVERSATION_START_CHAR)
@@ -88,7 +122,7 @@ export function initClientMasterSocket(mux) {
       const res = checkJSONMsg(data)
 
       if (res) {
-        resolve(res)
+        resolve([conn, res])
       }
     })
 
@@ -139,15 +173,11 @@ export function initClientConns(options, client, ipAddr) {
     conns.push(info)
   })
 
-  return Object.assign({}, client, {
-    conns,
-  })
+  return conns
 }
 
 // TODO: throw when failed to connect
-export function createClient(_options) {
-  start()
-
+export function createClient(_options, onClose) {
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverAddr, serverPort } = options
   const client = {
@@ -173,12 +203,26 @@ export function createClient(_options) {
       setAddr(masterSocket, ipAddr, serverPort)
       return initClientMasterSocket(masterMux)
     })
-    .then((ports) => {
+    .then(([conn, ports]) => {
+      // TODO:
+      initBeat(conn, () => {
+        // on_close
+        freeManager(client)
+
+        if (typeof onClose === 'function') {
+          onClose()
+        }
+      })
+
       client.ports = ports
       client.state = 1
       return client
     })
-    .then(c => initClientConns(options, c, ipAddr))
+    .then(c => {
+      const conns = initClientConns(options, c, ipAddr)
+      client.conns = conns
+      return client
+    })
 }
 
 export function closeClient(client) {
@@ -229,14 +273,11 @@ function createPassiveSockets(manager, options) {
   return sockets
 }
 
-export function createManager(_options, onConnection) {
-  start()
-
+export function createManager(_options, onConnection, onClose) {
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverPort } = options
-  const conns = []
   const manager = {
-    conns,
+    conns: null,
     onConnection,
   }
 
@@ -260,13 +301,18 @@ export function createManager(_options, onConnection) {
         return
       }
 
-      const sockets = createPassiveSockets(manager, options)
-      const connInfo = {
-        sockets,
-      }
+      const conns = createPassiveSockets(manager, options)
+      manager.conns = conns
 
-      conns.push(connInfo)
-      sendJson(conn, getConnectionPorts(sockets))
+      sendJson(conn, getConnectionPorts(conns))
+
+      initBeat(conn, () => {
+        freeManager(manager)
+
+        if (typeof onClose === 'function') {
+          onClose()
+        }
+      })
     })
 
     connBindClose(conn, () => {
@@ -306,25 +352,30 @@ export function createConnection(client) {
   return conn
 }
 
-// if (module === require.main) {
-//   const message = Buffer.alloc(4 * 1024 * 1024)
-//
-//   const manager = createManager({ socketAmount: 2 }, (conn) => {
-//     listen(conn, (buf) => {
-//       console.log('manager received:', buf.length)
-//       sendBuf(conn, Buffer.from('I have received'))
-//     })
-//   })
-//
-//   createClient(null).then(client => {
-//     const conn = createConnection(client)
-//
-//     listen(conn, (buf) => {
-//       console.log('client:', buf.toString('utf8'))
-//     })
-//
-//     sendBuf(conn, message)
-//   }).catch(err => {
-//     console.error(err)
-//   })
-// }
+if (module === require.main) {
+  startKcpuv()
+
+  const serverAddr = '0.0.0.0'
+  const password = 'hello'
+  const serverPort = 20020
+  const socketAmount = 1
+
+  const manager = createManager({
+    password,
+    serverAddr,
+    serverPort,
+    socketAmount,
+  }, () => {})
+
+  createClient({
+    password,
+    serverAddr,
+    serverPort,
+    socketAmount,
+  }).then(client => {
+    // console.log('client', client)
+    console.log('client', client)
+    freeManager(client)
+    freeManager(manager)
+  })
+}

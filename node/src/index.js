@@ -13,17 +13,34 @@ import {
   close,
   bindClose,
   sendClose,
+  startKcpuv,
+  stopKcpuv,
 } from './socket_manager'
 import { createRouter } from './router'
 import { logger } from './logger'
 
-let i = 0
+let kcpuvStarted = false
 
-export function createClient(config) {
-  return createManagerClient(config).then(managerClient => {
+function start() {
+  if (kcpuvStarted) {
+    return
+  }
+
+  kcpuvStarted = true
+  startKcpuv()
+}
+
+export function createClient(config, _onClose) {
+  start()
+
+  const onClose = () => {
+    stopKcpuv()
+    _onClose()
+  }
+
+  return createManagerClient(config, onClose).then(managerClient => {
     const client = {}
     const socksServer = createSocksServer(config.SOCKS, (info, socket) => {
-      i += 1
       const { chunk } = info
 
       // tunnel
@@ -36,7 +53,6 @@ export function createClient(config) {
       })
 
       sendBuf(conn, chunk)
-      conn.i = i
 
       // bind
       listen(conn, buf => {
@@ -60,7 +76,9 @@ export function createClient(config) {
   })
 }
 
-export function createServer(config) {
+export function createServer(config, onClose) {
+  start()
+
   const server = {}
 
   const managerServer = createManager(config, conn => {
@@ -106,7 +124,7 @@ export function createServer(config) {
 
       socket.write(buf)
     })
-  })
+  }, onClose)
 
   server.managerServer = managerServer
   return server
@@ -117,11 +135,14 @@ export function createServerRouter(config) {
     {
       listenPort: config.serverPort,
     },
-    () => {
+    (options) => {
       const serverConfig = Object.assign({}, config, {
         serverPort: 0,
       })
-      const server = createServer(serverConfig)
+      const server = createServer(serverConfig, () => {
+        // on close
+        router.onServerClose(options)
+      })
 
       return server.managerServer.masterSocket
     },

@@ -61,6 +61,7 @@ export function createMux(_options) {
   mux.event = new EventEmitter()
   mux.sess = sess
   mux._mux = true
+  mux.isClosed = false
 
   binding.muxInit(mux, sess)
 
@@ -70,8 +71,16 @@ export function createMux(_options) {
 }
 
 export const muxFree = muxSuite.wrap((mux) => {
-  binding.muxFree(mux)
-  record('mux', get('mux') - 1)
+  if (mux.isClosed) {
+    return
+  }
+
+  mux.isClosed = true
+
+  setTimeout(() => {
+    binding.muxFree(mux)
+    record('mux', get('mux') - 1)
+  })
 })
 
 export const muxBindClose = muxSuite.wrap((mux, onClose) => {
@@ -117,9 +126,13 @@ export const connFree = connSuite.wrap((conn) => {
   if (conn.isClosed) {
     return
   }
+
   conn.isClosed = true
-  binding.connFree(conn)
-  record('conn', get('conn') - 1)
+
+  setTimeout(() => {
+    binding.connFree(conn)
+    record('conn', get('conn') - 1)
+  })
 })
 
 export const connSend = connSuite.wrap((conn, buffer) => {
@@ -144,7 +157,6 @@ export const connSetTimeout = connSuite.wrap((conn, timeout) => {
   }
   binding.connSetTimeout(conn, timeout)
 })
-
 
 // if (module === require.main) {
 //   (() => {

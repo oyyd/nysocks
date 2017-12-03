@@ -4,7 +4,7 @@ import yargs from 'yargs'
 import { createPACServer } from 'pac-server'
 import { createClient, createServerRouter } from './index'
 import { MODES } from './modes'
-import { changeLogger, logMemory } from './logger'
+import { logger, changeLogger, logMemory } from './logger'
 import { logConnections } from './monitor'
 import * as pm from './pm'
 
@@ -142,7 +142,10 @@ export default function main() {
 
         checkRequiredConfig(config)
         createPACServer(Object.assign({ port: config.SOCKS.port }, config.pac))
-        createClient(config)
+        createClient(config, () => {
+          logger.info('timeout closed')
+          process.exit()
+        })
       },
     })
     .demandCommand(1, 'You need at least one command before moving on')

@@ -1,9 +1,14 @@
 import dgram from 'dgram'
 import { DEFAULT_SERVER_PORT } from './socket_manager'
 import { input, bindUdpSend } from './socket'
+import { logger } from './logger'
 
 const DEFAULT_OPTIONS = {
   listenPort: DEFAULT_SERVER_PORT,
+}
+
+function createKey(address, port) {
+  return `${address}:${port}`
 }
 
 export function createRouter(_options, createASess) {
@@ -26,7 +31,7 @@ export function createRouter(_options, createASess) {
   // work properly. For these environments we make their sending
   // and receiving address/port same by proxy.
   routerSocket.on('message', (msg, { address, port }) => {
-    const key = `${address}:${port}`
+    const key = createKey(address, port)
 
     // TODO: drop invalid msg
     if (!managerMaps[key]) {
@@ -44,8 +49,15 @@ export function createRouter(_options, createASess) {
 
   routerSocket.bind(listenPort)
 
+  const onServerClose = ({ address, port }) => {
+    const key = createKey(address, port)
+    delete managerMaps[key]
+    logger.info(`close ${key}`)
+  }
+
   return {
     managerMaps,
+    onServerClose,
   }
 }
 

@@ -1,4 +1,8 @@
-import { checkJSONMsg, checkHandshakeMsg } from '../socket_manager'
+import {
+  createClient, createManager, freeManager,
+  checkJSONMsg, checkHandshakeMsg,
+} from '../socket_manager'
+import { startKcpuv, stopKcpuv } from '../socket'
 
 describe('socket_manager', () => {
   describe('checkJSONMsg', () => {
@@ -39,4 +43,30 @@ describe('socket_manager', () => {
       expect(checkHandshakeMsg(buffer)).toBe(false)
     })
   })
+
+  // describe('createManager', () => {
+  //   it('should create a manager and a client and then free them', (done) => {
+  //     startKcpuv()
+  //
+  //     const serverAddr = '0.0.0.0'
+  //     const password = 'hello'
+  //     const serverPort = 20020
+  //
+  //     const manager = createManager({
+  //       password,
+  //       serverAddr,
+  //       serverPort,
+  //     }, () => {})
+  //
+  //     createClient({
+  //       password,
+  //       serverAddr,
+  //       serverPort,
+  //     }).then(client => {
+  //       console.log('client', client)
+  //       freeManager(client)
+  //       // done()
+  //     })
+  //   })
+  // })
 })
