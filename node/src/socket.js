@@ -18,7 +18,6 @@ const DEFAULT_KCP_OPTIONS = {
 }
 
 binding.useDefaultLoop(true)
-binding.initialize()
 
 export function create() {
   const sess = binding.create()
@@ -79,6 +78,10 @@ export const destroy = wrap((sess) => {
   binding.free(sess)
 })
 
+export const markFree = wrap((sess) => {
+  binding.markFree(sess)
+})
+
 // TODO:
 export const close = wrap((sess, sendCloseMsg = false) => {
   binding.close(sess, sendCloseMsg)
@@ -124,11 +127,16 @@ export function createConnection(targetAddress, targetPort, onMsg) {
 }
 
 export function startKcpuv() {
+  binding.initialize()
   binding.startLoop()
 }
 
 // TODO:
 export function stopKcpuv() {
-  binding.destroyLoop()
-  // binding.destruct()
+  binding.stopLoop()
+  binding.destruct()
+}
+
+export function _stopLoop() {
+  binding.stopLoop()
 }

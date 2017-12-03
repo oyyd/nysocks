@@ -50,6 +50,8 @@ void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len);
 
 void kcpuv_free(kcpuv_sess *sess);
 
+int kcpuv_set_state(kcpuv_sess *sess, int state);
+
 void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
                  const struct sockaddr *addr);
 

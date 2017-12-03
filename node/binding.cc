@@ -44,10 +44,12 @@ public:
   static void Create(const FunctionCallbackInfo<Value> &args);
 
   void Free() {
-    kcpuv_stop_listen(sess);
-    kcpuv_free(sess);
-    is_freed = 1;
-    sess = 0;
+    if (!is_freed) {
+      is_freed = 1;
+      kcpuv_stop_listen(sess);
+      kcpuv_free(sess);
+      sess = 0;
+    }
   };
 
   kcpuv_sess *GetSess() { return sess; }
@@ -278,6 +280,13 @@ static NAN_METHOD(Free) {
   obj->Free();
 }
 
+static NAN_METHOD(MarkFree) {
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  kcpuv_set_state(obj->GetSess(), KCPUV_STATE_WAIT_FREE);
+}
+
 static NAN_METHOD(Input) {
   // Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
@@ -433,7 +442,7 @@ static NAN_METHOD(Send) {
 
 static NAN_METHOD(StartLoop) { kcpuv_start_loop(kcpuv__mux_updater); }
 
-static NAN_METHOD(DestroyLoop) { kcpuv_stop_loop(); }
+static NAN_METHOD(StopLoop) { kcpuv_stop_loop(); }
 
 static NAN_METHOD(MuxInit) {
   // Isolate *isolate = info.GetIsolate();
@@ -665,6 +674,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "setNoDelay", SetNoDelay);
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
+  Nan::SetMethod(target, "markFree", MarkFree);
   Nan::SetMethod(target, "input", Input);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "getPort", GetPort);
@@ -678,7 +688,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "initialize", Initialize);
   Nan::SetMethod(target, "destruct", Destruct);
   Nan::SetMethod(target, "startLoop", StartLoop);
-  Nan::SetMethod(target, "destroyLoop", DestroyLoop);
+  Nan::SetMethod(target, "stopLoop", StopLoop);
 
   // mux method
   Nan::SetMethod(target, "muxInit", MuxInit);

@@ -272,24 +272,22 @@ void kcpuv_mux_conn_send_close(kcpuv_mux_conn *conn) {
   kcpuv_mux_conn_send(conn, NULL, 0, KCPUV_MUX_CMD_CLS);
 }
 
-static void kcpuv_mux_check_timeout(kcpuv_mux *mux) {
+static void kcpuv_mux_check(kcpuv_mux *mux) {
   IUINT32 current = iclock();
-  kcpuv_link *link = mux->conns.next;
+  kcpuv_link *link = &mux->conns;
+  while (link->next != NULL) {
+    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
 
-  while (link != NULL) {
-    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
-
-    if (!conn->timeout) {
-      continue;
+    // check conns timeout
+    if (KCPUV_MUX_CONN_TIMEOUT) {
+      if (conn->timeout) {
+        if (conn->ts + conn->timeout <= current) {
+          conn_emit_close(conn);
+        }
+      }
     }
 
-    // fprintf(stderr, "%ld %ld %ld\n", conn->ts, conn->timeout, current);
-
-    if (conn->ts + conn->timeout <= current) {
-      conn_emit_close(conn);
-      // kcpuv_mux_conn_free(conn, "timeout");
-    }
-
+    // TODO: check closing mark
     link = link->next;
   }
 }
@@ -298,19 +296,19 @@ void kcpuv__mux_updater(uv_timer_t *timer) {
   // update sessions
   kcpuv__update_kcp_sess(timer);
 
-  if (KCPUV_MUX_CONN_TIMEOUT) {
-    // check conns timeout
-    // TODO: depending on kcpuv_sess_list may cause
-    // some mux without sess to be ignored
-    if (kcpuv_get_sess_list() == NULL) {
-      return;
-    }
+  // TODO: depending on kcpuv_sess_list may cause
+  // some mux without sess to be ignored
+  if (kcpuv_get_sess_list() == NULL) {
+    return;
+  }
 
-    kcpuv_link *link = kcpuv_get_sess_list()->list;
-    while (link->next != NULL) {
-      link = link->next;
-      kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->mux);
-      kcpuv_mux_check_timeout(mux);
+  kcpuv_link *link = kcpuv_get_sess_list()->list;
+  while (link->next != NULL) {
+
+    link = link->next;
+    kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->mux);
+    if (mux != NULL) {
+      kcpuv_mux_check(mux);
     }
   }
 }

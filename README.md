@@ -8,7 +8,34 @@ Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://gith
 
 ## Usage
 
+### SOCKS Clients
+
 ## CLI Options
+
+## Config
+
+```json
+{
+  "serverAddr": "YOUR_SERVER_HOST",
+  "serverPort": 20000,
+  "socketAmount": 20,
+  "password": "YOUR_PASSWORD",
+  "kcp": {
+    "sndwnd": 4096,
+    "rcvwnd": 4096,
+    "nodelay": 0,
+    "interval": 30,
+    "resend": 2,
+    "nc": 1
+  },
+  "pac": {
+    "pacServerPort": 8090
+  },
+  "SOCKS": {
+    "port": 1080
+  }
+}
+```
 
 ## Encryption
 

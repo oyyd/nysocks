@@ -49,8 +49,14 @@ void kcpuv_start_loop(uv_timer_cb cb) {
 
 int kcpuv_stop_loop() {
   if (timer != NULL) {
-    uv_timer_stop(timer);
+    int rval = uv_timer_stop(timer);
+
+    if (rval) {
+      fprintf(stderr, "%s\n", uv_strerror(rval));
+    }
+
     free(timer);
+    timer = NULL;
   }
 
   if (!use_default_loop && kcpuv_get_loop() != NULL) {
@@ -59,7 +65,11 @@ int kcpuv_stop_loop() {
     // NOTE: The closing may failed simply because
     // we don't call the `uv_run` on this loop and
     // then causes a memory leaking.
-    return uv_loop_close(kcpuv_get_loop());
+    int rval = uv_loop_close(kcpuv_get_loop());
+
+    if (rval) {
+      fprintf(stderr, "%s\n", uv_strerror(rval));
+    }
   }
 
   return 0;

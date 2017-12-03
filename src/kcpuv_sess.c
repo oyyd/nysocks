@@ -51,9 +51,6 @@ int kcpuv_destruct() {
   free(sess_list);
   sess_list = NULL;
 
-  // TODO: do not bind here
-  kcpuv__destroy_loop();
-
   return 0;
 }
 
@@ -165,6 +162,7 @@ kcpuv_sess *kcpuv_create() {
   sess->handle = malloc(sizeof(uv_udp_t));
   uv_udp_init(kcpuv_get_loop(), sess->handle);
 
+  sess->mux = NULL;
   sess->handle->data = sess;
   sess->send_addr = NULL;
   sess->recv_addr = NULL;
@@ -391,6 +389,16 @@ void kcpuv_bind_listen(kcpuv_sess *sess, kcpuv_listen_cb cb) {
   sess->on_msg_cb = cb;
 }
 
+// TODO: state condition
+int kcpuv_set_state(kcpuv_sess *sess, int state) {
+  if (state != KCPUV_STATE_WAIT_FREE && sess->state == KCPUV_STATE_WAIT_FREE) {
+    return -1;
+  }
+
+  sess->state = KCPUV_STATE_WAIT_FREE;
+  return 0;
+}
+
 // Sessions won't receive msg anymore after closed.
 // We still need to send the close msg to the other side
 // and then we can free the sess.
@@ -459,6 +467,19 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
         // TODO:
         fprintf(stderr, "ikcp_recv() < 0: %d\n", size);
       }
+    }
+  }
+
+  ptr = sess_list->list;
+
+  while (ptr->next != NULL) {
+    kcpuv_sess *sess = (kcpuv_sess *)ptr->next->node;
+
+    // free the sess if marked
+    if (sess->state == KCPUV_STATE_WAIT_FREE) {
+      kcpuv_free(sess);
+    } else {
+      ptr = ptr->next;
     }
   }
 }

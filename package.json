@@ -1,7 +1,7 @@
 {
-  "name": "kcpuv",
+  "name": "nysocks",
   "version": "1.0.0",
-  "description": "Kcpuv binds kcp and libuv to provide a tunnel for nodejs.",
+  "description": "Nysocks binds kcp and libuv to provide a tunnel for nodejs.",
   "main": "node/lib/index.js",
   "directories": {
     "test": "test"
@@ -11,12 +11,7 @@
     "copy_lib": "node tools/copy_lib",
     "build": "npm run copy_lib && babel node/src --out-dir node/lib",
     "install": "node-gyp rebuild",
-    "test:js": "jest",
-    "test:one": "jest -t 'should put some data to a sess by calling input'"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://OYYD@bitbucket.org/OYYD/kcpuv.git"
+    "test": "jest"
   },
   "author": "oyyd <oyydoibh@gmail.com>",
   "license": "BSD",
@@ -25,9 +20,8 @@
   "dependencies": {
     "fecha": "^2.3.1",
     "ip": "^1.1.5",
-    "ipv6": "^3.1.3",
     "nan": "^2.7.0",
-    "pac-server": "^1.0.0",
+    "pac-server": "^1.0.1",
     "pm2": "^2.8.0",
     "socksv5-kcpuv": "^0.0.6",
     "winston": "^3.0.0-rc1",
