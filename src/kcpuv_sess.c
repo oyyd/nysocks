@@ -355,8 +355,8 @@ int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
 
   uv_udp_recv_start(sess->handle, alloc_cb, *on_recv);
   // NOTE: it seems setting options before uv_udp_recv_start won't work
-  uv_send_buffer_size(sess->handle, &kcpuv_udp_buf_size);
-  uv_recv_buffer_size(sess->handle, &kcpuv_udp_buf_size);
+  uv_send_buffer_size((uv_handle_t *)sess->handle, &kcpuv_udp_buf_size);
+  uv_recv_buffer_size((uv_handle_t *)sess->handle, &kcpuv_udp_buf_size);
   return 0;
 }
 

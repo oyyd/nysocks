@@ -1,5 +1,6 @@
 #include "mux.h"
 #include "kcpuv_sess.h"
+#include <string.h>
 
 static unsigned long MUX_CONN_DEFAULT_TIMEOUT = 30000;
 

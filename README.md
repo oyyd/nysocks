@@ -6,15 +6,15 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 **tcp proxy:**
 <br/>
-<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/tcp.png" style="height: 200px"/>
+<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/tcp.png" height="200" />
 
 **nysocks fast mode:**
 <br/>
-<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast.png" style="height: 200px"/>
+<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast.png" height="200" />
 
 **nysocks fast2 mode:**
 <br/>
-<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast2.png" style="height: 200px"/>
+<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast2.png" height="200" />
 
 ## Architecture
 
