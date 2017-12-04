@@ -5,13 +5,15 @@ Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://gith
 Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happend:
 
 **tcp proxy:**
-![tcp](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/tcp.png)
+<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/tcp.png" style="width: 440"/>
 
 **nysocks fast mode:**
-![fast](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast.png)
+<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast.png" style="width: 440"/>
 
 **nysocks fast2 mode:**
-![fast2](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast2.png)
+<img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast2.png" style="width: 440"/>
+
+## Architecture
 
 ![work](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/work.png)
 
