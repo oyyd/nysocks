@@ -1,10 +1,10 @@
 {
   "name": "nysocks",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Nysocks binds kcp and libuv to provide a tunnel for nodejs.",
   "main": "node/lib/index.js",
-  "directories": {
-    "test": "test"
+  "bin": {
+    "nysocks": "./bin/nysocks"
   },
   "scripts": {
     "dev": "babel node/src --out-dir node/lib -w",
@@ -20,7 +20,10 @@
   "author": "oyyd <oyydoibh@gmail.com>",
   "license": "BSD",
   "gypfile": true,
-  "homepage": "https://bitbucket.org/OYYD/kcpuv#readme",
+  "homepage": "https://github.com/oyyd/nysocks",
+  "directories": {
+    "test": "test"
+  },
   "dependencies": {
     "fecha": "^2.3.1",
     "ip": "^1.1.5",

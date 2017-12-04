@@ -11,6 +11,7 @@ CMakeScripts
 CMakeFiles
 CTestTestfile.cmake
 **/*.h.gch
+crash.logfile
 
 **/Debug
 
