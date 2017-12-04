@@ -18,7 +18,11 @@
     "url": "git+https://github.com/oyyd/nysocks.git"
   },
   "files": [
-    "binding.gyp"
+    "binding.gyp",
+    "bin",
+    "lib",
+    "node/lib",
+    "src"
   ],
   "author": "oyyd <oyydoibh@gmail.com>",
   "license": "BSD",
