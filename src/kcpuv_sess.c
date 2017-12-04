@@ -150,6 +150,8 @@ void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd, kcpuv_dgram_cb cb,
 // A session could only have one recv_addr and send_addr.
 // TODO: conv
 kcpuv_sess *kcpuv_create() {
+  IUINT32 now = iclock();
+
   kcpuv_sess *sess = malloc(sizeof(kcpuv_sess));
   // NOTE: Do not use stream mode.
   sess->kcp = ikcp_create(0, sess);
@@ -170,7 +172,8 @@ kcpuv_sess *kcpuv_create() {
   sess->on_close_cb = NULL;
   sess->udp_send = NULL;
   sess->state = KCPUV_STATE_CREATED;
-  sess->recv_ts = iclock();
+  sess->recv_ts = now;
+  sess->hb_ts = now;
   sess->timeout = DEFAULT_TIMEOUT;
   sess->cryptor = NULL;
 
@@ -258,9 +261,6 @@ void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
 
 // Update kcp for content transmission.
 static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
-  // update active time
-  sess->recv_ts = iclock();
-
   int rval = ikcp_input(sess->kcp, msg, length);
 
   if (KCPUV_DEBUG == 1 && rval < 0) {
@@ -296,9 +296,17 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
       printf("%s\n", read_msg);
     }
 
+    // update active time
+    sess->recv_ts = iclock();
+
     // check protocol
     int cmd = kcpuv_protocol_decode(read_msg);
-    if (cmd == KCPUV_CMD_CLS) {
+
+    if (cmd == KCPUV_CMD_NOO) {
+      free(read_msg);
+      free(buf->base);
+      return;
+    } else if (cmd == KCPUV_CMD_CLS) {
       kcpuv_close(sess, 0, NULL);
       free(read_msg);
       free(buf->base);
@@ -479,6 +487,12 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     if (sess->state == KCPUV_STATE_WAIT_FREE) {
       kcpuv_free(sess);
     } else {
+      if (KCPUV_SESS_HEARTBEAT_ACTIVE) {
+        if (sess->send_addr != NULL &&
+            sess->hb_ts + KCPUV_SESS_HEARTBEAT_INTERVAL <= now) {
+          kcpuv_send_cmd(sess, KCPUV_CMD_NOO, NULL, NULL);
+        }
+      }
       ptr = ptr->next;
     }
   }

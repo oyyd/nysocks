@@ -1,18 +1,63 @@
 # nysocks
 
-Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tunnel for nodejs that focus on packet loss.
+Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs.
 
-![node_addon](https://cdn.rawgit.com/oyyd/kcpuv/b76a8cbd/imgs/node_addon.png)
+Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happend:
 
-![work](https://cdn.rawgit.com/oyyd/kcpuv/b76a8cbd/imgs/work.png)
+**tcp proxy:**
+![tcp](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/tcp.png)
+
+**nysocks fast mode:**
+![fast](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast.png)
+
+**nysocks fast2 mode:**
+![fast2](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast2.png)
+
+![work](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/work.png)
+
+## Installation
+
+```
+npm i nysocks -g
+```
 
 ## Usage
 
-### SOCKS Clients
+In your server, create your `config.json` file like [this](#config) and start:
 
-## CLI Options
+```
+nysocks server -c config.json
+```
 
-## Config
+In your client, create a same `config.json` file and start:
+
+```
+nysocks client -c config.json
+```
+
+Nysocks will start a SOCKS5 service to tunnel your tcp connections. A PAC file server will also be served(default port `8090`).
+
+Add `-d` options if you want to run under daemons([pm2](http://pm2.keymetrics.io/)):
+
+```
+nysocks client -d restart -c config.json
+```
+
+Modify your options in the CLI. See other options here:
+
+```
+nysocks -h
+```
+
+### How to utilize the SOCKS5 service
+
+Most OSes support SOCKS5 proxy by default:
+
+![osx-set-proxy](https://cdn.comparitech.com/wp-content/uploads/2017/01/MacOS-Set-proxy.png)
+
+Chrome extension [Proxy SwitchySharp](https://chrome.google.com/webstore/detail/proxy-switchysharp/dpplabbmogkhghncfbfdeeokoefdjegm).
+
+## Configs
 
 ```json
 {
@@ -39,26 +84,17 @@ Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://gith
 
 ## Encryption
 
-## Known Issues
-
-- Do not support ipv6 currently.
-
-## Build
-
 `aes_256_cbc`
 
-### Build with CMAKE
+## Known Issues
 
-**OSX**
-
-```sh
-$ ./deps/gyp/gyp --depth=. -D uv_library=static_library kcpuv.gyp && \
-  xcodebuild -ARCHS="x86_64" -project kcpuv.xcodeproj -configuration Release -target kcpuv
-```
+- Do not support ipv6.
+- Changing the ip of the client will disconnect all the connections.
 
 ## References
 
 - [kcptun](https://github.com/xtaci/kcptun) - A Secure Tunnel Based On KCP with N:M Multiplexing
+- [kcp](https://github.com/skywind3000/kcp) - A Fast and Reliable ARQ Protocol
 
 ## LICENSE
 

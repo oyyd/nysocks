@@ -80,7 +80,7 @@ export function createServer(_options, next) {
   const { port, address } = Object.assign({}, DEFAULT_OPTIONS, _options)
 
   // init socks server
-  const server = socks.createServer((info, accept, deny) => {
+  const server = socks.createServer((info, accept/* , deny */) => {
     // TODO: socksv5 only support 'BIND' method
     const socket = accept(true)
     next(info, socket)
@@ -96,30 +96,30 @@ export function createServer(_options, next) {
   return server
 }
 
-if (module === require.main) {
-  createServer({}, (info, socket) => {
-    const dstInfo = parseDstInfo(info.chunk)
-    const targetSocket = createProxyConnection({
-      host: info.dstAddr,
-      port: info.dstPort,
-    })
-
-    // targetSocket.on('close', (hadError) => {
-    //   if (hadError) {
-    //     console.log('target_socket_close_with_error')
-    //   }
-    // })
-    targetSocket.on('error', err => console.log('target_socket', err))
-    socket.on('error', err => console.log('socket_err', err))
-
-    targetSocket.on('data', buf => {
-      let data = buf
-
-      socket.write(buf)
-    })
-
-    socket.on('data', buffer => {
-      targetSocket.write(buffer)
-    })
-  })
-}
+// if (module === require.main) {
+//   createServer({}, (info, socket) => {
+//     const dstInfo = parseDstInfo(info.chunk)
+//     const targetSocket = createProxyConnection({
+//       host: info.dstAddr,
+//       port: info.dstPort,
+//     })
+//
+//     // targetSocket.on('close', (hadError) => {
+//     //   if (hadError) {
+//     //     console.log('target_socket_close_with_error')
+//     //   }
+//     // })
+//     targetSocket.on('error', err => console.log('target_socket', err))
+//     socket.on('error', err => console.log('socket_err', err))
+//
+//     targetSocket.on('data', buf => {
+//       let data = buf
+//
+//       socket.write(buf)
+//     })
+//
+//     socket.on('data', buffer => {
+//       targetSocket.write(buffer)
+//     })
+//   })
+// }

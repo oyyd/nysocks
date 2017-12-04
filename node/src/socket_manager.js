@@ -339,12 +339,13 @@ export function bindConnection(manager, next) {
 }
 
 export function createConnection(client) {
-  let i = client._roundCur
-  client._roundCur += 1
+  let i = client._roundCur + 1
 
   if (i >= client.conns.length) {
     i = 0
   }
+
+  client._roundCur = i
 
   const info = client.conns[i]
   const conn = createMuxConn(info.mux)
@@ -374,7 +375,7 @@ if (module === require.main) {
     socketAmount,
   }).then(client => {
     // console.log('client', client)
-    console.log('client', client)
+    // console.log('client', client)
     freeManager(client)
     freeManager(manager)
   })
