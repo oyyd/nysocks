@@ -1,6 +1,6 @@
 {
   "name": "nysocks",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Nysocks binds kcp and libuv to provide a tunnel for nodejs.",
   "main": "node/lib/index.js",
   "bin": {
@@ -17,6 +17,9 @@
     "type": "git",
     "url": "git+https://github.com/oyyd/nysocks.git"
   },
+  "files": [
+    "binding.gyp"
+  ],
   "author": "oyyd <oyydoibh@gmail.com>",
   "license": "BSD",
   "gypfile": true,
