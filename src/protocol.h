@@ -14,7 +14,7 @@ typedef struct KCPUV_CRYPTOR {
   EVP_CIPHER_CTX *de;
 } kcpuv_cryptor;
 
-int kcpuv_cryptor_init(kcpuv_cryptor *, char *key, int key_len,
+int kcpuv_cryptor_init(kcpuv_cryptor *, const char *key, int key_len,
                        unsigned int salt[]);
 
 void kcpuv_cryptor_clean(kcpuv_cryptor *);

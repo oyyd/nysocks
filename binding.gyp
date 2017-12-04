@@ -16,5 +16,6 @@
       'src/loop.c',
       'node/binding.cc',
     ],
+    'cflags_cc!': ['-Wno-incompatible-pointer-types']
   }]
 }

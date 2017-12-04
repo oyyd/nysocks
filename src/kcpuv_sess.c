@@ -267,6 +267,8 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
     // TODO:
     fprintf(stderr, "ikcp_input() < 0: %d\n", rval);
   }
+
+  return rval;
 }
 
 // Input dgram mannualy
@@ -418,11 +420,11 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
   sess->state = KCPUV_STATE_CLOSED;
 
   if (send_close_msg != 0) {
-    kcpuv_send_cmd(sess, KCPUV_CMD_CLS, sess->on_close_cb, error_msg);
+    kcpuv_send_cmd(sess, KCPUV_CMD_CLS, sess->on_close_cb, (void *)error_msg);
   } else if (sess->on_close_cb != NULL) {
     // call callback to inform outside
     kcpuv_dgram_cb on_close_cb = sess->on_close_cb;
-    on_close_cb(sess, error_msg);
+    on_close_cb(sess, (void *)error_msg);
   }
 }
 

@@ -86,12 +86,13 @@ unsigned char *kcpuv_cryptor_decrypt(kcpuv_cryptor *cryptor,
 }
 
 // TODO: salt should be chars
-int kcpuv_cryptor_init(kcpuv_cryptor *cryptor, char *key, int key_len,
+int kcpuv_cryptor_init(kcpuv_cryptor *cryptor, const char *key, int key_len,
                        unsigned int salt[]) {
   cryptor->en = malloc(sizeof(EVP_CIPHER_CTX));
   cryptor->de = malloc(sizeof(EVP_CIPHER_CTX));
 
-  if (aes_init((unsigned char *)key, key_len, salt, cryptor->en, cryptor->de)) {
+  if (aes_init((unsigned char *)key, key_len, (unsigned char *)salt,
+               cryptor->en, cryptor->de)) {
     fprintf(stderr, "Couldn't initialize AES cipher\n");
     return -1;
   }

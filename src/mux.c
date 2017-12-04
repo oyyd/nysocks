@@ -235,7 +235,7 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
     return;
   }
 
-  while (s < len) {
+  while (s < (unsigned int)len) {
     if (!cmd) {
       if (conn->send_state == 0) {
         conn->send_state = 1;
@@ -247,7 +247,7 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
 
     unsigned long e = s + MAX_MUX_CONTENT_LEN;
 
-    if (e > len) {
+    if (e > (unsigned int)len) {
       e = len;
     }
 

@@ -36,6 +36,8 @@ struct KCPUV_LINK {
 
 kcpuv_link *kcpuv_link_create(void *);
 
+void kcpuv__print_sockaddr(const struct sockaddr *name);
+
 void kcpuv_link_add(kcpuv_link *current, kcpuv_link *next);
 
 kcpuv_link *kcpuv_link_get_pointer(kcpuv_link *head, void *node);

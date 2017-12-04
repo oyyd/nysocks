@@ -3,7 +3,7 @@
 
 static uv_loop_t *kcpuv_loop = NULL;
 static int use_default_loop = 0;
-static uv_idle_t *idle = NULL;
+// static uv_idle_t *idle = NULL;
 static uv_timer_t *timer = NULL;
 
 // NOTE: Don't change this while looping.
