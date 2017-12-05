@@ -88,7 +88,7 @@ export function createServer(_options, next) {
 
   // TODO: handle port occupied situation
   server.listen(port, address, () => {
-    logger.info('listen success')
+    logger.info('connecting success')
   })
 
   server.useAuth(socks.auth.None())

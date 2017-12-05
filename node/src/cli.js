@@ -145,13 +145,9 @@ export default function main() {
         checkRequiredConfig(config)
         const pacConfig = Object.assign({ port: config.SOCKS.port }, config.pac)
         createPACServer(pacConfig)
-        createClient(config, () => {
-          logger.info('timeout closed')
-          process.exit()
-        })
+        createClient(config)
 
         logger.info(`PAC service is listening on ${pacConfig.pacServerPort}`)
-        logger.info(`SOCKS5 service is listening on ${config.SOCKS.port}`)
       },
     })
     .demandCommand(1, 'You need at least one command before moving on')

@@ -59,6 +59,8 @@ void kcpuv_mux_conn_listen(kcpuv_mux_conn *, conn_on_msg_cb);
 
 void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *, conn_on_close_cb);
 
+void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn);
+
 unsigned int kcpuv__mux_decode(const char *buffer, int *cmd, int *length);
 
 void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length);

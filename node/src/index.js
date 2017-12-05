@@ -14,8 +14,9 @@ import {
   bindClose,
   sendClose,
   startKcpuv,
-  stopKcpuv,
+  freeManager,
 } from './socket_manager'
+import { createMonitor } from './network_monitor'
 import { createRouter } from './router'
 import { logger } from './logger'
 
@@ -30,15 +31,8 @@ function start() {
   startKcpuv()
 }
 
-export function createClient(config, _onClose) {
-  start()
-
-  const onClose = () => {
-    stopKcpuv()
-    _onClose()
-  }
-
-  return createManagerClient(config, onClose).then(managerClient => {
+function createClientInstance(config) {
+  return createManagerClient(config).then(managerClient => {
     const client = {}
     const socksServer = createSocksServer(config.SOCKS, (info, socket) => {
       const { chunk } = info
@@ -69,11 +63,77 @@ export function createClient(config, _onClose) {
         close(conn)
       })
     })
+
     client.managerClient = managerClient
     client.socksServer = socksServer
 
     return client
   })
+}
+
+export function createClient(config) {
+  start()
+
+  const currentClients = {
+    // 0 disconenct
+    // 1 connecting
+    // 2 connected
+    connectState: 0,
+    managerClient: null,
+    socksServer: null,
+  }
+
+  const free = () => {
+    currentClients.connectState = 0
+    // close
+    if (currentClients.managerClient) {
+      freeManager(currentClients.managerClient)
+    }
+    if (currentClients.socksServer) {
+      currentClients.socksServer.close()
+    }
+    currentClients.socksServer = null
+    currentClients.managerClient = null
+  }
+
+  // Create new instance.
+  const recreate = () => {
+    logger.info('connecting...')
+    currentClients.connectState = 1
+    createClientInstance(config).then(({ managerClient, socksServer }) => {
+      logger.info(`SOCKS5 service is listening on ${config.SOCKS.port}`)
+
+      currentClients.connectState = 2
+      currentClients.managerClient = managerClient
+      currentClients.socksServer = socksServer
+      // eslint-disable-next-line
+      managerClient.on('close', onClose)
+    }).catch(err => {
+      setTimeout(() => {
+        throw err
+      })
+    })
+  }
+
+  const onClose = () => {
+    logger.info('client disconnect')
+
+    free()
+
+    recreate()
+  }
+
+  // ip changed
+  const networkMonitor = createMonitor(() => {
+    const { ip: localIP } = networkMonitor
+
+    if (localIP && currentClients.connectState !== 1) {
+      recreate()
+    }
+  })
+
+  // Create first time.
+  recreate()
 }
 
 export function createServer(config, onClose) {
@@ -139,8 +199,10 @@ export function createServerRouter(config) {
       const serverConfig = Object.assign({}, config, {
         serverPort: 0,
       })
+
       const server = createServer(serverConfig, () => {
         // on close
+        freeManager(server.managerServer)
         router.onServerClose(options)
       })
 

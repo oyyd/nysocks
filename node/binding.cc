@@ -644,6 +644,13 @@ static NAN_METHOD(ConnSetTimeout) {
   conn_obj->conn->timeout = timeout;
 }
 
+static NAN_METHOD(ConnEmitClose) {
+  KcpuvMuxConnBinding *conn_obj =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
+
+  kcpuv_mux_conn_emit_close(conn_obj->conn);
+}
+
 static NAN_MODULE_INIT(Init) {
   Isolate *isolate = target->GetIsolate();
 
@@ -704,6 +711,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "connListen", ConnListen);
   Nan::SetMethod(target, "connBindClose", ConnBindClose);
   Nan::SetMethod(target, "connSetTimeout", ConnSetTimeout);
+  Nan::SetMethod(target, "connEmitClose", ConnEmitClose);
 }
 
 NODE_MODULE(binding, Init)

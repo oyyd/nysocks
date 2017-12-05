@@ -34,19 +34,14 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
   buf[6] = (length)&0xFF;
 }
 
-static void conn_emit_close(kcpuv_mux_conn *conn) {
+void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn) {
   // TODO: when get a cmd to close a closed conn
   conn_on_close_cb cb = conn->on_close_cb;
   conn->recv_state = 2;
 
-  if (conn->on_close_cb == NULL) {
-    fprintf(stderr, "%s\n", "expect 'on_close_cb' to be specified in the conn");
-    // abort();
-    kcpuv_mux_conn_free(conn, NULL);
-    return;
+  if (conn->on_close_cb != NULL) {
+    cb(conn, NULL);
   }
-
-  cb(conn, NULL);
 }
 
 // TODO: drop invalid msg
@@ -113,10 +108,10 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
     } else {
       // TODO: there would be conns are not with on_msg_cb unexpectly
       fprintf(stderr, "%s\n", "NO_CB");
-      conn_emit_close(conn);
+      kcpuv_mux_conn_emit_close(conn);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
-    conn_emit_close(conn);
+    kcpuv_mux_conn_emit_close(conn);
   } else {
     // drop invalid cmd
   }
@@ -150,8 +145,8 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
 
   while (link != NULL) {
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
+    kcpuv_mux_conn_emit_close(conn);
     kcpuv_mux_conn_free(conn, NULL);
-    free(conn);
     link = mux->conns.next;
   }
 }
@@ -283,7 +278,7 @@ static void kcpuv_mux_check(kcpuv_mux *mux) {
     if (KCPUV_MUX_CONN_TIMEOUT) {
       if (conn->timeout) {
         if (conn->ts + conn->timeout <= current) {
-          conn_emit_close(conn);
+          kcpuv_mux_conn_emit_close(conn);
         }
       }
     }

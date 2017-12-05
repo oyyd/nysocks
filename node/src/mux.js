@@ -4,6 +4,7 @@ import { createWithOptions, initCryptor,
   listen as socketListen, setAddr } from './socket'
 import { createBaseSuite } from './utils'
 import { record, get } from './monitor'
+import { logger } from './logger'
 
 const muxSuite = createBaseSuite('_mux')
 const connSuite = createBaseSuite('_conn')
@@ -136,10 +137,20 @@ export const connFree = connSuite.wrap((conn) => {
 })
 
 export const connSend = connSuite.wrap((conn, buffer) => {
+  if (conn.isClosed) {
+    logger.warn('"send" after closing')
+    return
+  }
+
   binding.connSend(conn, buffer, buffer.length)
 })
 
 export const connSendClose = connSuite.wrap((conn) => {
+  if (conn.isClosed) {
+    logger.warn('"connSendClose" after closing')
+    return
+  }
+
   binding.connSendClose(conn)
 })
 
@@ -156,6 +167,10 @@ export const connSetTimeout = connSuite.wrap((conn, timeout) => {
     throw new Error('invalid timeout')
   }
   binding.connSetTimeout(conn, timeout)
+})
+
+export const connEmitClose = connSuite.wrap((conn) => {
+  binding.connEmitClose(conn)
 })
 
 // if (module === require.main) {

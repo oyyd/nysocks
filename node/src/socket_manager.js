@@ -1,9 +1,9 @@
+import EventEmitter from 'events'
 import {
   getPort, createWithOptions, close as sessClose,
   listen as socketListen, setAddr,
   initCryptor, markFree, stopListen,
-  // bindListener, send,
-  startKcpuv,
+  // bindListener, send, startKcpuv,
 } from './socket'
 import {
   createMux, createMuxConn,
@@ -11,12 +11,11 @@ import {
   connSendClose, connBindClose, connSetTimeout,
   muxFree,
 } from './mux'
-import { getIP } from './utils'
+import { getIP, debug } from './utils'
 
 export { startKcpuv, stopKcpuv } from './socket'
 
-const TOTAL_TIMEOUT = 2 * 60 * 1000
-// const TOTAL_TIMEOUT = 12 * 1000
+const TOTAL_TIMEOUT = (debug ? 10 : 60) * 1000
 const BEATING_INTERVAL = TOTAL_TIMEOUT / 4
 export const DEFAULT_SERVER_PORT = 20000
 
@@ -102,6 +101,8 @@ export function freeManager(manager) {
       stopListen(socket)
       markFree(socket)
     })
+  } else {
+    console.error('invalid conns')
   }
 
   muxFree(masterMux)
@@ -127,8 +128,7 @@ export function initClientMasterSocket(mux) {
     })
 
     connBindClose(conn, () => {
-      // eslint-disable-next-line
-      console.log('client master closed')
+      connFree(conn)
     })
 
     // sess.event.on('close', (errorMsg) => {
@@ -177,14 +177,14 @@ export function initClientConns(options, client, ipAddr) {
 }
 
 // TODO: throw when failed to connect
-export function createClient(_options, onClose) {
+export function createClient(_options) {
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverAddr, serverPort } = options
-  const client = {
-    state: 0,
-    ports: [],
-    _roundCur: 0,
-  }
+  const client = new EventEmitter()
+  client.state = 0
+  client.ports = []
+  client._roundCur = 0
+
   let ipAddr = null
   const masterSocket = createWithOptions(options.kcp)
   initCryptor(masterSocket, options.password)
@@ -206,12 +206,7 @@ export function createClient(_options, onClose) {
     .then(([conn, ports]) => {
       // TODO:
       initBeat(conn, () => {
-        // on_close
-        freeManager(client)
-
-        if (typeof onClose === 'function') {
-          onClose()
-        }
+        client.emit('close')
       })
 
       client.ports = ports
@@ -307,8 +302,6 @@ export function createManager(_options, onConnection, onClose) {
       sendJson(conn, getConnectionPorts(conns))
 
       initBeat(conn, () => {
-        freeManager(manager)
-
         if (typeof onClose === 'function') {
           onClose()
         }
@@ -316,8 +309,7 @@ export function createManager(_options, onConnection, onClose) {
     })
 
     connBindClose(conn, () => {
-      // eslint-disable-next-line
-      console.log('server master closed')
+      connFree(conn)
     })
   })
 
@@ -353,30 +345,30 @@ export function createConnection(client) {
   return conn
 }
 
-if (module === require.main) {
-  startKcpuv()
-
-  const serverAddr = '0.0.0.0'
-  const password = 'hello'
-  const serverPort = 20020
-  const socketAmount = 1
-
-  const manager = createManager({
-    password,
-    serverAddr,
-    serverPort,
-    socketAmount,
-  }, () => {})
-
-  createClient({
-    password,
-    serverAddr,
-    serverPort,
-    socketAmount,
-  }).then(client => {
-    // console.log('client', client)
-    // console.log('client', client)
-    freeManager(client)
-    freeManager(manager)
-  })
-}
+// if (module === require.main) {
+//   startKcpuv()
+//
+//   const serverAddr = '0.0.0.0'
+//   const password = 'hello'
+//   const serverPort = 20020
+//   const socketAmount = 1
+//
+//   const manager = createManager({
+//     password,
+//     serverAddr,
+//     serverPort,
+//     socketAmount,
+//   }, () => {})
+//
+//   createClient({
+//     password,
+//     serverAddr,
+//     serverPort,
+//     socketAmount,
+//   }).then(client => {
+//     // console.log('client', client)
+//     // console.log('client', client)
+//     freeManager(client)
+//     freeManager(manager)
+//   })
+// }
