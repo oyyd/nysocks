@@ -147,7 +147,6 @@ export const connSend = connSuite.wrap((conn, buffer) => {
 
 export const connSendClose = connSuite.wrap((conn) => {
   if (conn.isClosed) {
-    logger.warn('"connSendClose" after closing')
     return
   }
 

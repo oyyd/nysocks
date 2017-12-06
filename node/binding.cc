@@ -211,14 +211,10 @@ void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
     binding->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
   } else {
-    const int argc = 0;
-    Local<Value> argv[argc] = {};
-
     Local<Function> cons =
         Local<Function>::New(isolate, KcpuvSessBinding::constructor);
     Local<Context> context = isolate->GetCurrentContext();
-    Local<Object> instance =
-        cons->NewInstance(context, argc, argv).ToLocalChecked();
+    Local<Object> instance = cons->NewInstance(context, 0, 0).ToLocalChecked();
     args.GetReturnValue().Set(instance);
   }
 }

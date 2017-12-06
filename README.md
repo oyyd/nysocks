@@ -20,13 +20,13 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 ## How it works
 
-![work](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/work.png)
+![work](https://cdn.rawgit.com/oyyd/nysocks/f1f82062/imgs/work.png)
 
 **protocol(unstable):**
 
 ```
 +-----+-----+---------+---------+--------+------------+
-| kcp | CMD |  nonce  | mux.cmd | mux.id | mux.length |
+| kcp | cmd |  nonce  | mux.cmd | mux.id | mux.length |
 +-----+-----+---------+---------+--------+------------+
 | 24  |  1  |    8    |    1    |    2   |     4      |
 +-----+-----+---------+---------+--------+------------+
