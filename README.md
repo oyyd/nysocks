@@ -1,8 +1,10 @@
 # nysocks
 
+[![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks)
+
 Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs.
 
-Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happend:
+Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happens when trasmission data from to China mainland:
 
 **tcp proxy:**
 <br/>
@@ -16,13 +18,32 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 <br/>
 <img src="https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/fast2.png" width="475" />
 
-## Architecture
+## How it works
 
 ![work](https://cdn.rawgit.com/oyyd/nysocks/fa173e5c/imgs/work.png)
 
+**protocol(unstable):**
+
+```
++-----+-----+---------+---------+--------+------------+
+| kcp | CMD |  nonce  | mux.cmd | mux.id | mux.length |
++-----+-----+---------+---------+--------+------------+
+| 24  |  1  |    8    |    1    |    2   |     4      |
++-----+-----+---------+---------+--------+------------+
+```
+
+## About the Tunnel Implementation
+
+The tunnel connections in nysocks is implemented as a [node-addon(C/CPP)](https://nodejs.org/api/addons.html) mainly because:
+
+0. Node don't support setting send/recv buffer size of udp connections before v8.7.0.
+0. In large data transmissions, udp message callback is too frequently and manipulating buffers in js(or any other script languages) is relatively expensive which would make the total performace unacceptable. You can check my pure js implementation [here](https://github.com/oyyd/kcp-node/).
+
+Still, I'm not a professional C/CPP language user or network programmer. Please submit PRs or issues to help us improve it!
+
 ## Installation
 
-Make sure you have installed [node-gyp](https://github.com/nodejs/node-gyp#installation) successfully as nysocks will build C/CPP code. Then:
+**Make sure** you have [node-gyp](https://github.com/nodejs/node-gyp#installation) installed successfully as nysocks will build C/CPP code, then:
 
 ```
 npm i nysocks -g
@@ -56,14 +77,6 @@ Modify your options in the CLI. See other options here:
 nysocks -h
 ```
 
-### How to utilize the SOCKS5 service
-
-Most OSes support SOCKS5 proxy by default:
-
-![osx-set-proxy](https://cdn.comparitech.com/wp-content/uploads/2017/01/MacOS-Set-proxy.png)
-
-Chrome extension [Proxy SwitchySharp](https://chrome.google.com/webstore/detail/proxy-switchysharp/dpplabbmogkhghncfbfdeeokoefdjegm).
-
 ## Configs
 
 ```json
@@ -89,14 +102,22 @@ Chrome extension [Proxy SwitchySharp](https://chrome.google.com/webstore/detail/
 }
 ```
 
+### How to utilize the SOCKS5 service
+
+Most OSes support SOCKS5 proxy by default:
+
+![osx-set-proxy](https://cdn.comparitech.com/wp-content/uploads/2017/01/MacOS-Set-proxy.png)
+
+Use chrome extensions like [SwitchyOmega](https://github.com/FelisCatus/SwitchyOmega) to help browse web pages by proxy.
+
 ## Encryption
 
 `aes_256_cbc`
 
 ## Known Issues
 
-- Do not support ipv6.
-- Changing the ip of the client will disconnect all the connections.
+- Do not support ipv6 currently.
+- Changing the ip of the client will disconnect all the connections temporary.
 
 ## References
 

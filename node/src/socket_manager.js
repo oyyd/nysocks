@@ -181,6 +181,7 @@ export function createClient(_options) {
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverAddr, serverPort } = options
   const client = new EventEmitter()
+
   client.state = 0
   client.ports = []
   client._roundCur = 0
