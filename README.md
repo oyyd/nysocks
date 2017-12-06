@@ -22,6 +22,8 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 ## Installation
 
+Make sure you have installed [node-gyp](https://github.com/nodejs/node-gyp#installation) successfully as nysocks will build C/CPP code. Then:
+
 ```
 npm i nysocks -g
 ```

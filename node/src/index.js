@@ -74,6 +74,7 @@ function createClientInstance(config) {
 export function createClient(config) {
   start()
 
+  let networkMonitor = null
   const currentClients = {
     // 0 disconenct
     // 1 connecting
@@ -109,6 +110,7 @@ export function createClient(config) {
       // eslint-disable-next-line
       managerClient.on('close', onClose)
     }).catch(err => {
+      // Create client failed
       setTimeout(() => {
         throw err
       })
@@ -120,11 +122,16 @@ export function createClient(config) {
 
     free()
 
-    recreate()
+    const { ip: localIP } = networkMonitor
+
+    // do not restart if there is no non-internal network
+    if (localIP) {
+      recreate()
+    }
   }
 
   // ip changed
-  const networkMonitor = createMonitor(() => {
+  networkMonitor = createMonitor(() => {
     const { ip: localIP } = networkMonitor
 
     if (localIP && currentClients.connectState !== 1) {

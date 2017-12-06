@@ -12,7 +12,7 @@ function getValidIP() {
     const interfaces = ns[name]
 
     for (let j = 0; j < interfaces.length; j += 1) {
-      const intf = interfaces[i]
+      const intf = interfaces[j]
 
       if (!intf.internal && intf.family === 'IPv4') {
         return intf.address
