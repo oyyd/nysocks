@@ -16,6 +16,11 @@
       'src/loop.c',
       'node/binding.cc',
     ],
+    'conditions' : [
+      ['OS=="win"', {
+        'libraries' : ['ws2_32.lib']
+      }]
+    ],
     'cflags_cc!': ['-Wno-incompatible-pointer-types']
   }]
 }
