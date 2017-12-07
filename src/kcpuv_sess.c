@@ -93,6 +93,7 @@ static void sess_send(kcpuv_sess *sess, char *data, int length,
   }
 
   free(data);
+
   if (cb != NULL) {
     cb(sess, cus_data);
   }
@@ -108,7 +109,7 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
 
   kcpuv_protocol_encode(cmd, plaintext);
 
-  if (len != 0) {
+  if (len != 0 && msg != NULL) {
     memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
   }
 

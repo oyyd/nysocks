@@ -80,9 +80,10 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
       if (mux->on_connection_cb != NULL) {
         mux_on_connection_cb cb = mux->on_connection_cb;
         cb(conn);
-      } else {
-        fprintf(stderr, "%s\n", "'on_connection_cb' is not specified");
       }
+      // else {
+      //   fprintf(stderr, "%s\n", "'on_connection_cb' is not specified");
+      // }
     }
   }
 
@@ -107,7 +108,7 @@ static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
          len - KCPUV_MUX_PROTOCOL_OVERHEAD);
     } else {
       // TODO: there would be conns are not with on_msg_cb unexpectly
-      fprintf(stderr, "%s\n", "NO_CB");
+      // fprintf(stderr, "%s\n", "NO_CB");
       kcpuv_mux_conn_emit_close(conn);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {

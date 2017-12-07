@@ -165,6 +165,13 @@ export function initClientConns(options, client, ipAddr) {
       sess: socket,
     })
 
+    // NOTE: This will happen when the previous conn has been closed
+    // but the data comes from the other side.
+    // muxBindConnection(mux, (conn) => {
+    //   connSendClose(conn)
+    //   connFree(conn)
+    // })
+
     info.mux = mux
     info.socket = socket
     info.targetSocketPort = port
@@ -197,6 +204,12 @@ export function createClient(_options) {
 
   client.masterSocket = masterSocket
   client.masterMux = masterMux
+
+  muxBindConnection(client.masterMux, (conn) => {
+    console.log('masterMux_muxBindConnection')
+    connSendClose(conn)
+    connFree(conn)
+  })
 
   return getIP(serverAddr)
     .then((_ipAddr) => {
