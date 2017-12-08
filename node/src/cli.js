@@ -16,6 +16,18 @@ const DEFAULT_PAC_SERVER = {
   pacServerPort: 8090,
 }
 
+function camelize(key) {
+  let nextKey = key
+  let index = nextKey.indexOf('_')
+
+  while (index >= 0 && index !== 0 && index !== nextKey.length) {
+    nextKey = nextKey.slice(0, index) + nextKey[index + 1].toUpperCase() + nextKey.slice(index + 2)
+    index = nextKey.indexOf('_')
+  }
+
+  return nextKey
+}
+
 function getConfigFile(configFile) {
   if (!configFile) {
     return null
@@ -47,10 +59,6 @@ function getMode(mode) {
 }
 
 function checkRequiredConfig(config) {
-  if (!config.password) {
-    throw new Error('you have to specify a valid "password"')
-  }
-
   if (config.log_memory) {
     logMemory()
   }
@@ -75,6 +83,12 @@ function parseConfig(argv) {
     changeLogger(config.log_path)
   }
 
+  Object.keys(config).forEach(key => {
+    if (config[key]) {
+      config[camelize(key)] = config[key]
+    }
+  })
+
   return config
 }
 
@@ -96,24 +110,40 @@ export default function main() {
     .detectLocale(false)
     .option('daemon', {
       alias: 'd',
-      describe: 'Run with a daemon(pm2): start, stop, restart',
+      describe: 'Run with a daemon(pm2): start, stop, restart.',
     })
     .option('mode', {
       alias: 'm',
-      describe: 'Like kcptun: normal, fast, fast2, fast3',
+      describe: 'Like kcptun: normal, fast, fast2, fast3.',
     })
     .option('config', {
       alias: 'c',
-      describe: 'The path of a json file that describe your configuration',
+      describe: 'The path of a json file that describe your configuration.',
     })
-    .options('log_path', {
-      describe: 'The file path for logging. If not set, will log to the console',
+    .option('passowrd', {
+      alias: 'k',
+      describe: 'The passowrd/key for the encryption of transmissio.',
     })
-    .options('log_memory', {
-      describe: 'Log memory info',
+    // TODO:
+    .option('socket_amount', {
+      describe: 'The amount of connections to be created for each client (default: 10.)',
     })
-    .options('log_conn', {
-      describe: 'Log connections info',
+    .option('server_addr', {
+      alias: 'a',
+      describe: 'The host of your server.',
+    })
+    .option('server_port', {
+      alias: 'p',
+      describe: 'The port of your server.',
+    })
+    .option('log_path', {
+      describe: 'The file path for logging. If not set, will log to the console.',
+    })
+    .option('log_memory', {
+      describe: 'Log memory info.',
+    })
+    .option('log_conn', {
+      describe: 'Log connections info.',
     })
     .command({
       command: 'server',
@@ -121,12 +151,13 @@ export default function main() {
       handler: (argv) => {
         const config = parseConfig(argv)
 
+        checkRequiredConfig(config)
+
         if (config.daemon) {
           runAsDaemon(config, 'server')
           return
         }
 
-        checkRequiredConfig(config)
         createServerRouter(config)
 
         logger.info(`Server is listening on ${config.serverPort}`)
@@ -137,12 +168,14 @@ export default function main() {
       desc: 'Start a tunnel client.',
       handler: (argv) => {
         const config = parseConfig(argv)
+
+        checkRequiredConfig(config)
+
         if (config.daemon) {
           runAsDaemon(config, 'client')
           return
         }
 
-        checkRequiredConfig(config)
         const pacConfig = Object.assign({ port: config.SOCKS.port }, config.pac)
         createPACServer(pacConfig)
         createClient(config)

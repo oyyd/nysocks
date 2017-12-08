@@ -206,7 +206,6 @@ export function createServerRouter(config) {
       const serverConfig = Object.assign({}, config, {
         serverPort: 0,
       })
-
       const server = createServer(serverConfig, () => {
         // on close
         freeManager(server.managerServer)

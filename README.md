@@ -123,6 +123,7 @@ Use chrome extensions like [SwitchyOmega](https://github.com/FelisCatus/SwitchyO
 
 - [kcptun](https://github.com/xtaci/kcptun) - A Secure Tunnel Based On KCP with N:M Multiplexing
 - [kcp](https://github.com/skywind3000/kcp) - A Fast and Reliable ARQ Protocol
+- [C++ and Node.js Integration](http://scottfrees.com/ebooks/nodecpp/)
 
 ## LICENSE
 

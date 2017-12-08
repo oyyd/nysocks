@@ -101,8 +101,6 @@ export function freeManager(manager) {
       stopListen(socket)
       markFree(socket)
     })
-  } else {
-    console.error('invalid conns')
   }
 
   muxFree(masterMux)
@@ -206,7 +204,6 @@ export function createClient(_options) {
   client.masterMux = masterMux
 
   muxBindConnection(client.masterMux, (conn) => {
-    console.log('masterMux_muxBindConnection')
     connSendClose(conn)
     connFree(conn)
   })

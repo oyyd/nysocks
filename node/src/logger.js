@@ -1,17 +1,31 @@
 import path from 'path'
 import winston from 'winston'
 import fecha from 'fecha'
+import chalk from 'chalk'
 
 const { format } = winston
-const kcpuvFormat = format.combine(
+
+function chalkLevel(level) {
+  if (level === 'info') {
+    return chalk.cyan(level)
+  } else if (level === 'warn') {
+    return chalk.yellow(level)
+  } else if (level === 'error') {
+    return chalk.red(level)
+  }
+
+  return level
+}
+
+const nysocksFormat = format.combine(
   format.timestamp(),
   format.printf(info =>
-    `${info.level} ${fecha.format(new Date(info.timestamp), 'YYYY-MM-DD HH:mm:ss')}: ${info.message}`),
+    `${chalkLevel(info.level)} ${chalk.underline(fecha.format(new Date(info.timestamp), 'YYYY-MM-DD HH:mm:ss'))}: ${info.message}`),
 )
 
 let _logger = winston.createLogger({
   level: 'info',
-  format: kcpuvFormat,
+  format: nysocksFormat,
   transports: [
     new winston.transports.Console(),
   ],
