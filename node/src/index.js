@@ -209,7 +209,7 @@ export function createServerRouter(config) {
       const server = createServer(serverConfig, () => {
         // TODO:
         // on close
-        // freeManager(server.managerServer)
+        freeManager(server.managerServer)
         router.onServerClose(options)
       })
 
