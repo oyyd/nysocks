@@ -33,12 +33,13 @@ export function createMonitor(next) {
   }
 
   obj.id = setInterval(() => {
+    const oriIP = obj.ip
     const ip = getValidIP()
 
     obj.ip = ip
 
     // trigger when we could access non-internal network
-    if (obj.ip !== ip) {
+    if (oriIP !== ip) {
       next()
     }
   }, INTERVAL_TIME)

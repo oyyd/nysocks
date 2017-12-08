@@ -1,6 +1,7 @@
 import EventEmitter from 'events'
 import {
-  getPort, createWithOptions, close as sessClose,
+  getPort, createWithOptions,
+  // close as sessClose,
   listen as socketListen, setAddr,
   initCryptor, markFree, stopListen,
   // bindListener, send, startKcpuv,
@@ -231,12 +232,12 @@ export function createClient(_options) {
     })
 }
 
-export function closeClient(client) {
-  const { masterSocket, conns } = client
-
-  conns.forEach(conn => sessClose(conn.socket, true))
-  sessClose(masterSocket)
-}
+// export function closeClient(client) {
+//   const { masterSocket, conns } = client
+//
+//   conns.forEach(conn => sessClose(conn.socket, true))
+//   sessClose(masterSocket)
+// }
 
 export function getConnectionPorts(sockets) {
   return sockets.map(i => i.port)

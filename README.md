@@ -20,7 +20,7 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 ## How it works
 
-![work](https://cdn.rawgit.com/oyyd/nysocks/f1f82062/imgs/work.png)
+![work](https://cdn.rawgit.com/oyyd/nysocks/faae8240/imgs/work.png)
 
 **protocol(unstable):**
 

@@ -71,7 +71,7 @@ export function createMux(_options) {
   return mux
 }
 
-export const muxFree = muxSuite.wrap((mux) => {
+export const muxFree = muxSuite.wrap((mux, onFree) => {
   if (mux.isClosed) {
     return
   }
@@ -81,6 +81,9 @@ export const muxFree = muxSuite.wrap((mux) => {
   setTimeout(() => {
     binding.muxFree(mux)
     record('mux', get('mux') - 1)
+    if (typeof onFree === 'function') {
+      onFree()
+    }
   })
 })
 
