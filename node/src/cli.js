@@ -77,7 +77,13 @@ function parseConfig(argv) {
   }
   config.kcp = {}
   config.kcp = Object.assign(config.kcp, modeKcpOptions)
-  config = Object.assign(config, configJsonFromFile, argv)
+  config = Object.assign(config, configJsonFromFile)
+
+  Object.keys(argv).forEach(key => {
+    if (argv[key]) {
+      config[key] = argv[key]
+    }
+  })
 
   if (config.log_path) {
     changeLogger(config.log_path)
