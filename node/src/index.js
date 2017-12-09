@@ -108,7 +108,7 @@ export function createClient(config) {
       currentClients.managerClient = managerClient
       currentClients.socksServer = socksServer
       // eslint-disable-next-line
-      managerClient.on('close', closeAndTryCreate)
+      managerClient.on('close', closeAndTryRecreate)
     }).catch(err => {
       // Create client failed
       setTimeout(() => {
