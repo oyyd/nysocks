@@ -100,13 +100,17 @@ export function freeManager(manager) {
       const { mux, socket } = conn
       muxFree(mux)
       stopListen(socket)
-      markFree(socket)
+      setTimeout(() => {
+        markFree(socket)
+      })
     })
   }
 
   muxFree(masterMux)
   stopListen(masterSocket)
-  markFree(masterSocket)
+  setTimeout(() => {
+    markFree(masterSocket)
+  })
 }
 
 export function initClientMasterSocket(mux) {

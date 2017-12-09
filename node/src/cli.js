@@ -120,7 +120,7 @@ export default function main() {
       alias: 'c',
       describe: 'The path of a json file that describe your configuration.',
     })
-    .option('passowrd', {
+    .option('password', {
       alias: 'k',
       describe: 'The passowrd/key for the encryption of transmissio.',
     })
