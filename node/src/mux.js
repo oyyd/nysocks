@@ -78,7 +78,7 @@ export const muxFree = muxSuite.wrap((mux, onFree) => {
 
   mux.isClosed = true
 
-  setTimeout(() => {
+  process.nextTick(() => {
     binding.muxFree(mux)
     record('mux', get('mux') - 1)
     if (typeof onFree === 'function') {
@@ -133,7 +133,7 @@ export const connFree = connSuite.wrap((conn) => {
 
   conn.isClosed = true
 
-  setTimeout(() => {
+  process.nextTick(() => {
     binding.connFree(conn)
     record('conn', get('conn') - 1)
   })
