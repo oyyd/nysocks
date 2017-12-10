@@ -4,7 +4,7 @@
 
 Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs.
 
-    Nysocks is in early version. Please submit PRs or issues to help us improve it if you like it!
+    Nysocks is in an early stage. Please submit PRs or issues to help us improve it if you like it!
 
 Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happens when trasmission data from to China mainland:
 
@@ -53,7 +53,7 @@ npm i nysocks -g
 
 ## Usage
 
-### Create server service
+#### 1. Create server service
 
 In your server, start nysocks with `server` command:
 
@@ -61,7 +61,7 @@ In your server, start nysocks with `server` command:
 nysocks server -p 20000 -k YOUR_PASSWORD -m fast
 ```
 
-### Create client service
+#### 2. Create client service
 
 In your client, start nysocks with `client` command to create a tunnel client that will connect to your server and provide proxy service:
 
@@ -69,9 +69,9 @@ In your client, start nysocks with `client` command to create a tunnel client th
 nysocks client -p 20000 -k YOUR_PASSWORD -m fast
 ```
 
-Nysocks will start a SOCKS5 service to tunnel your tcp connections. Now you can [utilize the SOCKS5 service](#How to utilize the SOCKS5 service) (default port `1080`). A [PAC](https://en.wikipedia.org/wiki/Proxy_auto-config) file server will also be served(default port `8090`).
+Nysocks will start a SOCKS5 service to tunnel your tcp connections. Now you can [utilize the SOCKS5 service](https://github.com/oyyd/nysocks#how-to-utilize-the-socks5-service) (default port `1080`). A [PAC](https://en.wikipedia.org/wiki/Proxy_auto-config) file server will also be served(default port `8090`) for convenience.
 
-#### Use `config.json`
+#### 3. Use `config.json`
 
 You can create a `config.json` file like [this](#config) that containing your configs to avoid verbose cli options:
 
@@ -79,7 +79,7 @@ You can create a `config.json` file like [this](#config) that containing your co
 nysocks client -c config.json
 ```
 
-#### Use daemons
+#### 4. Use daemons
 
 Add `-d` options if you want to run under daemons([pm2](http://pm2.keymetrics.io/)):
 
@@ -87,7 +87,7 @@ Add `-d` options if you want to run under daemons([pm2](http://pm2.keymetrics.io
 nysocks client -d restart -c config.json
 ```
 
-#### Check other options
+#### 5. Check other options
 
 Modify your options in the CLI. See other options here:
 
