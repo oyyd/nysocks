@@ -66,7 +66,7 @@ nysocks server -p 20000 -k YOUR_PASSWORD -m fast
 In your client, start nysocks with `client` command to create a tunnel client that will connect to your server and provide proxy service:
 
 ```
-nysocks client -p 20000 -k YOUR_PASSWORD -m fast
+nysocks client -a YOUR_SERVER_HOST -p 20000 -k YOUR_PASSWORD -m fast
 ```
 
 Nysocks will start a SOCKS5 service to tunnel your tcp connections. Now you can [utilize the SOCKS5 service](https://github.com/oyyd/nysocks#how-to-utilize-the-socks5-service) (default port `1080`). A [PAC](https://en.wikipedia.org/wiki/Proxy_auto-config) file server will also be served(default port `8090`) for convenience.
