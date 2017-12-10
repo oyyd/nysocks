@@ -43,6 +43,7 @@ int kcpuv_destruct() {
 
   // destruct all nodes
   while (ptr_next != NULL) {
+    ptr->next = ptr_next->next;
     kcpuv_free(ptr_next->node);
     ptr_next = ptr->next;
   }
@@ -203,6 +204,7 @@ void kcpuv_free(kcpuv_sess *sess) {
     kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, sess);
     if (ptr != NULL) {
       free(ptr);
+      ptr = NULL;
     }
     sess_list->len -= 1;
   }
@@ -210,19 +212,25 @@ void kcpuv_free(kcpuv_sess *sess) {
   if (sess->cryptor != NULL) {
     kcpuv_cryptor_clean(sess->cryptor);
     free(sess->cryptor);
+    sess->crytor = NULL;
   }
 
   if (sess->send_addr != NULL) {
     free(sess->send_addr);
+    sess->send_addr = NULL;
   }
   if (sess->recv_addr != NULL) {
     free(sess->recv_addr);
+    sess->recv_addr = NULL;
   }
 
   // TODO: should stop listening
   free(sess->handle);
+  sess->handle = NULL;
   ikcp_release(sess->kcp);
+  sess->kcp = NULL;
   free(sess);
+  sess = NULL;
 }
 
 // int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
