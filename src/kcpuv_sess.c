@@ -212,7 +212,7 @@ void kcpuv_free(kcpuv_sess *sess) {
   if (sess->cryptor != NULL) {
     kcpuv_cryptor_clean(sess->cryptor);
     free(sess->cryptor);
-    sess->crytor = NULL;
+    sess->cryptor = NULL;
   }
 
   if (sess->send_addr != NULL) {
@@ -230,7 +230,6 @@ void kcpuv_free(kcpuv_sess *sess) {
   ikcp_release(sess->kcp);
   sess->kcp = NULL;
   free(sess);
-  sess = NULL;
 }
 
 // int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
