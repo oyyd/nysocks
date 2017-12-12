@@ -22,6 +22,7 @@ include_directories(../deps/kcp)
 include_directories(../src/)
 
 add_executable(unit_test
+  KcpuvTest.cpp
   KcpuvSessTest.cpp
   UtilsTest.cpp
   ProtocolTest.cpp

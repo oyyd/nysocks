@@ -33,6 +33,10 @@ void kcpuv__add_idle(uv_idle_t *idle) {
   uv_idle_init(kcpuv_get_loop(), idle);
 }
 
+void kcpuv__add_timer(uv_timer_t *timer) {
+  uv_timer_init(kcpuv_get_loop(), timer);
+}
+
 // Start uv kcpuv_loop and updating kcp.
 void kcpuv_start_loop(uv_timer_cb cb) {
   init_loop();
@@ -46,6 +50,17 @@ void kcpuv_start_loop(uv_timer_cb cb) {
     uv_run(kcpuv_get_loop(), UV_RUN_DEFAULT);
   }
 }
+
+// static void close_cb(uv_handle_t *handle) {
+//   //
+//   fprintf(stderr, "%s\n", "close_cb");
+// }
+
+// static void closing_walk(uv_handle_t *handle, void *arg) {
+//   if (handle != NULL && !uv_is_closing(handle)) {
+//     uv_close(handle, NULL);
+//   }
+// }
 
 int kcpuv_stop_loop() {
   if (timer != NULL) {
@@ -62,14 +77,17 @@ int kcpuv_stop_loop() {
   if (!use_default_loop && kcpuv_get_loop() != NULL) {
     uv_stop(kcpuv_get_loop());
 
-    // NOTE: The closing may failed simply because
-    // we don't call the `uv_run` on this loop and
-    // then causes a memory leaking.
+    // uv_walk(kcpuv_get_loop(), closing_walk, NULL);
+    //
+    // uv_run(kcpuv_get_loop(), UV_RUN_DEFAULT);
+
     int rval = uv_loop_close(kcpuv_get_loop());
 
     if (rval) {
       fprintf(stderr, "%s\n", uv_strerror(rval));
     }
+
+    return rval;
   }
 
   return 0;

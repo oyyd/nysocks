@@ -29,8 +29,8 @@ struct KCPUV_SESS {
   struct sockaddr *send_addr;
   struct sockaddr *recv_addr;
   int state;
-  IUINT32 hb_ts;
   IUINT32 recv_ts;
+  IUINT32 send_ts;
   unsigned int timeout;
   kcpuv_listen_cb on_msg_cb;
   kcpuv_dgram_cb on_close_cb;

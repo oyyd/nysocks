@@ -103,6 +103,7 @@ static void sess_send(kcpuv_sess *sess, char *data, int length,
 static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
                                      int len, kcpuv_dgram_cb cb,
                                      char *cus_data) {
+  sess->send_ts = iclock();
   // encode protocol
   int write_len = len + KCPUV_OVERHEAD;
   // ikcp assume we copy and send the msg
@@ -175,7 +176,7 @@ kcpuv_sess *kcpuv_create() {
   sess->udp_send = NULL;
   sess->state = KCPUV_STATE_CREATED;
   sess->recv_ts = now;
-  sess->hb_ts = now;
+  sess->send_ts = now;
   sess->timeout = DEFAULT_TIMEOUT;
   sess->cryptor = NULL;
 
@@ -312,6 +313,9 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
     // check protocol
     int cmd = kcpuv_protocol_decode(read_msg);
 
+    // NOTE: We don't need to make sure the KCPUV_CMD_NOO
+    // to be received as messages sended by kcp will also
+    // refresh the recv_ts to avoid timeout.
     if (cmd == KCPUV_CMD_NOO) {
       free(read_msg);
       free(buf->base);
@@ -325,7 +329,6 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
 
     input_kcp(sess, (const char *)(read_msg + KCPUV_OVERHEAD),
               read_len - KCPUV_OVERHEAD);
-    free(read_msg);
   }
 
   // release uv buf
@@ -461,6 +464,8 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
     IUINT32 time_to_update = ikcp_check(sess->kcp, now);
 
+    // NOTE: We have to call ikcp_update after the first calling
+    // of the ikcp_input or we will get Segmentation fault.
     if (time_to_update <= now) {
       ikcp_update(sess->kcp, now);
     }
@@ -499,7 +504,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     } else {
       if (KCPUV_SESS_HEARTBEAT_ACTIVE) {
         if (sess->send_addr != NULL &&
-            sess->hb_ts + KCPUV_SESS_HEARTBEAT_INTERVAL <= now) {
+            sess->send_ts + KCPUV_SESS_HEARTBEAT_INTERVAL <= now) {
           kcpuv_send_cmd(sess, KCPUV_CMD_NOO, NULL, NULL);
         }
       }

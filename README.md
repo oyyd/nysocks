@@ -1,6 +1,6 @@
 # nysocks
 
-[![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks)
+[![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks) [![travis-ci](https://travis-ci.org/oyyd/nysocks.svg?branch=dev)](https://travis-ci.org/oyyd/nysocks)
 
 Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs.
 
@@ -44,6 +44,8 @@ The tunnel connections in nysocks is implemented as a [node-addon(C/CPP)](https:
 Still, I'm not a professional C/CPP language user or network programmer. Please submit PRs or issues to help us improve it!
 
 ## Installation
+
+`node >= 6.x`
 
 **Make sure** you have [node-gyp](https://github.com/nodejs/node-gyp#installation) installed successfully as nysocks will build C/CPP code, then:
 

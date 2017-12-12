@@ -21,7 +21,7 @@ TEST_F(ProtocolTest, encode_and_decode_char_pointer) {
   kcpuv_protocol_encode(1, str);
 
   EXPECT_EQ(static_cast<unsigned int>(str[0]), 1);
-  EXPECT_EQ(static_cast<int>(str[1 + KCPUV_NONCE_LENGTH]),
+  EXPECT_EQ(static_cast<int>(str[2 + KCPUV_NONCE_LENGTH]),
             static_cast<int>('a'));
 
   int close = kcpuv_protocol_decode(str);

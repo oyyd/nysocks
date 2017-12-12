@@ -1,5 +1,4 @@
 #include "KcpuvTest.h"
-#include "kcpuv_sess.h"
 #include <iostream>
 #include <string.h>
 
@@ -36,7 +35,8 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 void recver_cb(kcpuv_sess *sess, char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
-  kcpuv_stop_loop();
+  kcpuv_stop_listen(sess);
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 TEST_F(KcpuvSessTest, transfer_one_packet) {
@@ -71,7 +71,8 @@ static testing::MockFunction<void(int)> *test_callback2;
 void recver_cb2(kcpuv_sess *sess, char *data, int len) {
   test_callback2->Call(len);
   delete test_callback2;
-  kcpuv_stop_loop();
+  kcpuv_stop_listen(sess);
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 TEST_F(KcpuvSessTest, transfer_multiple_packets) {
@@ -109,7 +110,8 @@ static testing::MockFunction<void(int)> *test_callback22;
 void recver_cb22(kcpuv_sess *sess, char *data, int len) {
   test_callback22->Call(len);
   delete test_callback22;
-  kcpuv_stop_loop();
+  kcpuv_stop_listen(sess);
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 TEST_F(KcpuvSessTest, mock_implementation) {
@@ -175,7 +177,8 @@ static void close_cb2(kcpuv_sess *sess, void *data) {
   const char *error_msg = reinterpret_cast<const char *>(data);
   test_callback4->Call();
   delete test_callback4;
-  kcpuv_stop_loop();
+  kcpuv_stop_listen(sess);
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
@@ -211,7 +214,8 @@ static void close_cb3(kcpuv_sess *sess, void *data) {
   const char *error_msg = reinterpret_cast<const char *>(data);
   test_callback5->Call();
   delete test_callback5;
-  kcpuv_stop_loop();
+  kcpuv_stop_listen(sess);
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 TEST_F(KcpuvSessTest, timeout) {
@@ -234,8 +238,6 @@ TEST_F(KcpuvSessTest, timeout) {
   EXPECT_CALL(*test_callback5, Call()).Times(1);
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
-
-  kcpuv_stop_listen(sender);
 
   kcpuv_destruct();
 }
