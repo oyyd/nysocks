@@ -85,19 +85,21 @@ static void sess_send(kcpuv_sess *sess, char *data, int length,
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, length);
 
-  if (sess->udp_send != NULL) {
-    kcpuv_udp_send udp_send = sess->udp_send;
-    udp_send(sess, &buf, 1, (const struct sockaddr *)sess->send_addr);
-  } else {
-    uv_udp_try_send(sess->handle, &buf, 1,
-                    (const struct sockaddr *)sess->send_addr);
+  if (sess->state != KCPUV_STATE_FREED) {
+    if (sess->udp_send != NULL) {
+      kcpuv_udp_send udp_send = sess->udp_send;
+      udp_send(sess, &buf, 1, (const struct sockaddr *)sess->send_addr);
+    } else {
+      uv_udp_try_send(sess->handle, &buf, 1,
+                      (const struct sockaddr *)sess->send_addr);
+    }
+
+    if (cb != NULL) {
+      cb(sess, cus_data);
+    }
   }
 
   free(data);
-
-  if (cb != NULL) {
-    cb(sess, cus_data);
-  }
 }
 
 static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
@@ -201,6 +203,8 @@ void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len) {
 
 // Free a kcpuv session.
 void kcpuv_free(kcpuv_sess *sess) {
+  sess->state = KCPUV_STATE_FREED;
+
   if (sess_list != NULL && sess_list->list != NULL) {
     kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, sess);
     if (ptr != NULL) {
@@ -226,7 +230,10 @@ void kcpuv_free(kcpuv_sess *sess) {
   }
 
   // TODO: should stop listening
-  free(sess->handle);
+  if (!uv_is_closing((uv_handle_t *)sess->handle)) {
+    uv_close((uv_handle_t *)sess->handle, free_handle_cb);
+  }
+  // free(sess->handle);
   sess->handle = NULL;
   ikcp_release(sess->kcp);
   sess->kcp = NULL;
@@ -429,6 +436,7 @@ void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
                  const char *error_msg) {
   // mark that this sess could be freed
   sess->state = KCPUV_STATE_CLOSED;
+  // uv_close(sess->handle, NULL);
 
   if (send_close_msg != 0) {
     kcpuv_send_cmd(sess, KCPUV_CMD_CLS, sess->on_close_cb, (void *)error_msg);

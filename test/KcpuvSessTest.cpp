@@ -14,6 +14,8 @@ protected:
   virtual ~KcpuvSessTest(){};
 };
 
+static void timer_cb(uv_timer_t *timer) { kcpuv_stop_loop(); }
+
 TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
   kcpuv_initialize();
 
@@ -24,19 +26,26 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
   EXPECT_EQ(sess_list->len, 1);
   EXPECT_TRUE(sess_list->list->next);
 
+  uv_timer_t timer;
+
+  kcpuv__add_timer(&timer);
+  uv_timer_start(&timer, timer_cb, 0, 0);
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
+
   kcpuv_free(sess);
 
   EXPECT_EQ(sess_list->len, 0);
   EXPECT_FALSE(sess_list->list->next);
 
-  kcpuv_destruct();
+  // TODO: refactor this
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 void recver_cb(kcpuv_sess *sess, char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
   kcpuv_stop_listen(sess);
-  KCPUV_TRY_STOPPING_LOOP();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, transfer_one_packet) {
@@ -63,7 +72,8 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
 
   kcpuv_free(sender);
   kcpuv_free(recver);
-  kcpuv_destruct();
+
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 static testing::MockFunction<void(int)> *test_callback2;
@@ -72,7 +82,7 @@ void recver_cb2(kcpuv_sess *sess, char *data, int len) {
   test_callback2->Call(len);
   delete test_callback2;
   kcpuv_stop_listen(sess);
-  KCPUV_TRY_STOPPING_LOOP();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, transfer_multiple_packets) {
@@ -100,9 +110,8 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
   EXPECT_CALL(*test_callback2, Call(size)).Times(1);
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
-  kcpuv_destruct();
-
   delete msg;
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 static testing::MockFunction<void(int)> *test_callback22;
@@ -111,7 +120,7 @@ void recver_cb22(kcpuv_sess *sess, char *data, int len) {
   test_callback22->Call(len);
   delete test_callback22;
   kcpuv_stop_listen(sess);
-  KCPUV_TRY_STOPPING_LOOP();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, mock_implementation) {
@@ -139,7 +148,7 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 
-  kcpuv_destruct();
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 static testing::MockFunction<void(void)> *test_callback3;
@@ -154,6 +163,13 @@ static void close_cb(kcpuv_sess *sess, void *data) {
   delete test_callback3;
 }
 
+void do_close_cb(uv_timer_t *timer) {
+  kcpuv_sess *sess = static_cast<kcpuv_sess *>(timer->data);
+
+  kcpuv_close(sess, 0, error_msg);
+  kcpuv_stop_loop();
+}
+
 TEST_F(KcpuvSessTest, on_close_cb) {
   kcpuv_initialize();
 
@@ -166,9 +182,16 @@ TEST_F(KcpuvSessTest, on_close_cb) {
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
 
-  kcpuv_close(sender, 0, error_msg);
+  uv_timer_t timer;
+  timer.data = sender;
+  kcpuv__add_timer(&timer);
+  uv_timer_start(&timer, do_close_cb, 0, 0);
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
 
-  kcpuv_destruct();
+  kcpuv_free(sender);
+
+  // refector
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 static testing::MockFunction<void(void)> *test_callback4;
@@ -178,7 +201,7 @@ static void close_cb2(kcpuv_sess *sess, void *data) {
   test_callback4->Call();
   delete test_callback4;
   kcpuv_stop_listen(sess);
-  KCPUV_TRY_STOPPING_LOOP();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
@@ -200,12 +223,14 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
   kcpuv_bind_close(recver, &close_cb2);
 
   EXPECT_CALL(*test_callback4, Call()).Times(1);
-
   kcpuv_close(sender, 1, NULL);
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 
-  kcpuv_destruct();
+  kcpuv_free(sender);
+  kcpuv_free(recver);
+
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 static testing::MockFunction<void(void)> *test_callback5;
@@ -215,7 +240,7 @@ static void close_cb3(kcpuv_sess *sess, void *data) {
   test_callback5->Call();
   delete test_callback5;
   kcpuv_stop_listen(sess);
-  KCPUV_TRY_STOPPING_LOOP();
+  kcpuv_stop_loop();
 }
 
 TEST_F(KcpuvSessTest, timeout) {
@@ -238,8 +263,7 @@ TEST_F(KcpuvSessTest, timeout) {
   EXPECT_CALL(*test_callback5, Call()).Times(1);
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
-
-  kcpuv_destruct();
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 TEST_F(KcpuvSessTest, kcpuv_get_address) {
@@ -258,9 +282,14 @@ TEST_F(KcpuvSessTest, kcpuv_get_address) {
   EXPECT_EQ(rval, 0);
   EXPECT_EQ(port, bind_port);
 
+  uv_timer_t timer;
+  kcpuv__add_timer(&timer);
+  uv_timer_start(&timer, timer_cb, 0, 0);
+  kcpuv_start_loop(kcpuv__update_kcp_sess);
+
   delete[] ip_addr;
   kcpuv_stop_listen(sess);
-  kcpuv_destruct();
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 } // namespace kcpuv_test

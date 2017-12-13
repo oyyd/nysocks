@@ -272,6 +272,7 @@ void kcpuv_mux_conn_send_close(kcpuv_mux_conn *conn) {
 static void kcpuv_mux_check(kcpuv_mux *mux) {
   IUINT32 current = iclock();
   kcpuv_link *link = &mux->conns;
+
   while (link->next != NULL) {
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
 

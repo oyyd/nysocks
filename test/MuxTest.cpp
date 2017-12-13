@@ -131,7 +131,8 @@ TEST_F(MuxTest, transmission) {
   kcpuv_mux_free(&mux_p2);
   kcpuv_free(sess_p1);
   kcpuv_free(sess_p2);
-  kcpuv_destruct();
+
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 static int get_mux_conns_count(kcpuv_mux *mux) {
@@ -153,10 +154,9 @@ static int get_mux_conns_count(kcpuv_mux *mux) {
 // }
 
 void timeout_close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
-  kcpuv_stop_loop();
   kcpuv_mux *mux = conn->mux;
-  kcpuv_mux_conn_free(conn, NULL);
-  EXPECT_EQ(get_mux_conns_count(mux), 0);
+  EXPECT_EQ(get_mux_conns_count(mux), 1);
+  kcpuv_stop_loop();
 }
 
 TEST_F(MuxTest, close) {
@@ -185,9 +185,13 @@ TEST_F(MuxTest, close) {
 
   kcpuv_start_loop(kcpuv__mux_updater);
 
+  kcpuv_mux_conn_free(&sess_p1_conn_p2, NULL);
+
+  kcpuv_mux_free(&mux);
   // destruction
   kcpuv_free(sess_p1);
-  kcpuv_destruct();
+
+  KCPUV_TRY_STOPPING_LOOP();
 }
 
 } // namespace kcpuv_test

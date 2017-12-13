@@ -48,6 +48,8 @@ void kcpuv_log(char *msg);
 
 void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 
+void free_handle_cb(uv_handle_t *handle);
+
 void kcpuv_print_protocol(const char *content, int len);
 
 #ifdef __cplusplus

@@ -17,8 +17,8 @@ static uv_timer_t *timer = NULL;
 
 #ifndef KCPUV_TRY_STOPPING_LOOP
 #define KCPUV_TRY_STOPPING_LOOP()                                              \
-  kcpuv_stop_loop();                                                           \
-  kcpuv__destroy_loop();
+  kcpuv__destroy_loop();                                                       \
+  kcpuv_destruct();
 #endif
 
 // timer = new uv_timer_t;

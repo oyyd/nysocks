@@ -145,3 +145,5 @@ void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->base = malloc(suggested_size);
   buf->len = suggested_size;
 }
+
+void free_handle_cb(uv_handle_t *handle) { free(handle); }

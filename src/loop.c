@@ -1,5 +1,6 @@
 #include "loop.h"
 #include "kcpuv.h"
+#include "utils.h"
 
 static uv_loop_t *kcpuv_loop = NULL;
 static int use_default_loop = 0;
@@ -56,11 +57,16 @@ void kcpuv_start_loop(uv_timer_cb cb) {
 //   fprintf(stderr, "%s\n", "close_cb");
 // }
 
-// static void closing_walk(uv_handle_t *handle, void *arg) {
-//   if (handle != NULL && !uv_is_closing(handle)) {
-//     uv_close(handle, NULL);
-//   }
-// }
+// Force closing all handles
+static void closing_walk(uv_handle_t *handle, void *arg) {
+  if (!uv_is_closing(handle)) {
+    uv_close(handle, NULL);
+  }
+}
+
+void kcpuv__loop_close_handles() {
+  uv_walk(kcpuv_get_loop(), closing_walk, NULL);
+}
 
 int kcpuv_stop_loop() {
   if (timer != NULL) {
@@ -70,24 +76,26 @@ int kcpuv_stop_loop() {
       fprintf(stderr, "%s\n", uv_strerror(rval));
     }
 
-    free(timer);
+    uv_close((uv_handle_t *)timer, free_handle_cb);
+
     timer = NULL;
   }
 
   if (!use_default_loop && kcpuv_get_loop() != NULL) {
-    uv_stop(kcpuv_get_loop());
+    kcpuv__loop_close_handles();
+    // uv_stop(kcpuv_get_loop());
 
     // uv_walk(kcpuv_get_loop(), closing_walk, NULL);
     //
     // uv_run(kcpuv_get_loop(), UV_RUN_DEFAULT);
 
-    int rval = uv_loop_close(kcpuv_get_loop());
-
-    if (rval) {
-      fprintf(stderr, "%s\n", uv_strerror(rval));
-    }
-
-    return rval;
+    // int rval = uv_loop_close(kcpuv_get_loop());
+    //
+    // if (rval) {
+    //   fprintf(stderr, "%s\n", uv_strerror(rval));
+    // }
+    //
+    // return rval;
   }
 
   return 0;
@@ -95,6 +103,12 @@ int kcpuv_stop_loop() {
 
 void kcpuv__destroy_loop() {
   if (!use_default_loop && kcpuv_loop != NULL) {
+    int rval = uv_loop_close(kcpuv_get_loop());
+
+    if (rval) {
+      fprintf(stderr, "%s\n", uv_strerror(rval));
+    }
+
     free(kcpuv_loop);
     kcpuv_loop = NULL;
   }
