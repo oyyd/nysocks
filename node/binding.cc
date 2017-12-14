@@ -138,7 +138,7 @@ void KcpuvMuxBinding::Create(const FunctionCallbackInfo<Value> &args) {
 
 // void buffer_delete_callback(char *data, void *hint) { free(data); }
 
-static void on_listen_cb(kcpuv_sess *sess, char *data, int len) {
+static void on_listen_cb(kcpuv_sess *sess, const char *data, int len) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
   // NOTE: Create a scope for the allocation of v8 memories
   // as we are calling a js function outside the v8
@@ -563,7 +563,7 @@ static NAN_METHOD(ConnSendClose) {
   kcpuv_mux_conn_send_close(conn_obj->conn);
 }
 
-static void conn_binding_on_message_cb(kcpuv_mux_conn *conn, char *data,
+static void conn_binding_on_message_cb(kcpuv_mux_conn *conn, const char *data,
                                        int len) {
   KcpuvMuxConnBinding *conn_obj =
       static_cast<KcpuvMuxConnBinding *>(conn->data);

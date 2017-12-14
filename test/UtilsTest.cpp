@@ -33,9 +33,11 @@ TEST_F(UtilsTest, kcpuv_link) {
 
   ptr = kcpuv_link_get_pointer(head, current->node);
   free(ptr);
+  free(current->node);
 
   current = head->next;
   EXPECT_EQ(*(static_cast<int *>(current->node)), 0);
+
   current = current->next;
   EXPECT_EQ(*(static_cast<int *>(current->node)), 2);
 

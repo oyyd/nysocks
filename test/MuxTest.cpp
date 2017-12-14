@@ -50,25 +50,26 @@ static void try_to_close_loop(uv_idle_t *idle) {
   }
 }
 
-void p2_on_msg(kcpuv_mux_conn *conn, char *buffer, int length) {
+void p2_on_msg(kcpuv_mux_conn *conn, const char *buffer, int length) {
   EXPECT_EQ(length, 4096);
   kcpuv_mux_conn_send(conn, "hello", 5, 0);
 
   received_conns += 1;
 
-  // free(buffer);
-
   if (received_conns == 2) {
     uv_idle_start(&close_idle, try_to_close_loop);
   }
+
+  kcpuv_mux_conn_free(conn, NULL);
+  free(conn);
 }
 
 static void on_p2_conn(kcpuv_mux_conn *conn) {
   kcpuv_mux_conn_listen(conn, p2_on_msg);
 }
 
-static void on_data_return(kcpuv_mux_conn *conn, char *buffer, int length) {
-  free(buffer);
+static void on_data_return(kcpuv_mux_conn *conn, const char *buffer,
+                           int length) {
   EXPECT_EQ(length, 5);
 }
 

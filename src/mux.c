@@ -45,7 +45,7 @@ void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn) {
 }
 
 // TODO: drop invalid msg
-static void on_recv_msg(kcpuv_sess *sess, char *data, int len) {
+static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
   int cmd;
   int length;
   unsigned int id = kcpuv__mux_decode((const char *)data, &cmd, &length);
@@ -145,6 +145,8 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
   kcpuv_link *link = mux->conns.next;
 
   while (link != NULL) {
+    // NOTE: Conns will be freed by v8 gc so that we don't need to free them
+    // here in node.
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
     kcpuv_mux_conn_emit_close(conn);
     kcpuv_mux_conn_free(conn, NULL);

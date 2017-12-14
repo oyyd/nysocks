@@ -43,7 +43,6 @@ int kcpuv_destruct() {
 
   // destruct all nodes
   while (ptr_next != NULL) {
-    ptr->next = ptr_next->next;
     kcpuv_free(ptr_next->node);
     ptr_next = ptr->next;
   }
@@ -209,7 +208,6 @@ void kcpuv_free(kcpuv_sess *sess) {
     kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, sess);
     if (ptr != NULL) {
       free(ptr);
-      ptr = NULL;
     }
     sess_list->len -= 1;
   }
@@ -217,26 +215,23 @@ void kcpuv_free(kcpuv_sess *sess) {
   if (sess->cryptor != NULL) {
     kcpuv_cryptor_clean(sess->cryptor);
     free(sess->cryptor);
-    sess->cryptor = NULL;
   }
 
   if (sess->send_addr != NULL) {
     free(sess->send_addr);
-    sess->send_addr = NULL;
   }
   if (sess->recv_addr != NULL) {
     free(sess->recv_addr);
-    sess->recv_addr = NULL;
   }
 
   // TODO: should stop listening
   if (!uv_is_closing((uv_handle_t *)sess->handle)) {
     uv_close((uv_handle_t *)sess->handle, free_handle_cb);
+  } else {
+    free(sess->handle);
   }
-  // free(sess->handle);
-  sess->handle = NULL;
+
   ikcp_release(sess->kcp);
-  sess->kcp = NULL;
   free(sess);
 }
 
@@ -336,6 +331,7 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
 
     input_kcp(sess, (const char *)(read_msg + KCPUV_OVERHEAD),
               read_len - KCPUV_OVERHEAD);
+    free(read_msg);
   }
 
   // release uv buf
@@ -487,7 +483,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
       // update receive data
       kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
-      on_msg_cb(sess, buffer, size);
+      on_msg_cb(sess, (const char *)buffer, size);
       size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
     }
 

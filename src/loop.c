@@ -76,7 +76,9 @@ int kcpuv_stop_loop() {
       fprintf(stderr, "%s\n", uv_strerror(rval));
     }
 
-    uv_close((uv_handle_t *)timer, free_handle_cb);
+    if (!uv_is_closing((uv_handle_t *)timer)) {
+      uv_close((uv_handle_t *)timer, free_handle_cb);
+    }
 
     timer = NULL;
   }

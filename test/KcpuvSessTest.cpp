@@ -26,12 +26,13 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
   EXPECT_EQ(sess_list->len, 1);
   EXPECT_TRUE(sess_list->list->next);
 
-  uv_timer_t timer;
+  uv_timer_t *timer = new uv_timer_t;
 
-  kcpuv__add_timer(&timer);
-  uv_timer_start(&timer, timer_cb, 0, 0);
+  kcpuv__add_timer(timer);
+  uv_timer_start(timer, timer_cb, 0, 0);
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 
+  delete timer;
   kcpuv_free(sess);
 
   EXPECT_EQ(sess_list->len, 0);
@@ -41,7 +42,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
   KCPUV_TRY_STOPPING_LOOP();
 }
 
-void recver_cb(kcpuv_sess *sess, char *data, int len) {
+void recver_cb(kcpuv_sess *sess, const char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
   kcpuv_stop_listen(sess);
@@ -78,9 +79,10 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
 
 static testing::MockFunction<void(int)> *test_callback2;
 
-void recver_cb2(kcpuv_sess *sess, char *data, int len) {
+void recver_cb2(kcpuv_sess *sess, const char *data, int len) {
   test_callback2->Call(len);
   delete test_callback2;
+  // delete[] data;
   kcpuv_stop_listen(sess);
   kcpuv_stop_loop();
 }
@@ -116,7 +118,7 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
 
 static testing::MockFunction<void(int)> *test_callback22;
 
-void recver_cb22(kcpuv_sess *sess, char *data, int len) {
+void recver_cb22(kcpuv_sess *sess, const char *data, int len) {
   test_callback22->Call(len);
   delete test_callback22;
   kcpuv_stop_listen(sess);
@@ -182,12 +184,14 @@ TEST_F(KcpuvSessTest, on_close_cb) {
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
 
-  uv_timer_t timer;
-  timer.data = sender;
-  kcpuv__add_timer(&timer);
-  uv_timer_start(&timer, do_close_cb, 0, 0);
+  uv_timer_t *timer = new uv_timer_t;
+
+  timer->data = sender;
+  kcpuv__add_timer(timer);
+  uv_timer_start(timer, do_close_cb, 0, 0);
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 
+  delete timer;
   kcpuv_free(sender);
 
   // refector
@@ -282,11 +286,12 @@ TEST_F(KcpuvSessTest, kcpuv_get_address) {
   EXPECT_EQ(rval, 0);
   EXPECT_EQ(port, bind_port);
 
-  uv_timer_t timer;
-  kcpuv__add_timer(&timer);
-  uv_timer_start(&timer, timer_cb, 0, 0);
+  uv_timer_t *timer = new uv_timer_t;
+  kcpuv__add_timer(timer);
+  uv_timer_start(timer, timer_cb, 0, 0);
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 
+  delete timer;
   delete[] ip_addr;
   kcpuv_stop_listen(sess);
   KCPUV_TRY_STOPPING_LOOP();
