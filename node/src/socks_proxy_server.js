@@ -5,8 +5,10 @@
 import net from 'net'
 import socks from 'socksv5-kcpuv'
 import { logger } from './logger'
+// import { authCheck } from './auth'
 
 const DEFAULT_OPTIONS = {
+  authList: null,
   address: '127.0.0.1',
   port: 1080,
   targetAddress: '127.0.0.1',
@@ -77,7 +79,10 @@ export function createServer(_options, next) {
     throw new Error('socks_proxy_server expect a callback function')
   }
 
-  const { port, address } = Object.assign({}, DEFAULT_OPTIONS, _options)
+  const {
+    port, address,
+    // authList
+  } = Object.assign({}, DEFAULT_OPTIONS, _options)
 
   // init socks server
   const server = socks.createServer((info, accept/* , deny */) => {
@@ -91,35 +96,11 @@ export function createServer(_options, next) {
     logger.info('connecting success')
   })
 
-  server.useAuth(socks.auth.None())
+  // const authUtils = authList ? socks.auth.UserPassword(authCheck.bind(null, authList))
+  //   : socks.auth.None()
+  const authUtils = socks.auth.None()
+
+  server.useAuth(authUtils)
 
   return server
 }
-
-// if (module === require.main) {
-//   createServer({}, (info, socket) => {
-//     const dstInfo = parseDstInfo(info.chunk)
-//     const targetSocket = createProxyConnection({
-//       host: info.dstAddr,
-//       port: info.dstPort,
-//     })
-//
-//     // targetSocket.on('close', (hadError) => {
-//     //   if (hadError) {
-//     //     console.log('target_socket_close_with_error')
-//     //   }
-//     // })
-//     targetSocket.on('error', err => console.log('target_socket', err))
-//     socket.on('error', err => console.log('socket_err', err))
-//
-//     targetSocket.on('data', buf => {
-//       let data = buf
-//
-//       socket.write(buf)
-//     })
-//
-//     socket.on('data', buffer => {
-//       targetSocket.write(buffer)
-//     })
-//   })
-// }

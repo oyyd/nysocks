@@ -28,7 +28,7 @@ function camelize(key) {
   return nextKey
 }
 
-function getConfigFile(configFile) {
+function getFile(configFile) {
   if (!configFile) {
     return null
   }
@@ -58,6 +58,13 @@ function getMode(mode) {
   return MODES[mode]
 }
 
+function checkAuthList(config) {
+  const { authList } = config.SOCKS
+  if (authList !== null && !(authList instanceof Object && !Array.isArray(authList))) {
+    throw new Error('expect auth list to be like {"name_a": "password_a", "name_b": "password_b"}')
+  }
+}
+
 function checkRequiredConfig(config) {
   if (config.log_memory) {
     logMemory()
@@ -69,12 +76,14 @@ function checkRequiredConfig(config) {
 }
 
 function parseConfig(argv) {
-  const configJsonFromFile = getConfigFile(formatConfig(argv.config)) || {}
+  const configJsonFromFile = getFile(formatConfig(argv.config)) || {}
+  const authList = getFile(formatConfig(argv.socks_auth)) || null
   const modeKcpOptions = getMode(argv.mode ? argv.mode : configJsonFromFile.mode)
   let config = {
     pac: DEFAULT_PAC_SERVER,
     SOCKS: DEFAULT_SOCKS_CONFIG,
   }
+  config.SOCKS.authList = authList
   config.kcp = {}
   config.kcp = Object.assign(config.kcp, modeKcpOptions)
   config = Object.assign(config, configJsonFromFile)
@@ -143,6 +152,9 @@ export default function main() {
       alias: 'p',
       describe: 'The port of your server.',
     })
+    .option('socks_auth', {
+      describe: 'Specify a list of username/password pairs for the socks5 authentication.',
+    })
     .option('log_path', {
       describe: 'The file path for logging. If not set, will log to the console.',
     })
@@ -176,6 +188,7 @@ export default function main() {
       handler: (argv) => {
         const config = parseConfig(argv)
 
+        checkAuthList(config)
         checkRequiredConfig(config)
 
         if (config.daemon) {
