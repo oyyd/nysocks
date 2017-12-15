@@ -114,6 +114,7 @@ export default function main() {
   // eslint-disable-next-line
   yargs
     .detectLocale(false)
+    .version()
     .option('daemon', {
       alias: 'd',
       describe: 'Run with a daemon(pm2): start, stop, restart.',
