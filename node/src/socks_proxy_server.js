@@ -4,7 +4,7 @@
  */
 import net from 'net'
 import socks from 'socksv5-kcpuv'
-import { logger } from './logger'
+// import { logger } from './logger'
 // import { authCheck } from './auth'
 
 const DEFAULT_OPTIONS = {
@@ -92,9 +92,7 @@ export function createServer(_options, next) {
   })
 
   // TODO: handle port occupied situation
-  server.listen(port, address, () => {
-    logger.info('connecting success')
-  })
+  server.listen(port, address)
 
   // const authUtils = authList ? socks.auth.UserPassword(authCheck.bind(null, authList))
   //   : socks.auth.None()

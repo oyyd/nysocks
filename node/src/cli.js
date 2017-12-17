@@ -60,7 +60,8 @@ function getMode(mode) {
 
 function checkAuthList(config) {
   const { authList } = config.SOCKS
-  if (authList !== null && !(authList instanceof Object && !Array.isArray(authList))) {
+  if (authList !== null && authList !== undefined
+      && !(authList instanceof Object && !Array.isArray(authList))) {
     throw new Error('expect auth list to be like {"name_a": "password_a", "name_b": "password_b"}')
   }
 }
@@ -152,9 +153,9 @@ export default function main() {
       alias: 'p',
       describe: 'The port of your server.',
     })
-    .option('socks_auth', {
-      describe: 'Specify a list of username/password pairs for the socks5 authentication.',
-    })
+    // .option('socks_auth', {
+    //   describe: 'Specify a list of username/password pairs for the socks5 authentication.',
+    // })
     .option('log_path', {
       describe: 'The file path for logging. If not set, will log to the console.',
     })

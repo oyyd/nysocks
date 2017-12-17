@@ -1,9 +1,13 @@
 import ip from 'ip'
+import Event from 'events'
 import {
   createServer as createSocksServer,
   createProxyConnection,
   parseDstInfo,
 } from './socks_proxy_server'
+import {
+  createServer as createSSServer,
+} from './ss_proxy_server'
 import {
   createManager,
   createClient as createManagerClient,
@@ -19,8 +23,17 @@ import {
 import { createMonitor } from './network_monitor'
 import { createRouter } from './router'
 import { logger } from './logger'
+import { emptyFunc } from './utils'
 
 let kcpuvStarted = false
+
+const DEFAULT_CONFIG = {
+  password: 'YOUR_PASSWORD',
+  method: 'aes-128-cfb',
+  serverPort: 8083,
+  udpActive: false,
+  timeout: 600,
+}
 
 function start() {
   if (kcpuvStarted) {
@@ -31,41 +44,101 @@ function start() {
   startKcpuv()
 }
 
-function createClientInstance(config) {
-  return createManagerClient(config).then(managerClient => {
-    const client = {}
-    const socksServer = createSocksServer(config.SOCKS, (info, socket) => {
-      const { chunk } = info
+function ssProtocol(config, managerClient) {
+  const ssConfig = Object.assign({}, DEFAULT_CONFIG, config.SS)
 
-      // tunnel
-      const conn = createConnection(managerClient)
+  const { server } = createSSServer(ssConfig, (info, onConnect, chunk) => {
+    // const { port, host } = info
+    const mockSocket = new Event()
+    // tunnel conn
+    const conn = createConnection(managerClient)
+    mockSocket.conn = conn
 
-      bindClose(conn, () => {
-        // TODO: error msg
-        socket.destroy()
-        close(conn)
-      })
-
-      sendBuf(conn, chunk)
-
-      // bind
-      listen(conn, buf => {
-        socket.write(buf)
-      })
-      socket.on('data', buf => {
-        sendBuf(conn, buf)
-      })
-      socket.on('error', err => {
-        logger.error(err.message)
-      })
-      socket.on('close', () => {
-        sendClose(conn)
-        close(conn)
-      })
+    // bind
+    bindClose(conn, () => {
+      mockSocket.emit('close')
+      close(conn)
+    })
+    listen(conn, (buf) => {
+      mockSocket.emit('data', buf)
     })
 
-    client.managerClient = managerClient
-    client.socksServer = socksServer
+    sendBuf(conn, chunk)
+
+    mockSocket.write = (buf) => {
+      sendBuf(conn, buf)
+      return true
+    }
+    mockSocket.destroy = () => {
+      sendClose(conn)
+      close(conn)
+      mockSocket.emit('close')
+    }
+    // TODO: support pausing connections
+    mockSocket.resume = emptyFunc
+    mockSocket.pause = emptyFunc
+    // TODO: we don't have half open state
+    mockSocket.end = emptyFunc
+
+    onConnect()
+
+    return mockSocket
+  })
+
+  logger.info(`SS server is listening on ${ssConfig.serverPort}`)
+
+  return server
+}
+
+function socksProtocol(config, managerClient) {
+  return createSocksServer(config.SOCKS, (info, socket) => {
+    const { chunk } = info
+
+    // tunnel
+    const conn = createConnection(managerClient)
+
+    bindClose(conn, () => {
+      // TODO: error msg
+      socket.destroy()
+      close(conn)
+    })
+
+    sendBuf(conn, chunk)
+
+    // bind
+    listen(conn, buf => {
+      socket.write(buf)
+    })
+    socket.on('data', buf => {
+      sendBuf(conn, buf)
+    })
+    socket.on('error', err => {
+      logger.error(err.message)
+    })
+    socket.on('close', () => {
+      sendClose(conn)
+      close(conn)
+    })
+  })
+}
+
+function createClientInstance(config) {
+  return createManagerClient(config).then(managerClient => {
+    const { clientProtocol } = config
+    const client = {
+      managerClient,
+    }
+
+    client.proxyClient = null
+
+    if (clientProtocol === 'SOCKS') {
+      client.proxyClient = socksProtocol(config, managerClient)
+      logger.info(`SOCKS5 service is listening on ${config.SOCKS.port}`)
+    } else if (clientProtocol === 'SS') {
+      client.proxyClient = ssProtocol(config, managerClient)
+    } else {
+      throw new Error(`unexpected "clientProtocol" option: ${clientProtocol}`)
+    }
 
     return client
   })
@@ -81,7 +154,7 @@ export function createClient(config) {
     // 2 connected
     connectState: 0,
     managerClient: null,
-    socksServer: null,
+    proxyClient: null,
   }
 
   const free = () => {
@@ -90,10 +163,10 @@ export function createClient(config) {
     if (currentClients.managerClient) {
       freeManager(currentClients.managerClient)
     }
-    if (currentClients.socksServer) {
-      currentClients.socksServer.close()
+    if (currentClients.proxyClient) {
+      currentClients.proxyClient.close()
     }
-    currentClients.socksServer = null
+    currentClients.proxyClient = null
     currentClients.managerClient = null
   }
 
@@ -101,12 +174,10 @@ export function createClient(config) {
   const recreate = () => {
     logger.info('connecting...')
     currentClients.connectState = 1
-    createClientInstance(config).then(({ managerClient, socksServer }) => {
-      logger.info(`SOCKS5 service is listening on ${config.SOCKS.port}`)
-
+    createClientInstance(config).then(({ managerClient, proxyClient }) => {
       currentClients.connectState = 2
       currentClients.managerClient = managerClient
-      currentClients.socksServer = socksServer
+      currentClients.proxyClient = proxyClient
       // eslint-disable-next-line
       managerClient.on('close', closeAndTryRecreate)
     }).catch(err => {
@@ -242,4 +313,5 @@ export function createServerRouter(config) {
 //
 //   createServerRouter(config)
 //   createClient(config)
+//   console.log('encryptsocks', require('encryptsocks'))
 // }

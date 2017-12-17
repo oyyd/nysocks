@@ -60,3 +60,5 @@ export function getIP(address) {
     })
   })
 }
+
+export const emptyFunc = () => {}
