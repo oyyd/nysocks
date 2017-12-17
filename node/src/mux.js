@@ -4,7 +4,7 @@ import { createWithOptions, initCryptor,
   listen as socketListen, setAddr } from './socket'
 import { createBaseSuite } from './utils'
 import { record, get } from './monitor'
-import { logger } from './logger'
+// import { logger } from './logger'
 
 const muxSuite = createBaseSuite('_mux')
 const connSuite = createBaseSuite('_conn')
@@ -141,7 +141,7 @@ export const connFree = connSuite.wrap((conn) => {
 
 export const connSend = connSuite.wrap((conn, buffer) => {
   if (conn.isClosed) {
-    logger.warn('"send" after closing')
+    // logger.warn('"send" after closing')
     return
   }
 
