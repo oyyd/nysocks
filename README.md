@@ -22,7 +22,13 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 ## How it works
 
-![work](https://cdn.rawgit.com/oyyd/nysocks/faae8240/imgs/work.png)
+**for SOCKS client**
+
+![work-socks](https://cdn.rawgit.com/oyyd/nysocks/faae8240/imgs/work.png)
+
+**for SS client**
+
+![work-ss](https://cdn.rawgit.com/oyyd/nysocks/faae8240/imgs/work.png)
 
 **protocol(unstable):**
 
@@ -73,6 +79,14 @@ nysocks client -a YOUR_SERVER_HOST -p 20000 -k YOUR_PASSWORD -m fast
 
 Nysocks will start a SOCKS5 service to tunnel your tcp connections. Now you can [utilize the SOCKS5 service](https://github.com/oyyd/nysocks#how-to-utilize-the-socks5-service) (default port `1080`). A [PAC](https://en.wikipedia.org/wiki/Proxy_auto-config) file server will also be served(default port `8090`) for convenience.
 
+Nysocks supports using shadowsocks protocol to replace SOCKS5 protocol in your client:
+
+```
+nysocks client -a YOUR_SERVER_HOST -p 20000 -k YOUR_PASSWORD -m fast --client_protocol SS --ss_password YOUR_SS_PASSWORD --ss_method aes-128-cfb
+```
+
+Check [the ssServer from encryptsocks](https://github.com/oyyd/encryptsocks) for more details.
+
 #### 3. Use `config.json`
 
 You can create a `config.json` file like [this](#config) that containing your configs to avoid verbose cli options:
@@ -113,11 +127,17 @@ nysocks -h
     "resend": 2,
     "nc": 1
   },
+  "clientProtocol": "SOCKS",
   "pac": {
     "pacServerPort": 8090
   },
   "SOCKS": {
     "port": 1080
+  },
+  "SS": {
+    "password": "YOUR_SS_PASSWORD",
+    "method": "aes-128-cfb",
+    "serverPort": 8083,
   }
 }
 ```
@@ -129,6 +149,10 @@ Most OSes support SOCKS5 proxy by default:
 ![osx-set-proxy](https://cdn.comparitech.com/wp-content/uploads/2017/01/MacOS-Set-proxy.png)
 
 Use chrome extensions like [SwitchyOmega](https://github.com/FelisCatus/SwitchyOmega) to help browse web pages by proxy.
+
+### How to utilize the SS service
+
+Install [clients](https://shadowsocks.org/en/download/clients.html) in your devices and connecting to the ssServer set up by nysocks.
 
 ## Encryption
 

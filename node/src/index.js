@@ -27,7 +27,7 @@ import { emptyFunc } from './utils'
 
 let kcpuvStarted = false
 
-const DEFAULT_CONFIG = {
+const DEFAULT_SS_CONFIG = {
   password: 'YOUR_PASSWORD',
   method: 'aes-128-cfb',
   serverPort: 8083,
@@ -45,7 +45,7 @@ function start() {
 }
 
 function ssProtocol(config, managerClient) {
-  const ssConfig = Object.assign({}, DEFAULT_CONFIG, config.SS)
+  const ssConfig = Object.assign({}, DEFAULT_SS_CONFIG, config.SS)
 
   const { server } = createSSServer(ssConfig, (info, onConnect, chunk) => {
     // const { port, host } = info

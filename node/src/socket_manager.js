@@ -16,7 +16,7 @@ import { getIP, debug } from './utils'
 
 export { startKcpuv, stopKcpuv } from './socket'
 
-const TOTAL_TIMEOUT = (debug ? 10 : 120) * 1000
+const TOTAL_TIMEOUT = (debug ? 10 : 60) * 1000
 const BEATING_INTERVAL = TOTAL_TIMEOUT / 4
 export const DEFAULT_SERVER_PORT = 20000
 
@@ -72,7 +72,6 @@ function initBeat(conn, next) {
   const resetTimeout = () => {
     clearTimeout(timeoutTimerID)
     timeoutTimerID = setTimeout(() => {
-      // console.log('timeout')
       clearInterval(intervalID)
       next()
     }, TOTAL_TIMEOUT)
@@ -225,7 +224,7 @@ export function createClient(_options) {
     .then(([conn, ports]) => {
       // TODO:
       initBeat(conn, () => {
-        console.log('emit_close', i)
+        // console.log('emit_close', i)
         client.emit('close')
       })
 
