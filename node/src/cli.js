@@ -95,6 +95,7 @@ function parseConfig(argv) {
   let config = {
     pac: DEFAULT_PAC_SERVER,
     SOCKS: DEFAULT_SOCKS_CONFIG,
+    SS: {},
     clientProtocol: 'SOCKS',
   }
 
