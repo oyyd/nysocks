@@ -2,7 +2,7 @@
 
 [![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks) [![travis-ci](https://travis-ci.org/oyyd/nysocks.svg?branch=dev)](https://travis-ci.org/oyyd/nysocks)
 
-Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs.
+Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs. Nysocks clients support both [SOCKS5](https://www.ietf.org/rfc/rfc1928.txt) and [SS](https://shadowsocks.org/en/spec/Protocol.html) protocols.
 
     Nysocks is in an early stage. Please submit PRs or issues to help us improve it if you like it!
 
@@ -28,7 +28,7 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 **for SS client**
 
-![work-ss](https://cdn.rawgit.com/oyyd/nysocks/faae8240/imgs/work.png)
+![work-ss](https://cdn.rawgit.com/oyyd/nysocks/dev/imgs/work-ss.png)
 
 **protocol(unstable):**
 
