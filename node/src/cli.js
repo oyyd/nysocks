@@ -77,20 +77,27 @@ function checkRequiredConfig(config) {
 }
 
 function checkClientArgs(config) {
-  const { clientProtocol, ssPassword } = config
+  const { clientProtocol, SS } = config
+  const { password } = SS
 
   if (clientProtocol !== 'SOCKS' && clientProtocol !== 'SS') {
     throw new Error('expect client_protocol to be "SOCKS" or "SS"')
   }
 
-  if (clientProtocol === 'SS' && !ssPassword) {
+  if (clientProtocol === 'SS' && !password) {
     throw new Error('expect ss_password to be specified')
+  }
+}
+
+function safelyAssign(obj, key, value) {
+  if (value) {
+    obj[key] = value
   }
 }
 
 function parseConfig(argv) {
   const configJsonFromFile = getFile(formatConfig(argv.config)) || {}
-  const authList = getFile(formatConfig(argv.socks_auth)) || null
+  // const authList = getFile(formatConfig(argv.socks_auth)) || null
   const modeKcpOptions = getMode(argv.mode ? argv.mode : configJsonFromFile.mode)
   let config = {
     pac: DEFAULT_PAC_SERVER,
@@ -99,9 +106,9 @@ function parseConfig(argv) {
     clientProtocol: 'SOCKS',
   }
 
-  config.kcp = {}
-  config.kcp = Object.assign(config.kcp, modeKcpOptions)
   config = Object.assign(config, configJsonFromFile)
+  config.kcp = config.kcp || {}
+  config.kcp = Object.assign(config.kcp, modeKcpOptions)
 
   Object.keys(argv).forEach(key => {
     if (argv[key]) {
@@ -120,13 +127,14 @@ function parseConfig(argv) {
   })
 
   // SOCKS
-  config.SOCKS.authList = authList
-  config.SOCKS.port = config.socksPort
+  // config.SOCKS.authList = authList
+  config.SOCKS.authList = null
+  safelyAssign(config.SOCKS, 'port', config.socksPort)
 
   // SS
-  config.SS.password = config.ssPassword
-  config.SS.method = config.ssMethod
-  config.SS.serverPort = config.ssPort
+  safelyAssign(config.SOCKS, 'password', config.ssPassword)
+  safelyAssign(config.SOCKS, 'method', config.ssMethod)
+  safelyAssign(config.SOCKS, 'serverPort', config.ssPort)
 
   return config
 }
@@ -166,8 +174,7 @@ export default function main() {
     })
     // TODO:
     .option('socket_amount', {
-      describe: 'The amount of connections to be created for each client',
-      default: 10,
+      describe: 'The amount of connections to be created for each client (default: 10)',
     })
     .option('server_addr', {
       alias: 'a',
@@ -179,28 +186,24 @@ export default function main() {
     })
     .option('client_protocol', {
       alias: 'cp',
-      describe: 'The protocol that will be used by clients: SS, SOCKS',
-      default: 'SOCKS',
+      describe: 'The protocol that will be used by clients: SS, SOCKS (default: SOCKS)',
     })
     // SOCKS options
     // .option('socks_auth', {
     //   describe: 'Specify a list of username/password pairs for the socks5 authentication.',
     // })
     .option('socks_port', {
-      describe: 'Specify the local port for SOCKS service',
-      default: 1080,
+      describe: 'Specify the local port for SOCKS service (default: 1080)',
     })
     // SS options
     .option('ss_port', {
-      describe: 'Specify the local port for ssServer service',
-      default: 8083,
+      describe: 'Specify the local port for ssServer service (default: 8083)',
     })
     .option('ss_password', {
       describe: 'Specify the key for the encryption of ss',
     })
     .option('ss_method', {
-      describe: 'Specify the method of the encryption for ss',
-      default: 'aes-128-cfb',
+      describe: 'Specify the method of the encryption for ss (default: aes-128-cfb)',
     })
 
     .option('log_path', {
