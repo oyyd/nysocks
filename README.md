@@ -79,6 +79,8 @@ nysocks client -a YOUR_SERVER_HOST -p 20000 -k YOUR_PASSWORD -m fast
 
 Nysocks will start a SOCKS5 service to tunnel your tcp connections. Now you can [utilize the SOCKS5 service](https://github.com/oyyd/nysocks#how-to-utilize-the-socks5-service) (default port `1080`). A [PAC](https://en.wikipedia.org/wiki/Proxy_auto-config) file server will also be served(default port `8090`) for convenience.
 
+**Use SS Protocol**
+
 Nysocks supports using shadowsocks protocol to replace SOCKS5 protocol in your client:
 
 ```
@@ -127,10 +129,10 @@ nysocks -h
     "resend": 2,
     "nc": 1
   },
-  "clientProtocol": "SOCKS",
   "pac": {
     "pacServerPort": 8090
   },
+  "clientProtocol": "SOCKS",
   "SOCKS": {
     "port": 1080
   },
