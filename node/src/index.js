@@ -174,16 +174,20 @@ export function createClient(config) {
   const recreate = () => {
     logger.info('connecting...')
     currentClients.connectState = 1
-    createClientInstance(config).then(({ managerClient, proxyClient }) => {
-      currentClients.connectState = 2
-      currentClients.managerClient = managerClient
-      currentClients.proxyClient = proxyClient
-      // eslint-disable-next-line
-      managerClient.on('close', closeAndTryRecreate)
-    }).catch(err => {
-      // Create client failed
-      setTimeout(() => {
-        throw err
+    // TODO: refactor this
+    // NOTE: wait for fd released to avoid errors
+    setTimeout(() => {
+      createClientInstance(config).then(({ managerClient, proxyClient }) => {
+        currentClients.connectState = 2
+        currentClients.managerClient = managerClient
+        currentClients.proxyClient = proxyClient
+        // eslint-disable-next-line
+        managerClient.on('close', closeAndTryRecreate)
+      }).catch(err => {
+        // Create client failed
+        setTimeout(() => {
+          throw err
+        })
       })
     })
   }

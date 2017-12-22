@@ -78,7 +78,6 @@ function initBeat(conn, next) {
   }
 
   connListen(conn, (buf) => {
-    // console.log(buf.toString('utf8'))
     if (buf.toString('utf8') === BEATING_MSG) {
       resetTimeout()
     }
@@ -185,11 +184,8 @@ export function initClientConns(options, client, ipAddr) {
   return conns
 }
 
-let i = 0
-
 // TODO: throw when failed to connect
 export function createClient(_options) {
-  i += 1
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverAddr, serverPort } = options
   const client = new EventEmitter()
