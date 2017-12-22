@@ -6,7 +6,7 @@ Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://gith
 
     Nysocks is in an early stage. Please submit PRs or issues to help us improve it if you like it!
 
-Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happens when trasmission data from to China mainland:
+Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happens when trasmitting data from to China mainland:
 
 **tcp proxy:**
 <br/>
