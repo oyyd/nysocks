@@ -157,18 +157,27 @@ export function createClient(config) {
     proxyClient: null,
   }
 
-  const free = () => {
+  const free = () => new Promise((resolve) => {
+    if (currentClients.connectState === 0) {
+      resolve()
+      return
+    }
+
     currentClients.connectState = 0
+    logger.info('client disconnect')
+
     // close
     if (currentClients.managerClient) {
       freeManager(currentClients.managerClient)
     }
     if (currentClients.proxyClient) {
-      currentClients.proxyClient.close()
+      currentClients.proxyClient.close(() => {
+        resolve()
+      })
     }
     currentClients.proxyClient = null
     currentClients.managerClient = null
-  }
+  })
 
   // Create new instance.
   const recreate = () => {
@@ -181,8 +190,11 @@ export function createClient(config) {
         currentClients.connectState = 2
         currentClients.managerClient = managerClient
         currentClients.proxyClient = proxyClient
-        // eslint-disable-next-line
-        managerClient.on('close', closeAndTryRecreate)
+        managerClient.on('close', () => {
+          // console.log('B')
+          // eslint-disable-next-line
+          closeAndTryRecreate()
+        })
       }).catch(err => {
         // Create client failed
         setTimeout(() => {
@@ -193,16 +205,14 @@ export function createClient(config) {
   }
 
   const closeAndTryRecreate = () => {
-    logger.info('client disconnect')
+    free().then(() => {
+      const { ip: localIP } = networkMonitor
 
-    free()
-
-    const { ip: localIP } = networkMonitor
-
-    // do not restart if there is no non-internal network
-    if (localIP) {
-      recreate()
-    }
+      // do not restart if there is no non-internal network
+      if (localIP) {
+        recreate()
+      }
+    })
   }
 
   // ip changed

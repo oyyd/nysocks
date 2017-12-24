@@ -66,13 +66,15 @@ function initBeat(conn, next) {
     throw new Error('expect next to be a function')
   }
 
-  let timeoutTimerID = null
-  let intervalID = null
+  const beatInfo = {
+    timeoutTimerID: null,
+    intervalID: null,
+  }
 
   const resetTimeout = () => {
-    clearTimeout(timeoutTimerID)
-    timeoutTimerID = setTimeout(() => {
-      clearInterval(intervalID)
+    clearTimeout(beatInfo.timeoutTimerID)
+    beatInfo.timeoutTimerID = setTimeout(() => {
+      clearInterval(beatInfo.intervalID)
       next()
     }, TOTAL_TIMEOUT)
   }
@@ -84,14 +86,31 @@ function initBeat(conn, next) {
   })
 
   resetTimeout()
-  intervalID = setInterval(() => {
+  beatInfo.intervalID = setInterval(() => {
     connSend(conn, Buffer.from(BEATING_MSG))
   }, BEATING_INTERVAL)
+
+  return beatInfo
 }
 
+function clearBeat(beatInfo) {
+  const { timeoutTimerID, intervalID } = beatInfo
+
+  if (timeoutTimerID) {
+    clearTimeout(timeoutTimerID)
+  }
+
+  if (intervalID) {
+    clearInterval(intervalID)
+  }
+}
 
 export function freeManager(manager) {
-  const { conns, masterMux, masterSocket } = manager
+  const {
+    beatInfo, conns, masterMux, masterSocket,
+  } = manager
+
+  clearBeat(beatInfo)
 
   if (Array.isArray(conns)) {
     conns.forEach((conn) => {
@@ -219,7 +238,7 @@ export function createClient(_options) {
     })
     .then(([conn, ports]) => {
       // TODO:
-      initBeat(conn, () => {
+      client.beatInfo = initBeat(conn, () => {
         // console.log('emit_close', i)
         client.emit('close')
       })
@@ -316,7 +335,7 @@ export function createManager(_options, onConnection, onClose) {
 
       sendJson(conn, getConnectionPorts(conns))
 
-      initBeat(conn, () => {
+      manager.beatInfo = initBeat(conn, () => {
         if (typeof onClose === 'function') {
           onClose()
         }

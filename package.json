@@ -1,6 +1,6 @@
 {
   "name": "nysocks",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Nysocks binds kcp and libuv to provide a tunnel for nodejs.",
   "main": "node/lib/index.js",
   "bin": {
@@ -48,7 +48,7 @@
     "babel-cli": "^6.26.0",
     "babel-jest": "^21.2.0",
     "babel-preset-env": "^1.6.1",
-    "eslint": "^4.10.0",
+    "eslint": "^4.13.1",
     "eslint-config-airbnb-base": "^12.1.0",
     "eslint-plugin-import": "^2.8.0",
     "fs-extra": "^4.0.2",
