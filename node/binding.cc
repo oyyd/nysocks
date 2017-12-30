@@ -45,6 +45,9 @@ public:
 
   void Free() {
     if (!is_freed) {
+      listen_cb.Reset();
+      close_cb.Reset();
+      udp_send_cb.Reset();
       is_freed = 1;
       kcpuv_stop_listen(sess);
       kcpuv_free(sess);
@@ -66,7 +69,11 @@ Persistent<Function> KcpuvSessBinding::constructor;
 class KcpuvMuxConnBinding : public Nan::ObjectWrap {
 public:
   explicit KcpuvMuxConnBinding() {}
-  ~KcpuvMuxConnBinding() { delete conn; }
+  ~KcpuvMuxConnBinding() {
+    on_message.Reset();
+    on_close.Reset();
+    delete conn;
+  }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
@@ -108,7 +115,10 @@ public:
     //
     mux.data = this;
   }
-  ~KcpuvMuxBinding() {}
+  ~KcpuvMuxBinding() {
+    on_close.Reset();
+    on_connection.Reset();
+  }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
