@@ -212,7 +212,9 @@ export function createClient(config) {
       if (localIP) {
         recreate()
       }
-    })
+    }).catch(err => setTimeout(() => {
+      throw err
+    }))
   }
 
   // ip changed
@@ -226,6 +228,11 @@ export function createClient(config) {
 
   // Create first time.
   recreate()
+
+  // TODO:
+  // setInterval(() => {
+  //   closeAndTryRecreate()
+  // }, 10 * 1000)
 }
 
 export function createServer(config, onClose) {

@@ -34,7 +34,7 @@ public:
     sess->timeout = 0;
   }
 
-  virtual ~KcpuvSessBinding() {
+  ~KcpuvSessBinding() {
     if (sess) {
       Free();
     }
@@ -66,7 +66,7 @@ Persistent<Function> KcpuvSessBinding::constructor;
 class KcpuvMuxConnBinding : public Nan::ObjectWrap {
 public:
   explicit KcpuvMuxConnBinding() {}
-  virtual ~KcpuvMuxConnBinding() { delete conn; }
+  ~KcpuvMuxConnBinding() { delete conn; }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
@@ -108,7 +108,7 @@ public:
     //
     mux.data = this;
   }
-  virtual ~KcpuvMuxBinding() {}
+  ~KcpuvMuxBinding() {}
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
@@ -273,15 +273,16 @@ static NAN_METHOD(Free) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
-  obj->Free();
+  delete obj;
 }
 
-static NAN_METHOD(MarkFree) {
-  KcpuvSessBinding *obj =
-      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-
-  kcpuv_set_state(obj->GetSess(), KCPUV_STATE_WAIT_FREE);
-}
+// TODO: need to free the object wrap or causing memory leaks
+// static NAN_METHOD(MarkFree) {
+//   KcpuvSessBinding *obj =
+//       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+//
+//   kcpuv_set_state(obj->GetSess(), KCPUV_STATE_WAIT_FREE);
+// }
 
 static NAN_METHOD(Input) {
   // Isolate *isolate = info.GetIsolate();
@@ -456,6 +457,7 @@ static NAN_METHOD(MuxFree) {
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
 
   kcpuv_mux_free(&mux_obj->mux);
+  delete mux_obj;
 }
 
 static void mux_binding_on_close_cb(kcpuv_mux *mux, const char *error_msg) {
@@ -544,6 +546,7 @@ static NAN_METHOD(ConnFree) {
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
   kcpuv_mux_conn_free(conn_obj->conn, NULL);
+  delete conn_obj;
 }
 
 static NAN_METHOD(ConnSend) {
@@ -677,7 +680,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "setNoDelay", SetNoDelay);
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
-  Nan::SetMethod(target, "markFree", MarkFree);
+  // Nan::SetMethod(target, "markFree", MarkFree);
   Nan::SetMethod(target, "input", Input);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "getPort", GetPort);

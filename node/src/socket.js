@@ -75,12 +75,14 @@ export const bindUdpSend = wrap((sess, next) => {
 
 // TODO:
 export const destroy = wrap((sess) => {
-  binding.free(sess)
+  process.nextTick(() => {
+    binding.free(sess)
+  })
 })
 
-export const markFree = wrap((sess) => {
-  binding.markFree(sess)
-})
+// export const markFree = wrap((sess) => {
+//   binding.markFree(sess)
+// })
 
 // TODO:
 export const close = wrap((sess, sendCloseMsg = false) => {

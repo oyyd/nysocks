@@ -3,7 +3,7 @@ import {
   getPort, createWithOptions,
   // close as sessClose,
   listen as socketListen, setAddr,
-  initCryptor, markFree, stopListen,
+  initCryptor, destroy, stopListen,
   // bindListener, send, startKcpuv,
 } from './socket'
 import {
@@ -115,19 +115,24 @@ export function freeManager(manager) {
   if (Array.isArray(conns)) {
     conns.forEach((conn) => {
       const { mux, socket } = conn
+      // NOTE: freed in next tick
       muxFree(mux)
       stopListen(socket)
-      setTimeout(() => {
-        markFree(socket)
-      })
+      destroy(socket)
+
+      // NOTE: freed in next loop
+      // setTimeout(() => {
+      //   destroy(socket)
+      // })
     })
   }
 
   muxFree(masterMux)
   stopListen(masterSocket)
-  setTimeout(() => {
-    markFree(masterSocket)
-  })
+  destroy(masterSocket)
+  // setTimeout(() => {
+  //   destroy(masterSocket)
+  // })
 }
 
 export function initClientMasterSocket(mux) {
