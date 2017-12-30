@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 1.2.7
+- Fix: Fix memory leaks in `binding.cc`.
+
 ## 1.2.5
 - Fix: SOCKS port occupied by the client itself and throw when restarted.
 
