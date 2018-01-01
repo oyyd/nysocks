@@ -97,6 +97,7 @@ export function wrapMuxConn(conn) {
   // eslint-disable-next-line
   conn.id = id++
 
+  // conn._buf = Buffer.allocUnsafe(20 * 1024 * 1024)
   conn._conn = true
   conn.isClosed = false
   record('conn', get('conn') + 1)
