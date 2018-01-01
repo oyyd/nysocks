@@ -80,9 +80,10 @@ export const destroy = wrap((sess) => {
   })
 })
 
-// export const markFree = wrap((sess) => {
-//   binding.markFree(sess)
-// })
+// TODO:
+export const markFree = wrap((sess) => {
+  binding.markFree(sess)
+})
 
 // TODO:
 export const close = wrap((sess, sendCloseMsg = false) => {
