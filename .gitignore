@@ -22,3 +22,5 @@ WORK.md
 config.json
 *.log
 README_CN.md
+
+package-lock.json
