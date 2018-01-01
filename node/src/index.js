@@ -97,18 +97,16 @@ function socksProtocol(config, managerClient) {
     // tunnel
     const conn = createConnection(managerClient)
 
+    // bind
     bindClose(conn, () => {
       // TODO: error msg
       socket.destroy()
       close(conn)
     })
-
-    sendBuf(conn, chunk)
-
-    // bind
     listen(conn, buf => {
       socket.write(buf)
     })
+
     socket.on('data', buf => {
       sendBuf(conn, buf)
     })
@@ -119,6 +117,8 @@ function socksProtocol(config, managerClient) {
       sendClose(conn)
       close(conn)
     })
+
+    sendBuf(conn, chunk)
   })
 }
 
@@ -212,7 +212,9 @@ export function createClient(config) {
       if (localIP) {
         recreate()
       }
-    })
+    }).catch(err => setTimeout(() => {
+      throw err
+    }))
   }
 
   // ip changed
@@ -226,6 +228,11 @@ export function createClient(config) {
 
   // Create first time.
   recreate()
+
+  // TODO:
+  // setInterval(() => {
+  //   closeAndTryRecreate()
+  // }, 10 * 1000)
 }
 
 export function createServer(config, onClose) {

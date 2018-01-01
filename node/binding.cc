@@ -34,7 +34,7 @@ public:
     sess->timeout = 0;
   }
 
-  virtual ~KcpuvSessBinding() {
+  ~KcpuvSessBinding() {
     if (sess) {
       Free();
     }
@@ -66,7 +66,7 @@ Persistent<Function> KcpuvSessBinding::constructor;
 class KcpuvMuxConnBinding : public Nan::ObjectWrap {
 public:
   explicit KcpuvMuxConnBinding() {}
-  virtual ~KcpuvMuxConnBinding() { delete conn; }
+  ~KcpuvMuxConnBinding() { delete conn; }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
@@ -108,7 +108,7 @@ public:
     //
     mux.data = this;
   }
-  virtual ~KcpuvMuxBinding() {}
+  ~KcpuvMuxBinding() {}
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &args);
@@ -273,9 +273,10 @@ static NAN_METHOD(Free) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
-  obj->Free();
+  delete obj;
 }
 
+// TODO: need to free the object wrap or causing memory leaks
 static NAN_METHOD(MarkFree) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
@@ -313,7 +314,7 @@ static NAN_METHOD(Listen) {
   int port = info[1]->ToNumber(isolate)->Int32Value();
 
   if (info[2]->IsFunction()) {
-    obj->listen_cb = Nan::Persistent<Function>(info[2].As<Function>());
+    obj->listen_cb.Reset(isolate, info[2].As<Function>());
   }
 
   // else {
@@ -343,7 +344,7 @@ static NAN_METHOD(BindListen) {
     return;
   }
 
-  obj->listen_cb = Nan::Persistent<Function>(info[1].As<Function>());
+  obj->listen_cb.Reset(isolate, info[1].As<Function>());
 }
 
 static NAN_METHOD(GetPort) {
@@ -379,7 +380,7 @@ static NAN_METHOD(BindClose) {
     return;
   }
 
-  obj->close_cb = Nan::Persistent<Function>(info[1].As<Function>());
+  obj->close_cb.Reset(isolate, info[1].As<Function>());
 
   kcpuv_sess *sess = obj->GetSess();
   kcpuv_bind_close(sess, &closing_cb);
@@ -396,7 +397,7 @@ static NAN_METHOD(BindUdpSend) {
     return;
   }
 
-  obj->udp_send_cb = Nan::Persistent<Function>(info[1].As<Function>());
+  obj->udp_send_cb.Reset(isolate, info[1].As<Function>());
   kcpuv_bind_udp_send(obj->GetSess(), &on_udp_send);
 }
 
@@ -456,6 +457,7 @@ static NAN_METHOD(MuxFree) {
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
 
   kcpuv_mux_free(&mux_obj->mux);
+  delete mux_obj;
 }
 
 static void mux_binding_on_close_cb(kcpuv_mux *mux, const char *error_msg) {
@@ -487,7 +489,7 @@ static NAN_METHOD(MuxBindClose) {
     return;
   }
 
-  mux_obj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
+  mux_obj->on_close.Reset(isolate, info[1].As<Function>());
   kcpuv_mux_bind_close(&mux_obj->mux, mux_binding_on_close_cb);
 }
 
@@ -526,7 +528,7 @@ static NAN_METHOD(MuxBindConnection) {
     return;
   }
 
-  mux_obj->on_connection = Nan::Persistent<Function>(info[1].As<Function>());
+  mux_obj->on_connection.Reset(isolate, info[1].As<Function>());
   kcpuv_mux_bind_connection(&mux_obj->mux, mux_binding_on_connection_cb);
 }
 
@@ -544,6 +546,7 @@ static NAN_METHOD(ConnFree) {
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
 
   kcpuv_mux_conn_free(conn_obj->conn, NULL);
+  delete conn_obj;
 }
 
 static NAN_METHOD(ConnSend) {
@@ -593,7 +596,7 @@ static NAN_METHOD(ConnListen) {
     return;
   }
 
-  conn_obj->on_message = Nan::Persistent<Function>(info[1].As<Function>());
+  conn_obj->on_message.Reset(isolate, info[1].As<Function>());
   kcpuv_mux_conn_listen(conn_obj->conn, conn_binding_on_message_cb);
 }
 
@@ -628,7 +631,7 @@ static NAN_METHOD(ConnBindClose) {
     return;
   }
 
-  conn_obj->on_close = Nan::Persistent<Function>(info[1].As<Function>());
+  conn_obj->on_close.Reset(isolate, info[1].As<Function>());
   kcpuv_mux_conn_bind_close(conn_obj->conn, conn_binding_on_close_cb);
 }
 

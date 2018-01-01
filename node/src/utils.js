@@ -1,6 +1,14 @@
 import dns from 'dns'
 import ip from 'ip'
 
+const MANNUAL_GC_INTERVAL = 60 * 1000
+
+if (typeof global.gc === 'function') {
+  setInterval(() => {
+    global.gc()
+  }, MANNUAL_GC_INTERVAL)
+}
+
 export const debug = false
 
 if (debug) {

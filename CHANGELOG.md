@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.2.8
+- Fix: Fix memory leaks when using `Nan::Persistent<T>` which will create a new instance.
+
+## 1.2.7
+- Fix: Fix memory leaks in `binding.cc`.
+
 ## 1.2.6
 - Fix: Close socks5 client clearly before restarting.
 
