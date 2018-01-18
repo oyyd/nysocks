@@ -1,8 +1,10 @@
 import pm2 from 'pm2'
 import path from 'path'
+import chalk from 'chalk'
 
 // eslint-disable-next-line
 const log = console.log
+const PROCESS_NAME = 'nysocks'
 
 function disconnect() {
   return new Promise(resolve => {
@@ -40,7 +42,7 @@ function getPM2Config(argv, type) {
   return connect().then(() => {
     const filePath = path.resolve(__dirname, '../../bin/nysocks')
     const pm2Config = {
-      name: `nysocks:${type}`,
+      name: `${PROCESS_NAME}:${type}`,
       script: filePath,
       exec_mode: 'fork',
       instances: 1,
@@ -152,9 +154,38 @@ export function restart(...args) {
   return _stop(...args).then(() => _start(...args)).catch(handleError)
 }
 
-// if (module === require.main) {
-//   restart('local', {
-//     password: 'holic123',
-//     serverAddr: 'kr.oyyd.net',
-//   });
-// }
+function getInfo() {
+  return new Promise((resolve, reject) => {
+    pm2.list((err, list) => {
+      if (err) {
+        disconnect()
+        reject(err)
+        return
+      }
+
+      const childsInfo = list.filter(i => i.name.indexOf(`${PROCESS_NAME}`) === 0)
+
+      resolve(childsInfo)
+    })
+  })
+}
+
+export function logStatus() {
+  getInfo().then(list => {
+    if (list.length === 0) {
+      log('no processes')
+    }
+
+    list.forEach((proc) => {
+      const { pid, name, monit = {}, pm2_env = {} } = proc
+      const { status, restart_time } = pm2_env
+      const { memory, cpu } = monit
+      log(chalk.underline(name))
+      log(`pid: ${pid}, ${chalk.green('status')}: ${status}, restart: ${restart_time}, memory: ${(memory / 1024 / 1024).toFixed(2)} MB cpu: ${cpu}%`)
+    })
+  }).then(() => disconnect()).catch(disconnect)
+}
+
+if (module === require.main) {
+  logStatus()
+}

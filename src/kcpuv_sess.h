@@ -47,6 +47,8 @@ kcpuv_sess_list *kcpuv_get_sess_list();
 
 kcpuv_sess *kcpuv_create();
 
+void kcpuv_sess_enable_timeout(short);
+
 void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len);
 
 void kcpuv_free(kcpuv_sess *sess);

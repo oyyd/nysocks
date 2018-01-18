@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 1.2.9
+- Feature: Use `--daemon_status`, `-s` to show the status of running daemons.
+- C/C++: Refactor cpp tests.
+
 ## 1.2.8
 - Fix: Fix memory leaks when using `Nan::Persistent<T>` which will create a new instance.
 

@@ -10,7 +10,10 @@ static testing::MockFunction<void(const char *)> *test_callback1;
 
 class KcpuvSessTest : public testing::Test {
 protected:
-  KcpuvSessTest(){};
+  KcpuvSessTest() {
+    kcpuv_sess_enable_timeout(1);
+    kcpuv_set_mux_enable_timeout(1);
+  };
   virtual ~KcpuvSessTest(){};
 };
 

@@ -8,6 +8,7 @@ extern "C" {
 
 #include "kcpuv_sess.h"
 #include "loop.h"
+#include "mux.h"
 #include "utils.h"
 #include <uv.h>
 

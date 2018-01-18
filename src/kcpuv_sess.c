@@ -11,6 +11,10 @@ static char *buffer = NULL;
 // TODO: it only accepts int in uv.h
 long kcpuv_udp_buf_size = 4 * 1024 * 1024;
 
+static short enable_timeout = KCPUV_SESS_TIMEOUT;
+
+void kcpuv_sess_enable_timeout(short value) { enable_timeout = value; }
+
 // NOTE: Use this after first creation.
 kcpuv_sess_list *kcpuv_get_sess_list() { return sess_list; }
 
@@ -459,7 +463,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     int size;
     kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
 
-    if (KCPUV_SESS_TIMEOUT) {
+    if (enable_timeout) {
       if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
         kcpuv_close(sess, 1, "timeout");
         continue;

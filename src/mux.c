@@ -4,6 +4,10 @@
 
 static unsigned long MUX_CONN_DEFAULT_TIMEOUT = 30000;
 
+static short enable_timeout = KCPUV_MUX_CONN_TIMEOUT;
+
+void kcpuv_set_mux_enable_timeout(short value) { enable_timeout = value; }
+
 static unsigned int bytes_to_int(const unsigned char *buffer) {
   return (unsigned int)(buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 |
                         buffer[3]);
@@ -279,7 +283,7 @@ static void kcpuv_mux_check(kcpuv_mux *mux) {
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
 
     // check conns timeout
-    if (KCPUV_MUX_CONN_TIMEOUT) {
+    if (enable_timeout) {
       if (conn->timeout) {
         if (conn->ts + conn->timeout <= current) {
           kcpuv_mux_conn_emit_close(conn);

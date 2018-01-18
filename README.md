@@ -2,6 +2,8 @@
 
 [![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks) [![travis-ci](https://travis-ci.org/oyyd/nysocks.svg?branch=dev)](https://travis-ci.org/oyyd/nysocks)
 
+[使用简介](./doc/usage_cn.md)
+
 Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs. Nysocks clients support both [SOCKS5](https://www.ietf.org/rfc/rfc1928.txt) and [SS](https://shadowsocks.org/en/spec/Protocol.html) protocols.
 
     Nysocks is in an early stage. Please submit PRs or issues to help us improve it if you like it!
@@ -122,8 +124,8 @@ nysocks -h
   "socketAmount": 20,
   "password": "YOUR_PASSWORD",
   "kcp": {
-    "sndwnd": 4096,
-    "rcvwnd": 4096,
+    "sndwnd": 1024,
+    "rcvwnd": 1024,
     "nodelay": 0,
     "interval": 30,
     "resend": 2,

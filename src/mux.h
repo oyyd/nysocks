@@ -39,6 +39,8 @@ typedef struct KCPUV_MUX_CONN {
   conn_on_close_cb on_close_cb;
 } kcpuv_mux_conn;
 
+void kcpuv_set_mux_enable_timeout(short);
+
 void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess);
 
 void kcpuv_mux_free(kcpuv_mux *mux);

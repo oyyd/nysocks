@@ -164,6 +164,10 @@ export default function main() {
       alias: 'd',
       describe: 'Run with a daemon(pm2): start, stop, restart.',
     })
+    .option('daemon_status', {
+      alias: 's',
+      describe: 'Show daemoned(pm2) processes status',
+    })
     .option('mode', {
       alias: 'm',
       describe: 'Like kcptun: normal, fast, fast2, fast3.',
@@ -226,6 +230,9 @@ export default function main() {
         if (config.daemon) {
           runAsDaemon(config, 'server')
           return
+        } else if (config.daemon_status) {
+          pm.logStatus()
+          return
         }
 
         createServerRouter(config)
@@ -245,6 +252,9 @@ export default function main() {
 
         if (config.daemon) {
           runAsDaemon(config, 'client')
+          return
+        } else if (config.daemon_status) {
+          pm.logStatus()
           return
         }
 
