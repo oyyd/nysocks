@@ -457,11 +457,13 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
   // TODO: maybe we could assume that ikcp_update won't
   // cost too much time and get the time once
-  IUINT32 now = iclock();
+  IUINT32 now = 0;
+
   while (ptr->next != NULL) {
     ptr = ptr->next;
     int size;
     kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
+    now = iclock();
 
     if (enable_timeout) {
       if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
@@ -479,6 +481,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     }
 
     size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
+
     // TODO: consider the expected size
     while (size > 0) {
       if (sess->on_msg_cb == NULL) {
