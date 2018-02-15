@@ -4,10 +4,14 @@ const { createClient, createServerRouter } = require('../node/lib/index')
 const socks = require('socksv5-kcpuv')
 
 const BAND_WIDTH = 10 * 1024 * 1024
+const SOCKET_AMOUNT = 500
+const TRANSMISSION_INTERVAL = 100
+const PARTIAL_LENGTH = BAND_WIDTH / (1000 / TRANSMISSION_INTERVAL)
+
 const CONFIG = {
   serverAddr: '0.0.0.0',
-  serverPort: 20000,
-  socketAmount: 100,
+  serverPort: 20001,
+  socketAmount: SOCKET_AMOUNT,
   password: 'HELLO',
   kcp: {
     sndwnd: 2048,
@@ -126,16 +130,17 @@ function createEnvironment() {
 function main() {
   createEnvironment().then((resources) => {
     const { appSocket } = resources
-    const content = Buffer.allocUnsafe(1024 * 1024)
+    const content = Buffer.allocUnsafe(PARTIAL_LENGTH)
+    let received = 0
+
+    appSocket.on('data', (data) => {
+      received += data.length
+      // console.log(`received: ${received}`)
+    })
 
     setInterval(() => {
       appSocket.write(content)
-    }, 100)
-
-    // appSocket.on('data', (data) => {
-    //   console.log('data', data.length)
-    // })
-    // console.log('resources', resources)
+    }, TRANSMISSION_INTERVAL)
   }).catch(err => {
     setTimeout(() => {
       throw err
