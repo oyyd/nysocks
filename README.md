@@ -4,9 +4,12 @@
 
 [使用简介](./doc/usage_cn.md)
 
-Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs. Nysocks clients support both [SOCKS5](https://www.ietf.org/rfc/rfc1928.txt) and [SS](https://shadowsocks.org/en/spec/Protocol.html) protocols.
+Nysocks binds [kcp](https://github.com/skywind3000/kcp) and [libuv](https://github.com/libuv/libuv) to provide a tcp tunnel in nodejs.
 
-    Nysocks is in an early stage. Please submit PRs or issues to help us improve it if you like it!
+- Features
+  - Aggresive ARQ make it works better than TCP in environments where packets loss always happens.
+  - Support both [SOCKS5](https://www.ietf.org/rfc/rfc1928.txt) and [SS](https://shadowsocks.org/en/spec/Protocol.html) protocols.
+  - Encrypt transmission.
 
 Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always happens when trasmitting data from to China mainland:
 

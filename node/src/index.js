@@ -122,7 +122,7 @@ function socksProtocol(config, managerClient) {
   })
 }
 
-function createClientInstance(config) {
+export function createClientInstance(config) {
   return createManagerClient(config).then(managerClient => {
     const { clientProtocol } = config
     const client = {
@@ -144,7 +144,7 @@ function createClientInstance(config) {
   })
 }
 
-export function createClient(config) {
+export function createClient(config, onReconnect) {
   start()
 
   let networkMonitor = null
@@ -195,6 +195,11 @@ export function createClient(config) {
           // eslint-disable-next-line
           closeAndTryRecreate()
         })
+
+        // TODO:
+        if (typeof onReconnect === 'function') {
+          onReconnect()
+        }
       }).catch(err => {
         // Create client failed
         setTimeout(() => {
@@ -228,11 +233,6 @@ export function createClient(config) {
 
   // Create first time.
   recreate()
-
-  // TODO:
-  // setInterval(() => {
-  //   closeAndTryRecreate()
-  // }, 10 * 1000)
 }
 
 export function createServer(config, onClose) {
