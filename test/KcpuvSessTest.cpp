@@ -171,7 +171,7 @@ static void close_cb(kcpuv_sess *sess, void *data) {
 void do_close_cb(uv_timer_t *timer) {
   kcpuv_sess *sess = static_cast<kcpuv_sess *>(timer->data);
 
-  kcpuv_close(sess, 0, error_msg);
+  kcpuv_close(sess, error_msg);
   kcpuv_stop_loop();
 }
 
@@ -211,7 +211,7 @@ static void close_cb2(kcpuv_sess *sess, void *data) {
   kcpuv_stop_loop();
 }
 
-TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
+TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
   kcpuv_initialize();
 
   test_callback4 = new testing::MockFunction<void(void)>();
@@ -224,13 +224,16 @@ TEST_F(KcpuvSessTest, one_close_should_close_the_other_side) {
   int receive_port = 12005;
 
   // bind local
+  kcpuv_listen(sender, send_port, NULL);
   kcpuv_listen(recver, receive_port, NULL);
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
+  kcpuv_init_send(recver, "127.0.0.1", send_port);
 
   kcpuv_bind_close(recver, &close_cb2);
 
   EXPECT_CALL(*test_callback4, Call()).Times(1);
-  kcpuv_close(sender, 1, NULL);
+  kcpuv_send_cmd(sender, KCPUV_CMD_FIN);
+  // kcpuv_close(sender, NULL);
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 

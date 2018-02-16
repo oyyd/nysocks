@@ -58,59 +58,14 @@ int kcpuv_destruct() {
   return 0;
 }
 
-// Send content through kcp.
-void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
-  unsigned long s = 0;
-
-  while (s < len) {
-    unsigned long e = s + MAX_SENDING_LEN;
-
-    if (e > len) {
-      e = len;
-    }
-
-    unsigned long part_len = e - s;
-
-    int rval = ikcp_send(sess->kcp, msg + s, part_len);
-
-    if (KCPUV_DEBUG == 1 && rval < 0) {
-      // TODO:
-      printf("ikcp_send() < 0: %d", rval);
-    }
-
-    s = e;
-  }
-}
-
-// TODO: We don't need a callback to notify the end of sending now.
-static void sess_send(kcpuv_sess *sess, char *data, int length,
-                      kcpuv_dgram_cb cb, char *cus_data) {
-  // make buffers from string
-  uv_buf_t buf = uv_buf_init(data, length);
-
-  if (sess->state != KCPUV_STATE_FREED) {
-    if (sess->udp_send != NULL) {
-      kcpuv_udp_send udp_send = sess->udp_send;
-      udp_send(sess, &buf, 1, (const struct sockaddr *)sess->send_addr);
-    } else {
-      uv_udp_try_send(sess->handle, &buf, 1,
-                      (const struct sockaddr *)sess->send_addr);
-    }
-
-    if (cb != NULL) {
-      cb(sess, cus_data);
-    }
-  }
-
-  free(data);
-}
-
-static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
-                                     int len, kcpuv_dgram_cb cb,
-                                     char *cus_data) {
+// Send raw data through kcp.
+void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
+                    unsigned long len) {
   sess->send_ts = iclock();
+
   // encode protocol
   int write_len = len + KCPUV_OVERHEAD;
+
   // ikcp assume we copy and send the msg
   char *plaintext = malloc(sizeof(char) * write_len);
 
@@ -120,13 +75,34 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
     memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
   }
 
-  // encrypt
-  char *data = (char *)kcpuv_cryptor_encrypt(
-      sess->cryptor, (unsigned char *)plaintext, &write_len);
+  // split content and send
+  unsigned long s = 0;
+
+  while (s < write_len) {
+    unsigned long e = s + MAX_SENDING_LEN;
+
+    if (e > write_len) {
+      e = write_len;
+    }
+
+    unsigned long part_len = e - s;
+
+    int rval = ikcp_send(sess->kcp, plaintext + s, part_len);
+
+    if (KCPUV_DEBUG == 1 && rval < 0) {
+      // TODO:
+      printf("ikcp_send() < 0: %d", rval);
+    }
+
+    s = e;
+  }
 
   free(plaintext);
+}
 
-  sess_send(sess, data, write_len, cb, cus_data);
+// Send app data through kcp.
+void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
+  kcpuv_raw_send(sess, KCPUV_CMD_PUSH, msg, len);
 }
 
 // Func to output data for kcp through udp.
@@ -134,7 +110,7 @@ static void kcpuv_send_with_protocol(kcpuv_sess *sess, int cmd, const char *msg,
 // TODO: do not allocate twice
 static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   if (KCPUV_DEBUG) {
-    kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
+    // kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
     printf("output: %d %lld\n", len, iclock64());
     printf("content: ");
     print_as_hex(msg, len);
@@ -142,15 +118,33 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   }
 
   kcpuv_sess *sess = (kcpuv_sess *)user;
-  kcpuv_send_with_protocol(sess, KCPUV_CMD_PUSH, msg, len, NULL, NULL);
+
+  // encrypt
+  char *data =
+      (char *)kcpuv_cryptor_encrypt(sess->cryptor, (unsigned char *)msg, &len);
+
+  // make buffers from string
+  uv_buf_t buf = uv_buf_init(data, len);
+
+  if (sess->state != KCPUV_STATE_FREED) {
+    if (sess->udp_send != NULL) {
+      kcpuv_udp_send udp_send = sess->udp_send;
+      udp_send(sess, &buf, 1, (const struct sockaddr *)sess->send_addr);
+    } else {
+      uv_udp_try_send(sess->handle, &buf, 1,
+                      (const struct sockaddr *)sess->send_addr);
+    }
+  }
+
+  // TODO: should we free buffer here?
+  // free(buf.base);
 
   return 0;
 }
 
-// Send cmds directly through udp.
-void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd, kcpuv_dgram_cb cb,
-                    void *data) {
-  kcpuv_send_with_protocol(sess, cmd, NULL, 0, cb, data);
+// Send cmds.
+void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd) {
+  kcpuv_raw_send(sess, cmd, NULL, 0);
 }
 
 // Create a kcpuv session. This is a common structure for
@@ -274,6 +268,7 @@ void kcpuv_init_send(kcpuv_sess *sess, char *addr, int port) {
   init_send(sess, &addr_info);
 }
 
+// TODO: remove this
 // Update kcp for content transmission.
 static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
   int rval = ikcp_input(sess->kcp, msg, length);
@@ -298,43 +293,25 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
     if (sess->state == KCPUV_STATE_WAIT_ACK) {
       sess->state = KCPUV_STATE_READY;
       init_send(sess, addr);
-      if (KCPUV_DEBUG) {
-        kcpuv__print_sockaddr(addr);
-      }
+      // if (KCPUV_DEBUG) {
+      //   kcpuv__print_sockaddr(addr);
+      // }
     }
 
     int read_len = nread;
     char *read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
 
-    if (KCPUV_DEBUG) {
-      printf("input: %lld\n", iclock64());
-      print_as_hex(read_msg, read_len);
-      printf("%s\n", read_msg);
-    }
+    // if (KCPUV_DEBUG) {
+    //   print_as_hex(buf->base, nread);
+    //   print_as_hex(read_msg, read_len);
+    // }
 
     // update active time
     sess->recv_ts = iclock();
 
-    // check protocol
-    int cmd = kcpuv_protocol_decode(read_msg);
+    input_kcp(sess, (const char *)read_msg, read_len);
 
-    // NOTE: We don't need to make sure the KCPUV_CMD_NOO
-    // to be received as messages sended by kcp will also
-    // refresh the recv_ts to avoid timeout.
-    if (cmd == KCPUV_CMD_NOO) {
-      free(read_msg);
-      free(buf->base);
-      return;
-    } else if (cmd == KCPUV_CMD_CLS) {
-      kcpuv_close(sess, 0, NULL);
-      free(read_msg);
-      free(buf->base);
-      return;
-    }
-
-    input_kcp(sess, (const char *)(read_msg + KCPUV_OVERHEAD),
-              read_len - KCPUV_OVERHEAD);
     free(read_msg);
   }
 
@@ -432,15 +409,12 @@ int kcpuv_set_state(kcpuv_sess *sess, int state) {
 // and then we can free the sess.
 // NOTE: Users are expected to `kcpuv_free` sessions manually.
 // 1. bindClose 2. close 3. callback
-void kcpuv_close(kcpuv_sess *sess, unsigned int send_close_msg,
-                 const char *error_msg) {
+void kcpuv_close(kcpuv_sess *sess, const char *error_msg) {
   // mark that this sess could be freed
   sess->state = KCPUV_STATE_CLOSED;
   // uv_close(sess->handle, NULL);
 
-  if (send_close_msg != 0) {
-    kcpuv_send_cmd(sess, KCPUV_CMD_CLS, sess->on_close_cb, (void *)error_msg);
-  } else if (sess->on_close_cb != NULL) {
+  if (sess->on_close_cb != NULL) {
     // call callback to inform outside
     kcpuv_dgram_cb on_close_cb = sess->on_close_cb;
     on_close_cb(sess, (void *)error_msg);
@@ -467,7 +441,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
     if (enable_timeout) {
       if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
-        kcpuv_close(sess, 1, "timeout");
+        kcpuv_close(sess, "timeout");
         continue;
       }
     }
@@ -484,13 +458,35 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
     // TODO: consider the expected size
     while (size > 0) {
-      if (sess->on_msg_cb == NULL) {
-        continue;
+      // parse cmd
+      // check protocol
+      int cmd = kcpuv_protocol_decode(buffer);
+
+      // NOTE: We don't need to make sure the KCPUV_CMD_NOO
+      // to be received as messages sended by kcp will also
+      // refresh the recv_ts to avoid timeout.
+      // NOTE: Some states need to be considered carefully.
+      if (cmd == KCPUV_CMD_NOO) {
+        // do nothing
+      } else if (cmd == KCPUV_CMD_FIN) {
+        if (sess->state <= KCPUV_STATE_READY) {
+          sess->state = KCPUV_STATE_FIN_ACK;
+          kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
+        }
+      } else if (cmd == KCPUV_CMD_FIN_ACK) {
+        sess->state = KCPUV_STATE_FIN_ACK;
+      } else if (cmd == KCPUV_CMD_PUSH) {
+        if (sess->on_msg_cb != NULL) {
+          // update receive data
+          kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
+          on_msg_cb(sess, (const char *)(buffer + KCPUV_OVERHEAD),
+                    size - KCPUV_OVERHEAD);
+        }
+      } else {
+        // invalid CMD
+        fprintf(stderr, "receive invalid cmd: %d\n", cmd);
       }
 
-      // update receive data
-      kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
-      on_msg_cb(sess, (const char *)buffer, size);
       size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
     }
 
@@ -509,14 +505,23 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
   while (ptr->next != NULL) {
     kcpuv_sess *sess = (kcpuv_sess *)ptr->next->node;
 
-    // free the sess if marked
     if (sess->state == KCPUV_STATE_WAIT_FREE) {
+      // free the sess if marked
       kcpuv_free(sess);
+    } else if (sess->state == KCPUV_STATE_FIN_ACK) {
+      int packets = ikcp_waitsnd(sess->kcp);
+
+      // Trigger close when all data acked
+      if (packets == 0) {
+        kcpuv_close(sess, NULL);
+      }
+
+      ptr = ptr->next;
     } else {
       if (KCPUV_SESS_HEARTBEAT_ACTIVE) {
-        if (sess->send_addr != NULL &&
+        if (sess->send_addr != NULL && sess->state == KCPUV_STATE_READY &&
             sess->send_ts + KCPUV_SESS_HEARTBEAT_INTERVAL <= now) {
-          kcpuv_send_cmd(sess, KCPUV_CMD_NOO, NULL, NULL);
+          kcpuv_send_cmd(sess, KCPUV_CMD_NOO);
         }
       }
       ptr = ptr->next;

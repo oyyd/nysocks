@@ -68,9 +68,9 @@ int kcpuv_stop_listen(kcpuv_sess *sess);
 
 void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len);
 
-void kcpuv_close(kcpuv_sess *sess,
-                 unsigned int should_send_a_close_cmd_to_the_other_side,
-                 const char *error_msg);
+void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd);
+
+void kcpuv_close(kcpuv_sess *sess, const char *error_msg);
 
 void kcpuv_bind_close(kcpuv_sess *, kcpuv_dgram_cb);
 
