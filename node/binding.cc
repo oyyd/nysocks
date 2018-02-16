@@ -406,13 +406,8 @@ static NAN_METHOD(Close) {
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
   bool sendClose = Local<Boolean>::Cast(info[1])->BooleanValue();
-  unsigned int closeVal = 0;
 
-  if (sendClose) {
-    closeVal = 1;
-  }
-
-  kcpuv_close(obj->GetSess(), closeVal, NULL);
+  kcpuv_close(obj->GetSess(), NULL);
 }
 
 static NAN_METHOD(InitSend) {
