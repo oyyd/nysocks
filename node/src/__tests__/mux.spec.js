@@ -20,7 +20,7 @@ describe('mux', () => {
       _stopLoop()
       muxFree(mux)
       stopListen(mux.sess)
-      markFree(mux.sess)
+      // markFree(mux.sess)
 
       setTimeout(() => {
         stopKcpuv()
@@ -57,8 +57,8 @@ describe('mux', () => {
           _stopLoop()
           stopListen(mux1.sess)
           stopListen(mux2.sess)
-          markFree(mux1.sess)
-          markFree(mux2.sess)
+          // markFree(mux1.sess)
+          // markFree(mux2.sess)
           connFree(conn1)
           connFree(conn2)
           muxFree(mux1)
@@ -95,7 +95,7 @@ describe('mux', () => {
       connFree(conn)
       muxFree(mux)
       stopListen(mux.sess)
-      markFree(mux.sess)
+      // markFree(mux.sess)
 
       setTimeout(() => {
         stopKcpuv()

@@ -33,8 +33,8 @@ describe('socket', () => {
       expect(msg.toString('utf8')).toBe(message)
       stopListen(a)
       stopListen(b)
-      markFree(a)
-      markFree(b)
+      // markFree(a)
+      // markFree(b)
 
       setTimeout(() => {
         _stopLoop()

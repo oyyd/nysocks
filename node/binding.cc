@@ -47,7 +47,7 @@ public:
     if (!is_freed) {
       is_freed = 1;
       kcpuv_stop_listen(sess);
-      kcpuv_free(sess);
+      kcpuv_free(sess, NULL);
       sess = 0;
     }
   };
@@ -156,12 +156,12 @@ static void on_listen_cb(kcpuv_sess *sess, const char *data, int len) {
                     Nan::New(binding->listen_cb), argc, args);
 }
 
-static void closing_cb(kcpuv_sess *sess, void *data) {
+static void closing_cb(kcpuv_sess *sess) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
 
   Nan::HandleScope scope;
   Isolate *isolate = Isolate::GetCurrent();
-  const char *error_msg = reinterpret_cast<const char *>(data);
+  // const char *error_msg = reinterpret_cast<const char *>(data);
   const int argc = 1;
   Local<Value> args[argc] = {Nan::Undefined()};
 
@@ -170,10 +170,10 @@ static void closing_cb(kcpuv_sess *sess, void *data) {
   //   isolate->Enter();
   // }
 
-  if (error_msg) {
-    // TODO: memcpy
-    args[0] = String::NewFromUtf8(isolate, error_msg);
-  }
+  // if (error_msg) {
+  //   // TODO: memcpy
+  //   args[0] = String::NewFromUtf8(isolate, error_msg);
+  // }
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
                     Nan::New(binding->close_cb), argc, args);
@@ -408,7 +408,7 @@ static NAN_METHOD(Close) {
 
   bool sendClose = Local<Boolean>::Cast(info[1])->BooleanValue();
 
-  kcpuv_close(obj->GetSess(), NULL);
+  kcpuv_close(obj->GetSess());
 }
 
 static NAN_METHOD(InitSend) {
