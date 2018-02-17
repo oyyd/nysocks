@@ -130,8 +130,8 @@ TEST_F(MuxTest, transmission) {
   kcpuv_mux_conn_free(&mux_p1_conn_p2, NULL);
   kcpuv_mux_free(&mux_p1);
   kcpuv_mux_free(&mux_p2);
-  kcpuv_free(sess_p1);
-  kcpuv_free(sess_p2);
+  kcpuv_free(sess_p1, NULL);
+  kcpuv_free(sess_p2, NULL);
 
   KCPUV_TRY_STOPPING_LOOP();
 }
@@ -190,7 +190,7 @@ TEST_F(MuxTest, close) {
 
   kcpuv_mux_free(&mux);
   // destruction
-  kcpuv_free(sess_p1);
+  kcpuv_free(sess_p1, NULL);
 
   KCPUV_TRY_STOPPING_LOOP();
 }

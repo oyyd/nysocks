@@ -164,6 +164,7 @@ static void closing_cb(kcpuv_sess *sess, void *data) {
   const char *error_msg = reinterpret_cast<const char *>(data);
   const int argc = 1;
   Local<Value> args[argc] = {Nan::Undefined()};
+
   // if (!isolate) {
   //   isolate = Isolate::New();
   //   isolate->Enter();
@@ -277,12 +278,12 @@ static NAN_METHOD(Free) {
 }
 
 // TODO: need to free the object wrap or causing memory leaks
-static NAN_METHOD(MarkFree) {
-  KcpuvSessBinding *obj =
-      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-
-  kcpuv_set_state(obj->GetSess(), KCPUV_STATE_WAIT_FREE);
-}
+// static NAN_METHOD(MarkFree) {
+//   KcpuvSessBinding *obj =
+//       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+//
+//   kcpuv_set_state(obj->GetSess(), KCPUV_STATE_WAIT_FREE);
+// }
 
 static NAN_METHOD(Input) {
   // Isolate *isolate = info.GetIsolate();
@@ -675,7 +676,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "setNoDelay", SetNoDelay);
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
-  Nan::SetMethod(target, "markFree", MarkFree);
+  // Nan::SetMethod(target, "markFree", MarkFree);
   Nan::SetMethod(target, "input", Input);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "getPort", GetPort);

@@ -15,7 +15,7 @@ extern "C" {
 typedef struct KCPUV_SESS kcpuv_sess;
 
 typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, const char *data, int len);
-typedef void (*kcpuv_dgram_cb)(kcpuv_sess *sess, void *data);
+typedef void (*kcpuv_dgram_cb)(kcpuv_sess *sess);
 typedef void (*kcpuv_udp_send)(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
                                const struct sockaddr *);
 
@@ -51,7 +51,9 @@ void kcpuv_sess_enable_timeout(short);
 
 void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len);
 
-void kcpuv_free(kcpuv_sess *sess);
+void kcpuv_free(kcpuv_sess *sess, const char *error_msg);
+
+int kcpuv_is_freed(kcpuv_sess *sess);
 
 int kcpuv_set_state(kcpuv_sess *sess, int state);
 
@@ -70,7 +72,7 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len);
 
 void kcpuv_send_cmd(kcpuv_sess *sess, const int cmd);
 
-void kcpuv_close(kcpuv_sess *sess, const char *error_msg);
+void kcpuv_close(kcpuv_sess *sess);
 
 void kcpuv_bind_close(kcpuv_sess *, kcpuv_dgram_cb);
 

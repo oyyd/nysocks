@@ -47,7 +47,7 @@ int kcpuv_destruct() {
 
   // destruct all nodes
   while (ptr_next != NULL) {
-    kcpuv_free(ptr_next->node);
+    kcpuv_free(ptr_next->node, NULL);
     ptr_next = ptr->next;
   }
 
@@ -199,8 +199,19 @@ void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len) {
 }
 
 // Free a kcpuv session.
-void kcpuv_free(kcpuv_sess *sess) {
+void kcpuv_free(kcpuv_sess *sess, const char *error_msg) {
+  if (sess->state == KCPUV_STATE_FREED) {
+    fprintf(stderr, "%s\n", "sess have been freed");
+    return;
+  }
+
   sess->state = KCPUV_STATE_FREED;
+
+  if (sess->on_close_cb != NULL) {
+    // call callback to inform outside
+    kcpuv_dgram_cb on_close_cb = sess->on_close_cb;
+    on_close_cb(sess);
+  }
 
   if (sess_list != NULL && sess_list->list != NULL) {
     kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, sess);
@@ -231,6 +242,10 @@ void kcpuv_free(kcpuv_sess *sess) {
 
   ikcp_release(sess->kcp);
   free(sess);
+}
+
+int kcpuv_is_freed(kcpuv_sess *sess) {
+  return sess->state == KCPUV_STATE_FREED;
 }
 
 // int kcpuv_get_last_packet_addr(kcpuv_sess *sess, char *name, int *port) {
@@ -394,31 +409,30 @@ void kcpuv_bind_listen(kcpuv_sess *sess, kcpuv_listen_cb cb) {
   sess->on_msg_cb = cb;
 }
 
-// TODO: state condition
 int kcpuv_set_state(kcpuv_sess *sess, int state) {
-  if (state != KCPUV_STATE_WAIT_FREE && sess->state == KCPUV_STATE_WAIT_FREE) {
-    return -1;
-  }
+  // do not allow to change state when it's KCPUV_STATE_WAIT_FREE
+  // if (state != KCPUV_STATE_WAIT_FREE && sess->state == KCPUV_STATE_WAIT_FREE)
+  // {
+  //   return -1;
+  // }
 
-  sess->state = KCPUV_STATE_WAIT_FREE;
+  sess->state = state;
   return 0;
 }
 
-// Sessions won't receive msg anymore after closed.
-// We still need to send the close msg to the other side
-// and then we can free the sess.
-// NOTE: Users are expected to `kcpuv_free` sessions manually.
-// 1. bindClose 2. close 3. callback
-void kcpuv_close(kcpuv_sess *sess, const char *error_msg) {
-  // mark that this sess could be freed
-  sess->state = KCPUV_STATE_CLOSED;
-  // uv_close(sess->handle, NULL);
-
-  if (sess->on_close_cb != NULL) {
-    // call callback to inform outside
-    kcpuv_dgram_cb on_close_cb = sess->on_close_cb;
-    on_close_cb(sess, (void *)error_msg);
+// Close
+void kcpuv_close(kcpuv_sess *sess) {
+  if (sess->state >= KCPUV_STATE_FIN) {
+    return;
   }
+
+  kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
+
+  // mark that this sess could be freed
+  // TODO: where to put KCPUV_STATE_CLOSED ?
+  // sess->state = KCPUV_STATE_CLOSED;
+
+  // uv_close(sess->handle, NULL);
 }
 
 // Iterate the session_list and update kcp
@@ -434,14 +448,14 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
   IUINT32 now = 0;
 
   while (ptr->next != NULL) {
-    ptr = ptr->next;
     int size;
-    kcpuv_sess *sess = (kcpuv_sess *)ptr->node;
+    kcpuv_sess *sess = (kcpuv_sess *)ptr->next->node;
+
     now = iclock();
 
     if (enable_timeout) {
       if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
-        kcpuv_close(sess, "timeout");
+        kcpuv_free(sess, "timeout");
         continue;
       }
     }
@@ -471,7 +485,8 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       } else if (cmd == KCPUV_CMD_FIN) {
         if (sess->state <= KCPUV_STATE_READY) {
           sess->state = KCPUV_STATE_FIN_ACK;
-          kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
+          kcpuv_close(sess);
+          // kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
         }
       } else if (cmd == KCPUV_CMD_FIN_ACK) {
         sess->state = KCPUV_STATE_FIN_ACK;
@@ -498,6 +513,8 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
         fprintf(stderr, "ikcp_recv() < 0: %d\n", size);
       }
     }
+
+    ptr = ptr->next;
   }
 
   ptr = sess_list->list;
@@ -505,18 +522,13 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
   while (ptr->next != NULL) {
     kcpuv_sess *sess = (kcpuv_sess *)ptr->next->node;
 
-    if (sess->state == KCPUV_STATE_WAIT_FREE) {
-      // free the sess if marked
-      kcpuv_free(sess);
-    } else if (sess->state == KCPUV_STATE_FIN_ACK) {
+    if (sess->state == KCPUV_STATE_FIN_ACK) {
       int packets = ikcp_waitsnd(sess->kcp);
 
       // Trigger close when all data acked
       if (packets == 0) {
-        kcpuv_close(sess, NULL);
+        kcpuv_free(sess, NULL);
       }
-
-      ptr = ptr->next;
     } else {
       if (KCPUV_SESS_HEARTBEAT_ACTIVE) {
         if (sess->send_addr != NULL && sess->state == KCPUV_STATE_READY &&
