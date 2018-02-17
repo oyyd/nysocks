@@ -2,7 +2,7 @@ import dgram from 'dgram'
 import {
   startKcpuv, stopKcpuv, create, send, bindListener,
   input, getPort, listen, initCryptor, setAddr,
-  destroy, bindUdpSend, markFree, _stopLoop,
+  destroy, bindUdpSend, _stopLoop,
   stopListen,
 } from '../socket'
 
@@ -33,8 +33,6 @@ describe('socket', () => {
       expect(msg.toString('utf8')).toBe(message)
       stopListen(a)
       stopListen(b)
-      // markFree(a)
-      // markFree(b)
 
       setTimeout(() => {
         _stopLoop()
@@ -62,7 +60,6 @@ describe('socket', () => {
   // //     input(a, buffer, addr, 20000)
   // //
   // //     stopListen(a)
-  // //     markFree(a)
   // //
   // //     setTimeout(() => {
   // //       _stopLoop()
@@ -103,8 +100,6 @@ describe('socket', () => {
   //
   //       stopListen(a)
   //       stopListen(b)
-  //       markFree(a)
-  //       markFree(b)
   //       udpSocket.close()
   //
   //       // TODO: refactor this

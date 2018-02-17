@@ -1,12 +1,32 @@
-import { markFree, startKcpuv, stopKcpuv, stopListen, create, setAddr, getPort, bindUdpSend, destroy, _stopLoop } from '../socket'
-import { connListen, connBindClose, muxBindConnection, connSendClose,
-  connSend, createMux, createMuxConn, muxFree, connFree } from '../mux'
+import {
+  startKcpuv,
+  stopKcpuv,
+  stopListen,
+  create,
+  setAddr,
+  getPort,
+  bindUdpSend,
+  destroy,
+  _stopLoop,
+  close,
+} from '../socket'
+import {
+  connListen,
+  connBindClose,
+  muxBindConnection,
+  connSendClose,
+  connSend,
+  createMux,
+  createMuxConn,
+  muxFree,
+  connFree,
+} from '../mux'
 
 describe('mux', () => {
   const ADDR = '0.0.0.0'
 
   describe('createMux', () => {
-    it('should create a wrapped mux object', (done) => {
+    it('should create a wrapped mux object', done => {
       startKcpuv()
 
       const mux = createMux({
@@ -20,7 +40,7 @@ describe('mux', () => {
       _stopLoop()
       muxFree(mux)
       stopListen(mux.sess)
-      // markFree(mux.sess)
+      destroy(mux.sess)
 
       setTimeout(() => {
         stopKcpuv()
@@ -30,7 +50,7 @@ describe('mux', () => {
   })
 
   describe('connSendClose', () => {
-    it('should send a close msg to the other side', (done) => {
+    it('should send a close msg to the other side', done => {
       startKcpuv()
 
       const mux1 = createMux({
@@ -48,8 +68,8 @@ describe('mux', () => {
 
       const conn1 = createMuxConn(mux1)
 
-      muxBindConnection(mux2, (conn2) => {
-        connListen(conn2, (msg) => {
+      muxBindConnection(mux2, conn2 => {
+        connListen(conn2, msg => {
           expect(msg.toString('utf8')).toBe('hello')
         })
 
@@ -57,8 +77,6 @@ describe('mux', () => {
           _stopLoop()
           stopListen(mux1.sess)
           stopListen(mux2.sess)
-          // markFree(mux1.sess)
-          // markFree(mux2.sess)
           connFree(conn1)
           connFree(conn2)
           muxFree(mux1)
@@ -78,7 +96,7 @@ describe('mux', () => {
   })
 
   // TODO: refactor
-  it('should work with bindUdpSend', (done) => {
+  it('should work with bindUdpSend', done => {
     startKcpuv()
 
     const mux = createMux({
@@ -89,13 +107,12 @@ describe('mux', () => {
     })
     const conn = createMuxConn(mux)
 
-    bindUdpSend(mux.sess, (msg) => {
+    bindUdpSend(mux.sess, msg => {
       expect(msg).toBeTruthy()
       _stopLoop()
       connFree(conn)
       muxFree(mux)
       stopListen(mux.sess)
-      // markFree(mux.sess)
 
       setTimeout(() => {
         stopKcpuv()

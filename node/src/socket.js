@@ -24,7 +24,10 @@ export function create() {
   sess.event = new EventEmitter()
   sess._sess = true
 
-  binding.bindClose(sess, errorMsg => sess.event.emit('close', errorMsg))
+  binding.bindClose(sess, errorMsg => {
+    // binding.free(sess)
+    sess.event.emit('close', errorMsg)
+  })
 
   return sess
 }
@@ -81,13 +84,8 @@ export const destroy = wrap((sess) => {
 })
 
 // TODO:
-export const markFree = wrap((sess) => {
-  binding.markFree(sess)
-})
-
-// TODO:
-export const close = wrap((sess, sendCloseMsg = false) => {
-  binding.close(sess, sendCloseMsg)
+export const close = wrap((sess) => {
+  binding.close(sess)
 })
 
 export const listen = wrap((sess, port = 0, onMessage) => {

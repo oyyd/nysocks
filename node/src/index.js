@@ -170,6 +170,7 @@ export function createClient(config, onReconnect) {
     if (currentClients.managerClient) {
       freeManager(currentClients.managerClient)
     }
+
     if (currentClients.proxyClient) {
       currentClients.proxyClient.close(() => {
         resolve()

@@ -1,7 +1,7 @@
 import EventEmitter from 'events'
 import {
   getPort, createWithOptions,
-  // close as sessClose,
+  close as sessClose,
   listen as socketListen, setAddr,
   initCryptor, destroy, stopListen,
   // bindListener, send, startKcpuv,
@@ -105,6 +105,7 @@ function clearBeat(beatInfo) {
   }
 }
 
+// Manager may not be freed after this call.
 export function freeManager(manager) {
   const {
     beatInfo, conns, masterMux, masterSocket,
@@ -118,21 +119,13 @@ export function freeManager(manager) {
       // NOTE: freed in next tick
       muxFree(mux)
       stopListen(socket)
-      destroy(socket)
-
-      // NOTE: freed in next loop
-      // setTimeout(() => {
-      //   destroy(socket)
-      // })
+      sessClose(socket)
     })
   }
 
   muxFree(masterMux)
   stopListen(masterSocket)
-  destroy(masterSocket)
-  // setTimeout(() => {
-  //   destroy(masterSocket)
-  // })
+  sessClose(masterSocket)
 }
 
 export function initClientMasterSocket(mux) {

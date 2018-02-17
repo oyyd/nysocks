@@ -35,4 +35,4 @@ target_link_libraries(unit_test
 add_test(unit_test unit_test)
 
 # known warnings
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types")

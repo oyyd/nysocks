@@ -23,6 +23,8 @@ int kcpuv_stop_loop();
 
 void kcpuv__destroy_loop();
 
+void kcpuv__check_handles();
+
 #ifdef __cplusplus
 }
 #endif

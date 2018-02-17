@@ -68,6 +68,12 @@ void kcpuv__loop_close_handles() {
   uv_walk(kcpuv_get_loop(), closing_walk, NULL);
 }
 
+static void check_handles(uv_handle_t *handle, void *arg) {
+  fprintf(stderr, "handle_type: %d\n", handle->type);
+}
+
+void kcpuv__check_handles() { uv_walk(kcpuv_get_loop(), check_handles, NULL); }
+
 int kcpuv_stop_loop() {
   if (timer != NULL) {
     int rval = uv_timer_stop(timer);

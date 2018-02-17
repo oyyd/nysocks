@@ -13,6 +13,22 @@ long kcpuv_udp_buf_size = 4 * 1024 * 1024;
 
 static short enable_timeout = KCPUV_SESS_TIMEOUT;
 
+void kcpuv__print_sess_list() {
+  if (sess_list == NULL) {
+    fprintf(stderr, "sess_list_length: 0\n");
+  }
+
+  kcpuv_link *link = sess_list->list;
+  int count = 0;
+
+  while (link != NULL) {
+    count++;
+    link = link->next;
+  }
+
+  fprintf(stderr, "sess_list_length: %d\n", count - 1);
+}
+
 void kcpuv_sess_enable_timeout(short value) { enable_timeout = value; }
 
 // NOTE: Use this after first creation.
@@ -449,6 +465,11 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
   while (ptr->next != NULL) {
     int size;
+
+    if (!ptr->next->node) {
+      assert(0);
+    }
+
     kcpuv_sess *sess = (kcpuv_sess *)ptr->next->node;
 
     now = iclock();
@@ -520,6 +541,10 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
   ptr = sess_list->list;
 
   while (ptr->next != NULL) {
+    if (!ptr->next->node) {
+      assert(0);
+    }
+
     kcpuv_sess *sess = (kcpuv_sess *)ptr->next->node;
 
     if (sess->state == KCPUV_STATE_FIN_ACK) {
@@ -528,6 +553,9 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       // Trigger close when all data acked
       if (packets == 0) {
         kcpuv_free(sess, NULL);
+        // NOTE: kcpuv_free will remove ptr
+      } else {
+        ptr = ptr->next;
       }
     } else {
       if (KCPUV_SESS_HEARTBEAT_ACTIVE) {

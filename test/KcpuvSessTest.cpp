@@ -48,7 +48,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 void recver_cb(kcpuv_sess *sess, const char *data, int len) {
   test_callback1->Call(data);
   delete test_callback1;
-  kcpuv_stop_listen(sess);
+  // kcpuv_stop_listen(sess);
   kcpuv_stop_loop();
 }
 
@@ -86,7 +86,7 @@ void recver_cb2(kcpuv_sess *sess, const char *data, int len) {
   test_callback2->Call(len);
   delete test_callback2;
   // delete[] data;
-  kcpuv_stop_listen(sess);
+  // kcpuv_stop_listen(sess);
   kcpuv_stop_loop();
 }
 
@@ -124,7 +124,7 @@ static testing::MockFunction<void(int)> *test_callback22;
 void recver_cb22(kcpuv_sess *sess, const char *data, int len) {
   test_callback22->Call(len);
   delete test_callback22;
-  kcpuv_stop_listen(sess);
+  // kcpuv_stop_listen(sess);
   kcpuv_stop_loop();
 }
 
@@ -201,6 +201,7 @@ TEST_F(KcpuvSessTest, on_close_cb) {
 static testing::MockFunction<void(void)> *test_callback4;
 
 static void close_cb2(kcpuv_sess *sess) {
+  fprintf(stderr, "%s\n", "ENTER_CLOSE");
   test_callback4->Call();
   delete test_callback4;
   kcpuv_stop_listen(sess);
@@ -211,6 +212,8 @@ TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
   kcpuv_initialize();
 
   test_callback4 = new testing::MockFunction<void(void)>();
+
+  // kcpuv__print_sess_list();
 
   kcpuv_sess *sender = kcpuv_create();
   kcpuv_sess *recver = kcpuv_create();
@@ -225,6 +228,9 @@ TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
   kcpuv_init_send(recver, "127.0.0.1", send_port);
 
+  // kcpuv__print_sess_list();
+  // kcpuv__check_handles();
+
   kcpuv_bind_close(recver, &close_cb2);
 
   EXPECT_CALL(*test_callback4, Call()).Times(1);
@@ -232,8 +238,13 @@ TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
 
   kcpuv_start_loop(kcpuv__update_kcp_sess);
 
+  fprintf(stderr, "%s\n", "OUT");
+  kcpuv__check_handles();
+
   kcpuv_free(sender, NULL);
   kcpuv_free(recver, NULL);
+
+  // kcpuv__print_sess_list();
 
   KCPUV_TRY_STOPPING_LOOP();
 }
@@ -243,7 +254,7 @@ static testing::MockFunction<void(void)> *test_callback5;
 static void close_cb3(kcpuv_sess *sess) {
   test_callback5->Call();
   delete test_callback5;
-  kcpuv_stop_listen(sess);
+  // kcpuv_stop_listen(sess);
   kcpuv_stop_loop();
 }
 
@@ -252,11 +263,16 @@ TEST_F(KcpuvSessTest, timeout) {
 
   test_callback5 = new testing::MockFunction<void(void)>();
 
+  // kcpuv__print_sess_list();
+
   kcpuv_sess *sender = kcpuv_create();
   KCPUV_INIT_ENCRYPTOR(sender);
 
   int send_port = 12007;
   int receive_port = 12306;
+
+  // fprintf(stderr, "type: %d\n", sender->handle->type);
+  // kcpuv__print_sess_list();
 
   kcpuv_listen(sender, send_port, NULL);
   kcpuv_init_send(sender, "127.0.0.1", receive_port);
@@ -293,7 +309,7 @@ TEST_F(KcpuvSessTest, kcpuv_get_address) {
 
   delete timer;
   delete[] ip_addr;
-  kcpuv_stop_listen(sess);
+  // kcpuv_stop_listen(sess);
   KCPUV_TRY_STOPPING_LOOP();
 }
 
