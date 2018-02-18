@@ -29,6 +29,12 @@ uv_loop_t *kcpuv_get_loop() {
   return kcpuv_loop;
 }
 
+void kcpuv__next_tick(uv_timer_t *timer, uv_timer_cb cb) {
+  uv_timer_init(kcpuv_get_loop(), timer);
+
+  uv_timer_start(timer, cb, 0, 0);
+}
+
 void kcpuv__add_idle(uv_idle_t *idle) {
   //
   uv_idle_init(kcpuv_get_loop(), idle);
@@ -44,6 +50,7 @@ void kcpuv_start_loop(uv_timer_cb cb) {
   // inited before
 
   timer = malloc(sizeof(uv_timer_t));
+  timer->data = NULL;
   uv_timer_init(kcpuv_get_loop(), timer);
   uv_timer_start(timer, cb, 0, KCPUV_TIMER_INTERVAL);
 
@@ -51,11 +58,6 @@ void kcpuv_start_loop(uv_timer_cb cb) {
     uv_run(kcpuv_get_loop(), UV_RUN_DEFAULT);
   }
 }
-
-// static void close_cb(uv_handle_t *handle) {
-//   //
-//   fprintf(stderr, "%s\n", "close_cb");
-// }
 
 // Force closing all handles
 static void closing_walk(uv_handle_t *handle, void *arg) {

@@ -125,6 +125,13 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 // NOTE: Should call `kcpuv_init_send` with the session before kcp_output
 // TODO: do not allocate twice
 static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
+  kcpuv_sess *sess = (kcpuv_sess *)user;
+
+  if (sess->state == KCPUV_STATE_FREED) {
+    fprintf(stderr, "%s\n", "output after freed");
+    return -1;
+  }
+
   if (KCPUV_DEBUG) {
     // kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
     printf("output: %d %lld\n", len, iclock64());
@@ -132,8 +139,6 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
     print_as_hex(msg, len);
     printf("\n");
   }
-
-  kcpuv_sess *sess = (kcpuv_sess *)user;
 
   // encrypt
   char *data =
@@ -152,8 +157,7 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
     }
   }
 
-  // TODO: should we free buffer here?
-  // free(buf.base);
+  free(buf.base);
 
   return 0;
 }
@@ -179,6 +183,7 @@ kcpuv_sess *kcpuv_create() {
   ikcp_setmtu(sess->kcp, MTU_DEF);
   // sess->kcp->rmt_wnd = INIT_WND_SIZE;
 
+  // NOTE: uv_handle_t will be freed automatically
   sess->handle = malloc(sizeof(uv_udp_t));
   uv_udp_init(kcpuv_get_loop(), sess->handle);
 
@@ -249,14 +254,21 @@ void kcpuv_free(kcpuv_sess *sess, const char *error_msg) {
     free(sess->recv_addr);
   }
 
-  // TODO: should stop listening
   if (!uv_is_closing((uv_handle_t *)sess->handle)) {
     uv_close((uv_handle_t *)sess->handle, free_handle_cb);
-  } else {
-    free(sess->handle);
   }
 
+  // // TODO: should stop listening
+  // if (sess->handle->data != NULL) {
+  //   // freed
+  // } else if (!uv_is_closing((uv_handle_t *)sess->handle)) {
+  // } else {
+  //   // sess->handle->data = NULL;
+  //   // free(sess->handle);
+  // }
+
   ikcp_release(sess->kcp);
+
   free(sess);
 }
 

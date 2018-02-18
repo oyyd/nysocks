@@ -9,6 +9,8 @@ extern "C" {
 
 uv_loop_t *kcpuv_get_loop();
 
+void kcpuv__next_tick(uv_timer_t *timer, uv_timer_cb cb);
+
 void kcpuv_use_default_loop(int value);
 
 void kcpuv__add_idle(uv_idle_t *idle);

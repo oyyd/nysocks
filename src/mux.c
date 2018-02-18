@@ -307,10 +307,12 @@ void kcpuv__mux_updater(uv_timer_t *timer) {
   }
 
   kcpuv_link *link = kcpuv_get_sess_list()->list;
-  while (link->next != NULL) {
 
+  while (link->next != NULL) {
     link = link->next;
+
     kcpuv_mux *mux = (kcpuv_mux *)(((kcpuv_sess *)(link->node))->mux);
+
     if (mux != NULL) {
       kcpuv_mux_check(mux);
     }
