@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.5)
 
 project(kcpuv)
 
+# known warnings
+# CMAKE_CXX_FLAGS doesn't work
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types -g")
+add_compile_options(-g)
+add_compile_options(-Wno-incompatible-pointer-types)
+
 # libuv
 include_directories(./deps/libuv/include)
 
@@ -57,6 +63,3 @@ target_link_libraries(benchmark_udp
 target_link_libraries(benchmark_openssl
   kcpuv
 )
-
-# known warnings
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types")
