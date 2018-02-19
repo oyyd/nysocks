@@ -27,6 +27,8 @@ IUINT32 iclock();
 
 typedef struct KCPUV_LINK kcpuv_link;
 
+void kcpuv__print_all_as_hex(const char *msg, int len);
+
 void print_as_hex(const char *msg, int len);
 
 struct KCPUV_LINK {

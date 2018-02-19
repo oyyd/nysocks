@@ -124,8 +124,15 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 // Func to output data for kcp through udp.
 // NOTE: Should call `kcpuv_init_send` with the session before kcp_output
 // TODO: do not allocate twice
-static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
+static int kcp_output(const char *msg, int msg_len, ikcpcb *kcp, void *user) {
   kcpuv_sess *sess = (kcpuv_sess *)user;
+
+  // if (sess->send_addr == NULL) {
+  //   fprintf(stderr, "%s\n", "NULL send_addr");
+  //   return -1;
+  // }
+
+  int len = msg_len;
 
   if (sess->state == KCPUV_STATE_FREED) {
     fprintf(stderr, "%s\n", "output after freed");
@@ -133,16 +140,20 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   }
 
   if (KCPUV_DEBUG) {
-    // kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
     printf("output: %d %lld\n", len, iclock64());
     printf("content: ");
     print_as_hex(msg, len);
+    kcpuv__print_sockaddr(((kcpuv_sess *)user)->send_addr);
     printf("\n");
   }
+
+  fprintf(stderr, "%s %d %lld\n", "ENC", len, msg);
+  kcpuv__print_all_as_hex(msg, len);
 
   // encrypt
   char *data =
       (char *)kcpuv_cryptor_encrypt(sess->cryptor, (unsigned char *)msg, &len);
+  fprintf(stderr, "%s\n", "ENC_END");
 
   // make buffers from string
   uv_buf_t buf = uv_buf_init(data, len);
@@ -152,8 +163,8 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
       kcpuv_udp_send udp_send = sess->udp_send;
       udp_send(sess, &buf, 1, (const struct sockaddr *)sess->send_addr);
     } else {
-      uv_udp_try_send(sess->handle, &buf, 1,
-                      (const struct sockaddr *)sess->send_addr);
+      int rval = uv_udp_try_send(sess->handle, &buf, 1,
+                                 (const struct sockaddr *)sess->send_addr);
     }
   }
 
@@ -214,6 +225,7 @@ kcpuv_sess *kcpuv_create() {
 
 // TODO: export salt
 void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len) {
+  fprintf(stderr, "%s\n", "INIT_CRYPTOR");
   unsigned int salt[] = {1, 2};
   sess->cryptor = malloc(sizeof(kcpuv_cryptor));
   kcpuv_cryptor_init(sess->cryptor, key, len, salt);
@@ -221,6 +233,7 @@ void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len) {
 
 // Free a kcpuv session.
 void kcpuv_free(kcpuv_sess *sess, const char *error_msg) {
+  fprintf(stderr, "%s\n", "FREE");
   if (sess->state == KCPUV_STATE_FREED) {
     fprintf(stderr, "%s\n", "sess have been freed");
     return;
@@ -268,6 +281,7 @@ void kcpuv_free(kcpuv_sess *sess, const char *error_msg) {
   // }
 
   ikcp_release(sess->kcp);
+  sess->kcp = NULL;
 
   free(sess);
 }
@@ -333,8 +347,10 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
   }
 
   if (nread > 0) {
-    if (sess->state == KCPUV_STATE_WAIT_ACK) {
+    if (sess->send_addr == NULL) {
+      // TODO:
       sess->state = KCPUV_STATE_READY;
+      fprintf(stderr, "%s\n", "INIT_SEND");
       init_send(sess, addr);
       // if (KCPUV_DEBUG) {
       //   kcpuv__print_sockaddr(addr);
@@ -342,17 +358,18 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
     }
 
     int read_len = nread;
-    char *read_msg = (char *)kcpuv_cryptor_decrypt(
+    char *read_msg = NULL;
+
+    read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
 
-    // if (KCPUV_DEBUG) {
-    //   print_as_hex(buf->base, nread);
-    //   print_as_hex(read_msg, read_len);
-    // }
+    if (KCPUV_DEBUG) {
+      fprintf(stderr, "%s\n", "INPUT_CONTENT");
+      print_as_hex(read_msg, read_len);
+    }
 
     // update active time
     sess->recv_ts = iclock();
-
     input_kcp(sess, (const char *)read_msg, read_len);
 
     free(read_msg);
@@ -376,7 +393,7 @@ static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
 // Set receiving info.
 int kcpuv_listen(kcpuv_sess *sess, int port, kcpuv_listen_cb cb) {
-  sess->state = KCPUV_STATE_WAIT_ACK;
+  // sess->state = KCPUV_STATE_WAIT_ACK;
   sess->on_msg_cb = cb;
   // get local addr
   sess->recv_addr = malloc(sizeof(struct sockaddr));
@@ -493,6 +510,10 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       }
     }
 
+    if (sess->kcp == NULL) {
+      fprintf(stderr, "%s\n", "NULL_KCP");
+    }
+
     IUINT32 time_to_update = ikcp_check(sess->kcp, now);
 
     // NOTE: We have to call ikcp_update after the first calling
@@ -527,8 +548,10 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
         if (sess->on_msg_cb != NULL) {
           // update receive data
           kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
+          // fprintf(stderr, "%s\n", "CB");
           on_msg_cb(sess, (const char *)(buffer + KCPUV_OVERHEAD),
                     size - KCPUV_OVERHEAD);
+          // fprintf(stderr, "%s\n", "END_CB");
         }
       } else {
         // invalid CMD

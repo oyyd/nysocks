@@ -1,13 +1,14 @@
 import { create, listen, stopListen, destroy,
-  setAddr, send, close, startKcpuv, stopKcpuv } from '../socket'
+  setAddr, send, close, startKcpuv, stopKcpuv, initCryptor } from '../socket'
 
 function main() {
   startKcpuv()
 
   const addr = '127.0.0.1'
-  const senderPort = 8888
-  const receiverPort = 8889
-  const msg = 'hello'
+  const senderPort = 18888
+  const receiverPort = 18889
+  const msg = 'hellohellohellohello'
+  const key = 'keykeykeykey'
 
   const sender = create()
   const receiver = create()
@@ -21,15 +22,21 @@ function main() {
     console.log('receive: ', content)
 
     if (content === msg) {
-      close(sender)
-      close(receiver)
-      stopListen(sender)
-      stopListen(receiver)
-      setTimeout(() => {
-        stopKcpuv()
-      }, 100)
+      // close(sender)
+      // close(receiver)
+      // stopListen(sender)
+      // stopListen(receiver)
+      // destroy(sender)
+      // destroy(receiver)
+
+      // setTimeout(() => {
+      //   stopKcpuv()
+      // }, 1000)
     }
   })
+
+  initCryptor(sender, key)
+  initCryptor(receiver, key)
 
   setAddr(sender, addr, receiverPort)
   setAddr(receiver, addr, senderPort)

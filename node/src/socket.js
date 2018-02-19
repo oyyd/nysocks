@@ -76,11 +76,14 @@ export const bindUdpSend = wrap((sess, next) => {
   binding.bindUdpSend(sess, next)
 })
 
-// TODO:
 export const destroy = wrap((sess) => {
-  process.nextTick(() => {
+  // TODO:
+  setTimeout(() => {
     binding.free(sess)
   })
+  // process.nextTick(() => {
+  //   binding.free(sess)
+  // })
 })
 
 // TODO:
