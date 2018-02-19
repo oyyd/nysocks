@@ -24,14 +24,14 @@ function main() {
     if (content === msg) {
       // close(sender)
       // close(receiver)
-      // stopListen(sender)
-      // stopListen(receiver)
-      // destroy(sender)
-      // destroy(receiver)
+      stopListen(sender)
+      stopListen(receiver)
+      destroy(sender)
+      destroy(receiver)
 
-      // setTimeout(() => {
-      //   stopKcpuv()
-      // }, 1000)
+      setTimeout(() => {
+        stopKcpuv()
+      }, 1000)
     }
   })
 

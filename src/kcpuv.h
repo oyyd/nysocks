@@ -7,7 +7,7 @@ extern "C" {
 
 #include "ikcp.h"
 
-#define KCPUV_DEBUG 1
+#define KCPUV_DEBUG 0
 
 #define KCPUV_IKCP_OVERHEAD 24
 #define KCPUV_PROTOCOL_VERSION 1
