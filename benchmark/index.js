@@ -4,13 +4,13 @@ const { createClient, createServerRouter } = require('../node/lib/index')
 const socks = require('socksv5-kcpuv')
 
 const BAND_WIDTH = 10 * 1024 * 1024
-const SOCKET_AMOUNT = 500
+const SOCKET_AMOUNT = 1
 const TRANSMISSION_INTERVAL = 100
 const PARTIAL_LENGTH = BAND_WIDTH / (1000 / TRANSMISSION_INTERVAL)
 
 const CONFIG = {
   serverAddr: '0.0.0.0',
-  serverPort: 20001,
+  serverPort: 20003,
   socketAmount: SOCKET_AMOUNT,
   password: 'HELLO',
   kcp: {
@@ -23,10 +23,10 @@ const CONFIG = {
   },
   clientProtocol: 'SOCKS',
   pac: {
-    pacServerPort: 8091,
+    pacServerPort: 8093,
   },
   SOCKS: {
-    port: 1081,
+    port: 1083,
   },
 }
 
@@ -58,7 +58,7 @@ function createNysocksServer(resourcePort) {
 }
 
 function createNysocksClient() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const client = createClient(Object.assign({}, CONFIG), () => {
       resolve(client)
     })
@@ -66,17 +66,20 @@ function createNysocksClient() {
 }
 
 function createAppClient(addr) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const { address, port } = addr
-    socks.connect({
-      host: address,
-      port,
-      proxyHost: '0.0.0.0',
-      proxyPort: CONFIG.SOCKS.port,
-      auths: [socks.auth.None()],
-    }, socket => {
-      resolve(socket)
-    })
+    socks.connect(
+      {
+        host: address,
+        port,
+        proxyHost: '0.0.0.0',
+        proxyPort: CONFIG.SOCKS.port,
+        auths: [socks.auth.None()],
+      },
+      socket => {
+        resolve(socket)
+      }
+    )
   })
 }
 
@@ -90,7 +93,7 @@ function createEnvironment() {
   // 1. create resource server
   return (
     createResourceServer()
-      .then((res) => {
+      .then(res => {
         // eslint-disable-next-line
         addr = res.addr
         // eslint-disable-next-line
@@ -112,7 +115,7 @@ function createEnvironment() {
         console.log('nysocks client created')
         return createAppClient(addr)
       })
-      .then((_appSocket) => {
+      .then(_appSocket => {
         appSocket = _appSocket
       })
       .then(() => {
@@ -128,24 +131,31 @@ function createEnvironment() {
 }
 
 function main() {
-  createEnvironment().then((resources) => {
-    const { appSocket } = resources
-    const content = Buffer.allocUnsafe(PARTIAL_LENGTH)
-    let received = 0
+  createEnvironment()
+    .then(resources => {
+      const { appSocket } = resources
+      const content = Buffer.alloc(PARTIAL_LENGTH, 7)
+      let received = 0
 
-    appSocket.on('data', (data) => {
-      received += data.length
-      // console.log(`received: ${received}`)
-    })
+      appSocket.on('data', data => {
+        for (let i = 0; i < data.length; i += 1) {
+          if (data[i] !== 7) {
+            // console.log('invalid')
+          }
+        }
+        received += data.length
+        // console.log(`received: ${received}`)
+      })
 
-    setInterval(() => {
-      appSocket.write(content)
-    }, TRANSMISSION_INTERVAL)
-  }).catch(err => {
-    setTimeout(() => {
-      throw err
+      setInterval(() => {
+        appSocket.write(content)
+      }, TRANSMISSION_INTERVAL)
     })
-  })
+    .catch(err => {
+      setTimeout(() => {
+        throw err
+      })
+    })
 }
 
 main()

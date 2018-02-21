@@ -7,7 +7,12 @@ function main() {
   const addr = '127.0.0.1'
   const senderPort = 18888
   const receiverPort = 18889
-  const msg = 'hellohellohellohello'
+  let msg = 'hellohellohellohello'
+
+  for (let i = 0; i < 5; i += 1) {
+    msg += msg
+  }
+
   const key = 'keykeykeykey'
 
   const sender = create()
@@ -19,7 +24,7 @@ function main() {
 
   listen(receiver, receiverPort, (buf) => {
     const content = buf.toString('utf8')
-    console.log('receive: ', content)
+    // console.log('receive: ', content)
 
     if (content === msg) {
       // close(sender)

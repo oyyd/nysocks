@@ -85,30 +85,35 @@ void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
   sess->send_ts = iclock();
 
   // encode protocol
-  int write_len = len + KCPUV_OVERHEAD;
-
-  // ikcp assume we copy and send the msg
-  char *plaintext = malloc(sizeof(char) * write_len);
-
-  kcpuv_protocol_encode(cmd, plaintext);
-
-  if (len != 0 && msg != NULL) {
-    memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
-  }
+  // int write_len = len + KCPUV_OVERHEAD;
+  //
+  // // ikcp assume we copy and send the msg
+  // char *plaintext = malloc(sizeof(char) * write_len);
+  //
+  // kcpuv_protocol_encode(cmd, plaintext);
+  //
+  // if (len != 0 && msg != NULL) {
+  //   memcpy(plaintext + KCPUV_OVERHEAD, msg, len);
+  // }
 
   // split content and send
   unsigned long s = 0;
 
-  while (s < write_len) {
-    unsigned long e = s + MAX_SENDING_LEN;
+  while (s == 0 || s < len) {
+    unsigned long e = s + MAX_SENDING_LEN - KCPUV_OVERHEAD;
 
-    if (e > write_len) {
-      e = write_len;
+    if (e > len) {
+      e = len;
     }
 
     unsigned long part_len = e - s;
 
-    int rval = ikcp_send(sess->kcp, plaintext + s, part_len);
+    char *plaintext = malloc(sizeof(char) * (part_len + KCPUV_OVERHEAD));
+    kcpuv_protocol_encode(cmd, plaintext);
+    if (part_len != 0 && msg != NULL) {
+      memcpy(plaintext + KCPUV_OVERHEAD, msg + s, part_len);
+    }
+    int rval = ikcp_send(sess->kcp, plaintext, part_len + KCPUV_OVERHEAD);
 
     if (KCPUV_DEBUG == 1 && rval < 0) {
       // TODO:
@@ -116,9 +121,12 @@ void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
     }
 
     s = e;
-  }
+    free(plaintext);
 
-  free(plaintext);
+    if (s == 0) {
+      break;
+    }
+  }
 }
 
 // Send app data through kcp.
@@ -515,6 +523,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
     // TODO: consider the expected size
     while (size > 0) {
+      // print_as_hex((const char *)(buffer), size);
       // parse cmd
       // check protocol
       int cmd = kcpuv_protocol_decode(buffer);
@@ -529,7 +538,6 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
         if (sess->state <= KCPUV_STATE_READY) {
           sess->state = KCPUV_STATE_FIN_ACK;
           kcpuv_close(sess);
-          // kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
         }
       } else if (cmd == KCPUV_CMD_FIN_ACK) {
         sess->state = KCPUV_STATE_FIN_ACK;
