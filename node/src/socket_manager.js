@@ -3,7 +3,7 @@ import {
   getPort, createWithOptions,
   close as sessClose,
   listen as socketListen, setAddr,
-  initCryptor, destroy, stopListen,
+  initCryptor, stopListen,
   // bindListener, send, startKcpuv,
 } from './socket'
 import {

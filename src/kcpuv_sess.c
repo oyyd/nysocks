@@ -77,6 +77,11 @@ int kcpuv_destruct() {
 // Send raw data through kcp.
 void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
                     unsigned long len) {
+  if (sess->state == KCPUV_STATE_FREED) {
+    fprintf(stderr, "input after freed");
+    return;
+  }
+
   sess->send_ts = iclock();
 
   // encode protocol
@@ -327,6 +332,11 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
 // Input dgram mannualy
 void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
                  const struct sockaddr *addr) {
+  if (sess->state == KCPUV_STATE_FREED) {
+    fprintf(stderr, "sess freed\n");
+    return;
+  }
+
   if (nread < 0) {
     // TODO:
     fprintf(stderr, "uv error: %s\n", uv_strerror(nread));
@@ -342,6 +352,7 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
     }
 
     int read_len = nread;
+    // fprintf(stderr, "state: %d\n", sess->state);
     char *read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
 

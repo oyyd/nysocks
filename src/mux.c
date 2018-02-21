@@ -122,13 +122,18 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
   }
 }
 
-static void on_sess_close(kcpuv_sess *sess, void *data) {
+static void on_sess_close(kcpuv_sess *sess) {
+  if (sess->mux == NULL) {
+    // mux has been freed
+    return;
+  }
+
   kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
 
   if (mux->on_close_cb != NULL) {
     mux_on_close_cb cb = (mux_on_close_cb)mux->on_close_cb;
-    // TODO: invalid type
-    cb(mux, (const char *)data);
+    // TODO:
+    cb(mux, NULL);
   }
 }
 
@@ -156,6 +161,11 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
     kcpuv_mux_conn_free(conn, NULL);
     link = mux->conns.next;
   }
+
+  mux->sess->mux = NULL;
+  mux->sess = NULL;
+  mux->on_connection_cb = NULL;
+  mux->on_close_cb = NULL;
 }
 
 void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb) {

@@ -1,13 +1,24 @@
 import dgram from 'dgram'
 import {
-  startKcpuv, stopKcpuv, create, send, bindListener,
-  input, getPort, listen, initCryptor, setAddr,
-  destroy, bindUdpSend, _stopLoop,
+  startKcpuv,
+  stopKcpuv,
+  create,
+  send,
+  bindListener,
+  input,
+  getPort,
+  listen,
+  initCryptor,
+  setAddr,
+  destroy,
+  bindUdpSend,
+  _stopLoop,
   stopListen,
+  createWithOptions,
 } from '../socket'
 
 describe('socket', () => {
-  it('should send some data from a to b', (done) => {
+  it('should send some data from a to b', done => {
     startKcpuv()
 
     const addr = '0.0.0.0'
@@ -29,7 +40,7 @@ describe('socket', () => {
     setAddr(a, addr, portB)
     setAddr(b, addr, portA)
 
-    bindListener(b, (msg) => {
+    bindListener(b, msg => {
       expect(msg.toString('utf8')).toBe(message)
       stopListen(a)
       stopListen(b)
@@ -43,6 +54,37 @@ describe('socket', () => {
 
     send(a, Buffer.from(message))
   })
+
+  it('should trigger onClose callback when destroied', done => {
+    startKcpuv()
+
+    const socket = create()
+
+    socket.event.on('close', () => {
+      setTimeout(() => {
+        stopKcpuv()
+        done()
+      })
+    })
+
+    destroy(socket)
+  })
+
+  it('should trigger onClose callback when destroied', done => {
+    startKcpuv()
+
+    const socket = createWithOptions()
+
+    socket.event.on('close', () => {
+      setTimeout(() => {
+        stopKcpuv()
+        done()
+      })
+    })
+
+    destroy(socket)
+  })
+
   //
   // // describe('input', () => {
   // //   // TODO: refactor

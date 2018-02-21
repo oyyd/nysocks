@@ -39,11 +39,13 @@ export function createRouter(_options, createASess) {
       managerMaps[key] = sess
 
       bindUdpSend(sess, (msgToBeSend, remoteAddr, remotePort) => {
+        console.log('router_send')
         routerSocket.send(msgToBeSend, remotePort, remoteAddr)
       })
     }
 
     const sess = managerMaps[key]
+    console.log('router_input')
     input(sess, msg, address, port)
   })
 

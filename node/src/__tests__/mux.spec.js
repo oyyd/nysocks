@@ -14,6 +14,7 @@ import {
   connListen,
   connBindClose,
   muxBindConnection,
+  muxBindClose,
   connSendClose,
   connSend,
   createMux,
@@ -121,5 +122,27 @@ describe('mux', () => {
     })
 
     connSend(conn, Buffer.from('h'))
+  })
+
+  it('should trigger onClose when the mux has been closed', (done) => {
+    startKcpuv()
+
+    const mux = createMux({
+      password: 'hello',
+      port: 0,
+      targetAddr: '0.0.0.0',
+      targetPort: 20000,
+    })
+
+    muxBindClose(mux, () => {
+      setTimeout(() => {
+        stopKcpuv()
+        done()
+      })
+    })
+
+    // muxFree(mux)
+    stopListen(mux.sess)
+    destroy(mux.sess)
   })
 })

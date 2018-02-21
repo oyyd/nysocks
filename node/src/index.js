@@ -108,6 +108,7 @@ function socksProtocol(config, managerClient) {
     })
 
     socket.on('data', buf => {
+      console.log('socket_send')
       sendBuf(conn, buf)
     })
     socket.on('error', err => {
@@ -234,6 +235,12 @@ export function createClient(config, onReconnect) {
 
   // Create first time.
   recreate()
+
+  setTimeout(() => {
+    free().catch(err => setTimeout(() => {
+      throw err
+    }))
+  }, 3000)
 }
 
 export function createServer(config, onClose) {

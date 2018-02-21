@@ -383,8 +383,7 @@ static NAN_METHOD(BindClose) {
 
   obj->close_cb.Reset(isolate, info[1].As<Function>());
 
-  kcpuv_sess *sess = obj->GetSess();
-  kcpuv_bind_close(sess, &closing_cb);
+  kcpuv_bind_close(obj->GetSess(), &closing_cb);
 }
 
 static NAN_METHOD(BindUdpSend) {
