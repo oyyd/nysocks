@@ -332,8 +332,8 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
 // Input dgram mannualy
 void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
                  const struct sockaddr *addr) {
-  if (sess->state == KCPUV_STATE_FREED) {
-    fprintf(stderr, "sess freed\n");
+  if (sess->state == KCPUV_STATE_CREATED || sess->state == KCPUV_STATE_FREED) {
+    fprintf(stderr, "%s\n", "invalid msg input");
     return;
   }
 
@@ -352,7 +352,6 @@ void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
     }
 
     int read_len = nread;
-    // fprintf(stderr, "state: %d\n", sess->state);
     char *read_msg = (char *)kcpuv_cryptor_decrypt(
         sess->cryptor, (unsigned char *)buf->base, &read_len);
 

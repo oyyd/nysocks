@@ -108,12 +108,14 @@ function socksProtocol(config, managerClient) {
     })
 
     socket.on('data', buf => {
-      console.log('socket_send')
+      // console.log('socket_send')
       sendBuf(conn, buf)
     })
+
     socket.on('error', err => {
       logger.error(err.message)
     })
+
     socket.on('close', () => {
       sendClose(conn)
       close(conn)
@@ -193,7 +195,6 @@ export function createClient(config, onReconnect) {
         currentClients.managerClient = managerClient
         currentClients.proxyClient = proxyClient
         managerClient.on('close', () => {
-          // console.log('B')
           // eslint-disable-next-line
           closeAndTryRecreate()
         })
@@ -236,11 +237,11 @@ export function createClient(config, onReconnect) {
   // Create first time.
   recreate()
 
-  setTimeout(() => {
-    free().catch(err => setTimeout(() => {
-      throw err
-    }))
-  }, 3000)
+  // setTimeout(() => {
+  //   free().catch(err => setTimeout(() => {
+  //     throw err
+  //   }))
+  // }, 3000)
 }
 
 export function createServer(config, onClose) {

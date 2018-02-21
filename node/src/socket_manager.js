@@ -10,7 +10,7 @@ import {
   createMux, createMuxConn,
   muxBindConnection, connFree, connSend, connListen,
   connSendClose, connBindClose, connSetTimeout,
-  muxFree,
+  muxFree, muxBindClose,
 } from './mux'
 import { getIP, debug } from './utils'
 
@@ -223,6 +223,10 @@ export function createClient(_options) {
   client.masterSocket = masterSocket
   client.masterMux = masterMux
 
+  // muxBindClose(masterMux, () => {
+  //
+  // })
+
   muxBindConnection(client.masterMux, (conn) => {
     connSendClose(conn)
     connFree(conn)
@@ -287,10 +291,6 @@ function createPassiveSockets(manager, options) {
 
     muxBindConnection(mux, handleConn)
 
-    // // TODO:
-    // muxBindClose(() => {
-    //   console.log('mux closed')
-    // })
     info.mux = mux
     info.socket = socket
     info.port = port
@@ -317,6 +317,13 @@ export function createManager(_options, onConnection, onClose) {
   })
   manager.masterSocket = masterSocket
   manager.masterMux = masterMux
+
+  // TODO: free manager from router
+  muxBindClose(masterMux, () => {
+    if (typeof onClose === 'function') {
+      onClose()
+    }
+  })
 
   // TODO:
   muxBindConnection(masterMux, (conn) => {
