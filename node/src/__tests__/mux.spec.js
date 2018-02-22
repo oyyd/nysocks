@@ -20,7 +20,7 @@ import {
   createMux,
   createMuxConn,
   muxFree,
-  connFree,
+  isConnFreed,
 } from '../mux'
 
 describe('mux', () => {
@@ -74,12 +74,10 @@ describe('mux', () => {
           expect(msg.toString('utf8')).toBe('hello')
         })
 
-        connBindClose(conn2, () => {
+        conn2.event.on('close', () => {
           _stopLoop()
           stopListen(mux1.sess)
           stopListen(mux2.sess)
-          connFree(conn1)
-          connFree(conn2)
           muxFree(mux1)
           muxFree(mux2)
 
@@ -111,7 +109,6 @@ describe('mux', () => {
     bindUdpSend(mux.sess, msg => {
       expect(msg).toBeTruthy()
       _stopLoop()
-      connFree(conn)
       muxFree(mux)
       stopListen(mux.sess)
 
@@ -142,6 +139,38 @@ describe('mux', () => {
     })
 
     // muxFree(mux)
+    stopListen(mux.sess)
+    destroy(mux.sess)
+  })
+
+  it('should also free all relative conns of muxes when freed', done => {
+    startKcpuv()
+
+    const mux = createMux({
+      password: 'hello',
+      port: 0,
+      targetAddr: '0.0.0.0',
+      targetPort: 20000,
+    })
+
+    const conn = createMuxConn(mux, null)
+    let called = false
+
+    conn.event.on('close', () => {
+      called = true
+    })
+
+    muxBindClose(mux, () => {
+      expect(isConnFreed(conn)).toBeTruthy()
+      expect(called).toBeTruthy()
+
+      setTimeout(() => {
+        stopKcpuv()
+        done()
+      })
+    })
+
+    muxFree(mux)
     stopListen(mux.sess)
     destroy(mux.sess)
   })

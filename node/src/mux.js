@@ -93,13 +93,41 @@ export const muxBindClose = muxSuite.wrap((mux, onClose) => {
 
 let id = 0
 
+export const connFree = connSuite.wrap((conn) => {
+  if (conn.isClosed) {
+    return
+  }
+
+  conn.isClosed = true
+
+  process.nextTick(() => {
+    binding.connFree(conn)
+    record('conn', get('conn') - 1)
+  })
+})
+
+export const connBindClose = connSuite.wrap((conn, cb) => {
+  binding.connBindClose(conn, cb)
+})
+
 export function wrapMuxConn(conn) {
   // eslint-disable-next-line
   conn.id = id++
 
   // conn._buf = Buffer.allocUnsafe(20 * 1024 * 1024)
   conn._conn = true
-  conn.isClosed = false
+
+  if (typeof conn.isClosed !== 'boolean') {
+    conn.isClosed = false
+  }
+
+  conn.event = new EventEmitter()
+
+  connBindClose(conn, () => {
+    connFree(conn)
+    conn.event.emit('close')
+  })
+
   record('conn', get('conn') + 1)
 }
 
@@ -120,25 +148,14 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
   // eslint-disable-next-line
   const options = Object.assign({}, DEFAULT_CONN_OPTIONS, _options)
   const conn = binding.createMuxConn()
-  wrapMuxConn(conn)
 
   binding.connInit(mux, conn)
+  wrapMuxConn(conn)
 
   return conn
 })
 
-export const connFree = connSuite.wrap((conn) => {
-  if (conn.isClosed) {
-    return
-  }
-
-  conn.isClosed = true
-
-  process.nextTick(() => {
-    binding.connFree(conn)
-    record('conn', get('conn') - 1)
-  })
-})
+export const isConnFreed = connSuite.wrap((conn) => conn.isClosed)
 
 export const connSend = connSuite.wrap((conn, buffer) => {
   if (conn.isClosed) {
@@ -159,10 +176,6 @@ export const connSendClose = connSuite.wrap((conn) => {
 
 export const connListen = connSuite.wrap((conn, onMessage) => {
   binding.connListen(conn, onMessage)
-})
-
-export const connBindClose = connSuite.wrap((conn, onClose) => {
-  binding.connBindClose(conn, onClose)
 })
 
 export const connSetTimeout = connSuite.wrap((conn, timeout) => {

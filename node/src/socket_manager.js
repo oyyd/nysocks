@@ -145,8 +145,8 @@ export function initClientMasterSocket(mux) {
       }
     })
 
-    connBindClose(conn, () => {
-      connFree(conn)
+    conn.event.on('close', () => {
+      // connFree(conn)
     })
 
     // sess.event.on('close', (errorMsg) => {
@@ -229,7 +229,7 @@ export function createClient(_options) {
 
   muxBindConnection(client.masterMux, (conn) => {
     connSendClose(conn)
-    connFree(conn)
+    // connFree(conn)
   })
 
   return getIP(serverAddr)
@@ -347,8 +347,8 @@ export function createManager(_options, onConnection, onClose) {
       })
     })
 
-    connBindClose(conn, () => {
-      connFree(conn)
+    conn.event.on('close', () => {
+      // connFree(conn)
     })
   })
 

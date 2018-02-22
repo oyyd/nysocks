@@ -114,7 +114,6 @@ export const stopListen = wrap((sess) => {
 })
 
 export const send = wrap((sess, buf) => {
-  console.log('try send', sess.toString('hex'))
   binding.send(sess, buf, buf.length)
 })
 

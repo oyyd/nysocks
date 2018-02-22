@@ -122,19 +122,21 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
   }
 }
 
+static void kcpuv_mux_emit_close(kcpuv_mux *mux) {
+  if (mux->on_close_cb != NULL) {
+    mux_on_close_cb cb = (mux_on_close_cb)mux->on_close_cb;
+    // TODO:
+    cb(mux, NULL);
+  }
+}
+
 static void on_sess_close(kcpuv_sess *sess) {
   if (sess->mux == NULL) {
     // mux has been freed
     return;
   }
 
-  kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
-
-  if (mux->on_close_cb != NULL) {
-    mux_on_close_cb cb = (mux_on_close_cb)mux->on_close_cb;
-    // TODO:
-    cb(mux, NULL);
-  }
+  kcpuv_mux_emit_close(sess->mux);
 }
 
 // Bind a session that is inited.
@@ -151,16 +153,18 @@ void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
 }
 
 void kcpuv_mux_free(kcpuv_mux *mux) {
-  kcpuv_link *link = mux->conns.next;
+  kcpuv_link *link = &mux->conns;
 
-  while (link != NULL) {
-    // NOTE: Conns will be freed by v8 gc so that we don't need to free them
-    // here in node.
-    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->node;
+  while (link->next != NULL) {
+    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
     kcpuv_mux_conn_emit_close(conn);
-    kcpuv_mux_conn_free(conn, NULL);
-    link = mux->conns.next;
+    // TODO:
+    // NOTE: expect js to call the free func
+    // kcpuv_mux_conn_free(conn, NULL);
+    // link = link->next;
   }
+
+  kcpuv_mux_emit_close(mux);
 
   mux->sess->mux = NULL;
   mux->sess = NULL;

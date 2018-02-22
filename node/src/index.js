@@ -57,7 +57,7 @@ function ssProtocol(config, managerClient) {
     // bind
     bindClose(conn, () => {
       mockSocket.emit('close')
-      close(conn)
+      // close(conn)
     })
     listen(conn, (buf) => {
       mockSocket.emit('data', buf)
@@ -101,8 +101,10 @@ function socksProtocol(config, managerClient) {
     bindClose(conn, () => {
       // TODO: error msg
       socket.destroy()
-      close(conn)
+      // console.log('conn_exit')
+      // close(conn)
     })
+
     listen(conn, buf => {
       socket.write(buf)
     })
@@ -118,6 +120,7 @@ function socksProtocol(config, managerClient) {
 
     socket.on('close', () => {
       sendClose(conn)
+      // console.log('close_conn')
       close(conn)
     })
 
@@ -285,7 +288,7 @@ export function createServer(config, onClose) {
         bindClose(conn, () => {
           // TODO: error msg
           socket.destroy()
-          close(conn)
+          // close(conn)
         })
         return
       }
