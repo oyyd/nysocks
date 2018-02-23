@@ -73,6 +73,7 @@ function initBeat(conn, next) {
 
   const resetTimeout = () => {
     clearTimeout(beatInfo.timeoutTimerID)
+
     beatInfo.timeoutTimerID = setTimeout(() => {
       clearInterval(beatInfo.intervalID)
       next()
@@ -86,6 +87,7 @@ function initBeat(conn, next) {
   })
 
   resetTimeout()
+
   beatInfo.intervalID = setInterval(() => {
     connSend(conn, Buffer.from(BEATING_MSG))
   }, BEATING_INTERVAL)

@@ -472,6 +472,7 @@ void kcpuv_close(kcpuv_sess *sess) {
     return;
   }
 
+  // TODO: what if a sess is not established?
   kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
 
   // mark that this sess could be freed

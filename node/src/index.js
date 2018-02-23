@@ -232,7 +232,9 @@ export function createClient(config, onReconnect) {
   networkMonitor = createMonitor(() => {
     const { ip: localIP } = networkMonitor
 
-    if (localIP && currentClients.connectState !== 1) {
+    if (
+      localIP && currentClients.connectState !== 1
+    ) {
       closeAndTryRecreate()
     }
   })
@@ -240,11 +242,10 @@ export function createClient(config, onReconnect) {
   // Create first time.
   recreate()
 
-  // setTimeout(() => {
-  //   free().catch(err => setTimeout(() => {
-  //     throw err
-  //   }))
-  // }, 3000)
+  setInterval(() => {
+    console.log('re')
+    closeAndTryRecreate()
+  }, 3000)
 }
 
 export function createServer(config, onClose) {
@@ -323,28 +324,3 @@ export function createServerRouter(config) {
 
   return router
 }
-
-// if (module === require.main) {
-//   const config = {
-//     serverAddr: '0.0.0.0',
-//     serverPort: 20000,
-//     socketAmount: 100,
-//     password: 'HELLO',
-//     kcp: {
-//       sndwnd: 2048,
-//       rcvwnd: 2048,
-//       nodelay: 1,
-//       interval: 10,
-//       resend: 2,
-//       nc: 1,
-//     },
-//     pac: {
-//       pacServerPort: 8091,
-//     },
-//     SOCKS: {},
-//   }
-//
-//   createServerRouter(config)
-//   createClient(config)
-//   console.log('encryptsocks', require('encryptsocks'))
-// }

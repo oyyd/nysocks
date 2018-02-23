@@ -156,6 +156,7 @@ void kcpuv_mux_free(kcpuv_mux *mux) {
   kcpuv_link *link = &mux->conns;
 
   while (link->next != NULL) {
+    fprintf(stderr, "%s\n", "mux_conn_free");
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
     kcpuv_mux_conn_emit_close(conn);
     // TODO:

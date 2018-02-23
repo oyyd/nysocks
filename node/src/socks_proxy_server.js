@@ -102,3 +102,15 @@ export function createServer(_options, next) {
 
   return server
 }
+
+// if (module === require.main) {
+//   const server = createServer({}, (conn) => {
+//   })
+//
+//   setTimeout(() => {
+//     console.log('ready')
+//     server.close(() => {
+//       console.log('finish')
+//     })
+//   }, 1000)
+// }

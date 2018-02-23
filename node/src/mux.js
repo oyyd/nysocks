@@ -93,17 +93,24 @@ export const muxBindClose = muxSuite.wrap((mux, onClose) => {
 
 let id = 0
 
-export const connFree = connSuite.wrap((conn) => {
+// TODO: keep api in accordance
+export const connFree = connSuite.wrap((conn, inNextTick = true) => {
   if (conn.isClosed) {
     return
   }
 
   conn.isClosed = true
 
-  process.nextTick(() => {
+  const free = () => {
     binding.connFree(conn)
     record('conn', get('conn') - 1)
-  })
+  }
+
+  if (inNextTick) {
+    process.nextTick(free)
+  } else {
+    free()
+  }
 })
 
 export const connBindClose = connSuite.wrap((conn, cb) => {
@@ -124,7 +131,7 @@ export function wrapMuxConn(conn) {
   conn.event = new EventEmitter()
 
   connBindClose(conn, () => {
-    connFree(conn)
+    connFree(conn, false)
     conn.event.emit('close')
   })
 

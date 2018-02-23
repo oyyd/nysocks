@@ -7,6 +7,8 @@ import { createBaseSuite } from './utils'
 const suite = createBaseSuite('_sess')
 const { wrap } = suite
 
+const CLOSE_TIMEOUT = 10000
+
 const DEFAULT_KCP_OPTIONS = {
   // TODO:
   sndwnd: 2048,
@@ -23,9 +25,10 @@ export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
   sess._sess = true
+  sess.isClosed = false
 
   binding.bindClose(sess, errorMsg => {
-    // binding.free(sess)
+    sess.isClosed = true
     sess.event.emit('close', errorMsg)
   })
 
@@ -86,9 +89,15 @@ export const destroy = wrap((sess) => {
   // })
 })
 
-// TODO:
 export const close = wrap((sess) => {
   binding.close(sess)
+
+  // NOTE: Force destroying the sess if it takes too many seconds.
+  setTimeout(() => {
+    if (!sess.isClosed) {
+      destroy(sess)
+    }
+  }, CLOSE_TIMEOUT)
 })
 
 export const listen = wrap((sess, port = 0, onMessage) => {
@@ -135,12 +144,12 @@ export function startKcpuv() {
   binding.startLoop()
 }
 
-// TODO:
-export function stopKcpuv() {
-  binding.stopLoop()
-  binding.destruct()
-}
-
 export function _stopLoop() {
   binding.stopLoop()
+}
+
+// TODO:
+export function stopKcpuv() {
+  _stopLoop()
+  binding.destruct()
 }
