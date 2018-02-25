@@ -1,16 +1,26 @@
 import EventEmitter from 'events'
 import {
-  getPort, createWithOptions,
+  getPort,
+  createWithOptions,
   close as sessClose,
-  listen as socketListen, setAddr,
-  initCryptor, stopListen,
+  listen as socketListen,
+  setAddr,
+  initCryptor,
+  destroy as _destroy,
   // bindListener, send, startKcpuv,
 } from './socket'
 import {
-  createMux, createMuxConn,
-  muxBindConnection, connFree, connSend, connListen,
-  connSendClose, connBindClose, connSetTimeout,
-  muxFree, muxCloseAll,
+  createMux,
+  createMuxConn,
+  muxBindConnection,
+  connFree,
+  connSend,
+  connListen,
+  connSendClose,
+  connBindClose,
+  connSetTimeout,
+  muxFree,
+  muxCloseAll,
 } from './mux'
 import { getIP, debug } from './utils'
 
@@ -31,19 +41,24 @@ const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
 
 function sendJson(conn, jsonMsg) {
-  const content = Buffer.from(`${JSON.stringify(jsonMsg)}${CONVERSATION_END_CHAR}`)
+  const content = Buffer.from(
+    `${JSON.stringify(jsonMsg)}${CONVERSATION_END_CHAR}`,
+  )
   connSend(conn, content)
 }
 
 export function checkHandshakeMsg(buf) {
-  return buf.slice(0, CONVERSATION_START_CHAR.length)
-    .toString('utf8') === CONVERSATION_START_CHAR
+  return (
+    buf.slice(0, CONVERSATION_START_CHAR.length).toString('utf8') ===
+    CONVERSATION_START_CHAR
+  )
 }
 
 export function checkJSONMsg(buf) {
   const { length } = buf
-  const end = buf.slice(length - CONVERSATION_END_CHAR.length)
-    .toString('utf8') === CONVERSATION_END_CHAR
+  const end =
+    buf.slice(length - CONVERSATION_END_CHAR.length).toString('utf8') ===
+    CONVERSATION_END_CHAR
 
   if (!end) {
     return null
@@ -52,8 +67,9 @@ export function checkJSONMsg(buf) {
   let msg = null
 
   try {
-    msg = JSON.parse(buf.slice(0, length - CONVERSATION_END_CHAR.length)
-      .toString('utf8'))
+    msg = JSON.parse(
+      buf.slice(0, length - CONVERSATION_END_CHAR.length).toString('utf8'),
+    )
   } catch (err) {
     throw new Error('invalid msg')
   }
@@ -80,7 +96,7 @@ function initBeat(conn, next) {
     }, TOTAL_TIMEOUT)
   }
 
-  connListen(conn, (buf) => {
+  connListen(conn, buf => {
     if (buf.toString('utf8') === BEATING_MSG) {
       resetTimeout()
     }
@@ -109,17 +125,12 @@ function clearBeat(beatInfo) {
 
 // Manager may not be freed after this call.
 export function freeManager(manager) {
-  const {
-    beatInfo,
-    conns,
-    masterMux,
-    masterSocket,
-  } = manager
+  const { beatInfo, conns, masterMux, masterSocket } = manager
 
   clearBeat(beatInfo)
 
   if (Array.isArray(conns)) {
-    conns.forEach((conn) => {
+    conns.forEach(conn => {
       const { mux, socket } = conn
       // NOTE: freed in next tick
       // muxFree(mux)
@@ -134,13 +145,13 @@ export function freeManager(manager) {
 }
 
 export function initClientMasterSocket(mux) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const msg = Buffer.from(CONVERSATION_START_CHAR)
     let data = Buffer.allocUnsafe(0)
 
     const conn = createMuxConn(mux)
     connSetTimeout(conn, 0)
-    connListen(conn, (buf) => {
+    connListen(conn, buf => {
       data = Buffer.concat([data, buf])
 
       const res = checkJSONMsg(data)
@@ -176,7 +187,7 @@ export function initClientConns(options, client, ipAddr) {
   const { ports } = client
   const conns = []
 
-  ports.forEach((port) => {
+  ports.forEach(port => {
     const info = {}
     const socket = createWithOptions(options.kcp)
 
@@ -228,13 +239,13 @@ export function createClient(_options) {
   client.masterSocket = masterSocket
   client.masterMux = masterMux
 
-  muxBindConnection(client.masterMux, (conn) => {
+  muxBindConnection(client.masterMux, conn => {
     connSendClose(conn)
     // connFree(conn)
   })
 
   return getIP(serverAddr)
-    .then((_ipAddr) => {
+    .then(_ipAddr => {
       ipAddr = _ipAddr
       setAddr(masterSocket, ipAddr, serverPort)
       return initClientMasterSocket(masterMux)
@@ -272,7 +283,7 @@ function createPassiveSockets(manager, options) {
   const { socketAmount } = options
   const sockets = []
 
-  const handleConn = (conn) => {
+  const handleConn = conn => {
     if (typeof manager.onConnection === 'function') {
       manager.onConnection(conn)
     }
@@ -327,8 +338,8 @@ export function createManager(_options, onConnection, onClose) {
   })
 
   // TODO:
-  muxBindConnection(masterMux, (conn) => {
-    connListen(conn, (buf) => {
+  muxBindConnection(masterMux, conn => {
+    connListen(conn, buf => {
       connSetTimeout(conn, 0)
       const shouldReply = checkHandshakeMsg(buf)
 
@@ -362,8 +373,6 @@ export const listen = connListen
 
 export const close = connFree
 
-export const bindClose = connBindClose
-
 export const sendClose = connSendClose
 
 export function bindConnection(manager, next) {
@@ -384,6 +393,8 @@ export function createConnection(client) {
 
   return conn
 }
+
+export const destroy = _destroy
 
 // if (module === require.main) {
 //   startKcpuv()

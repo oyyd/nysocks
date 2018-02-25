@@ -5,9 +5,7 @@ import {
   createProxyConnection,
   parseDstInfo,
 } from './socks_proxy_server'
-import {
-  createServer as createSSServer,
-} from './ss_proxy_server'
+import { createServer as createSSServer } from './ss_proxy_server'
 import {
   createManager,
   createClient as createManagerClient,
@@ -15,10 +13,10 @@ import {
   sendBuf,
   createConnection,
   close,
-  bindClose,
   sendClose,
   startKcpuv,
   freeManager,
+  destroy,
 } from './socket_manager'
 import { createMonitor } from './network_monitor'
 import { createRouter } from './router'
@@ -55,20 +53,21 @@ function ssProtocol(config, managerClient) {
     mockSocket.conn = conn
 
     // bind
-    bindClose(conn, () => {
+    conn.event.on('close', () => {
       mockSocket.emit('close')
-      // close(conn)
     })
-    listen(conn, (buf) => {
+
+    listen(conn, buf => {
       mockSocket.emit('data', buf)
     })
 
     sendBuf(conn, chunk)
 
-    mockSocket.write = (buf) => {
+    mockSocket.write = buf => {
       sendBuf(conn, buf)
       return true
     }
+
     mockSocket.destroy = () => {
       sendClose(conn)
       close(conn)
@@ -98,7 +97,7 @@ function socksProtocol(config, managerClient) {
     const conn = createConnection(managerClient)
 
     // bind
-    bindClose(conn, () => {
+    conn.event.on('close', () => {
       // TODO: error msg
       socket.destroy()
       // console.log('conn_exit')
@@ -120,7 +119,6 @@ function socksProtocol(config, managerClient) {
 
     socket.on('close', () => {
       sendClose(conn)
-      // console.log('close_conn')
       close(conn)
     })
 
@@ -163,28 +161,29 @@ export function createClient(config, onReconnect) {
     proxyClient: null,
   }
 
-  const free = () => new Promise((resolve) => {
-    if (currentClients.connectState === 0) {
-      resolve()
-      return
-    }
-
-    currentClients.connectState = 0
-    logger.info('client disconnect')
-
-    // close
-    if (currentClients.managerClient) {
-      freeManager(currentClients.managerClient)
-    }
-
-    if (currentClients.proxyClient) {
-      currentClients.proxyClient.close(() => {
+  const free = () =>
+    new Promise(resolve => {
+      if (currentClients.connectState === 0) {
         resolve()
-      })
-    }
-    currentClients.proxyClient = null
-    currentClients.managerClient = null
-  })
+        return
+      }
+
+      currentClients.connectState = 0
+      logger.info('client disconnect')
+
+      // close
+      if (currentClients.managerClient) {
+        freeManager(currentClients.managerClient)
+      }
+
+      if (currentClients.proxyClient) {
+        currentClients.proxyClient.close(() => {
+          resolve()
+        })
+      }
+      currentClients.proxyClient = null
+      currentClients.managerClient = null
+    })
 
   // Create new instance.
   const recreate = () => {
@@ -193,48 +192,52 @@ export function createClient(config, onReconnect) {
     // TODO: refactor this
     // NOTE: wait for fd released to avoid errors
     setTimeout(() => {
-      createClientInstance(config).then(({ managerClient, proxyClient }) => {
-        currentClients.connectState = 2
-        currentClients.managerClient = managerClient
-        currentClients.proxyClient = proxyClient
-        managerClient.on('close', () => {
-          // eslint-disable-next-line
-          closeAndTryRecreate()
-        })
+      createClientInstance(config)
+        .then(({ managerClient, proxyClient }) => {
+          currentClients.connectState = 2
+          currentClients.managerClient = managerClient
+          currentClients.proxyClient = proxyClient
+          managerClient.on('close', () => {
+            // eslint-disable-next-line
+            closeAndTryRecreate()
+          })
 
-        // TODO:
-        if (typeof onReconnect === 'function') {
-          onReconnect()
-        }
-      }).catch(err => {
-        // Create client failed
-        setTimeout(() => {
-          throw err
+          // TODO:
+          if (typeof onReconnect === 'function') {
+            onReconnect()
+          }
         })
-      })
+        .catch(err => {
+          // Create client failed
+          setTimeout(() => {
+            throw err
+          })
+        })
     })
   }
 
   const closeAndTryRecreate = () => {
-    free().then(() => {
-      const { ip: localIP } = networkMonitor
+    free()
+      .then(() => {
+        const { ip: localIP } = networkMonitor
 
-      // do not restart if there is no non-internal network
-      if (localIP) {
-        recreate()
-      }
-    }).catch(err => setTimeout(() => {
-      throw err
-    }))
+        // do not restart if there is no non-internal network
+        if (localIP) {
+          recreate()
+        }
+      })
+      .catch(err =>
+        setTimeout(() => {
+          throw err
+        }),
+      )
   }
 
   // ip changed
   networkMonitor = createMonitor(() => {
     const { ip: localIP } = networkMonitor
 
-    if (
-      localIP && currentClients.connectState !== 1
-    ) {
+    if (localIP && currentClients.connectState !== 1) {
       closeAndTryRecreate()
     }
   })
@@ -253,50 +256,54 @@ export function createServer(config, onClose) {
 
   const server = {}
 
-  const managerServer = createManager(config, conn => {
-    let firstBuf = true
-    let socket = null
+  const managerServer = createManager(
+    config,
+    conn => {
+      let firstBuf = true
+      let socket = null
 
-    listen(conn, buf => {
-      if (firstBuf) {
-        firstBuf = false
-        const dstInfo = parseDstInfo(buf)
+      listen(conn, buf => {
+        if (firstBuf) {
+          firstBuf = false
+          const dstInfo = parseDstInfo(buf)
 
-        // drop invalid msg
-        if (!dstInfo) {
-          // throw new Error('invalid dstInfo')
-          close(conn)
+          // drop invalid msg
+          if (!dstInfo) {
+            // throw new Error('invalid dstInfo')
+            close(conn)
+            return
+          }
+
+          const options = {
+            port: dstInfo.dstPort.readUInt16BE(),
+            host: dstInfo.atyp === 3
+              ? dstInfo.dstAddr.toString('ascii')
+              : ip.toString(dstInfo.dstAddr),
+          }
+          socket = createProxyConnection(options)
+          socket.on('data', buffer => {
+            sendBuf(conn, buffer)
+          })
+          socket.on('error', err => {
+            logger.error(err.message)
+          })
+          socket.on('close', () => {
+            sendClose(conn)
+            close(conn)
+          })
+          conn.event.on('close', () => {
+            // TODO: error msg
+            socket.destroy()
+            // close(conn)
+          })
           return
         }
 
-        const options = {
-          port: dstInfo.dstPort.readUInt16BE(),
-          host: dstInfo.atyp === 3
-            ? dstInfo.dstAddr.toString('ascii')
-            : ip.toString(dstInfo.dstAddr),
-        }
-        socket = createProxyConnection(options)
-        socket.on('data', buffer => {
-          sendBuf(conn, buffer)
-        })
-        socket.on('error', err => {
-          logger.error(err.message)
-        })
-        socket.on('close', () => {
-          sendClose(conn)
-          close(conn)
-        })
-        bindClose(conn, () => {
-          // TODO: error msg
-          socket.destroy()
-          // close(conn)
-        })
-        return
-      }
-
-      socket.write(buf)
-    })
-  }, onClose)
+        socket.write(buf)
+      })
+    },
+    onClose,
+  )
 
   server.managerServer = managerServer
   return server
@@ -307,7 +314,7 @@ export function createServerRouter(config) {
     {
       listenPort: config.serverPort,
     },
-    (options) => {
+    options => {
       const serverConfig = Object.assign({}, config, {
         serverPort: 0,
       })
