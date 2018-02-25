@@ -192,8 +192,9 @@ kcpuv_sess *kcpuv_create() {
   IUINT32 now = iclock();
 
   kcpuv_sess *sess = malloc(sizeof(kcpuv_sess));
-  // NOTE: Do not use stream mode.
   sess->kcp = ikcp_create(0, sess);
+  // NOTE: Support stream mode
+  // sess->kcp->stream = 1;
   // ikcp_nodelay(sess->kcp, 0, 10, 0, 0);
   ikcp_nodelay(sess->kcp, 1, 10, 2, 1);
   ikcp_wndsize(sess->kcp, INIT_WND_SIZE, INIT_WND_SIZE);

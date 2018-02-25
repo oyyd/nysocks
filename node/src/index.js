@@ -105,11 +105,12 @@ function socksProtocol(config, managerClient) {
     })
 
     listen(conn, buf => {
+      // console.log('CONN_SEND', buf.length)
       socket.write(buf)
     })
 
     socket.on('data', buf => {
-      // console.log('socket_send')
+      // console.log('SOCKET_SEND', buf.length)
       sendBuf(conn, buf)
     })
 
