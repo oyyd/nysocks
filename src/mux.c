@@ -252,6 +252,7 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
   kcpuv_sess *sess = mux->sess;
 
   unsigned long s = 0;
+  int send_cmd = cmd;
 
   // prevent sending when closed
   if (conn->send_state == 2) {
@@ -263,15 +264,15 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
     if (!cmd) {
       if (conn->send_state == 0) {
         conn->send_state = 1;
-        cmd = KCPUV_MUX_CMD_CONNECT;
+        send_cmd = KCPUV_MUX_CMD_CONNECT;
       } else {
-        cmd = KCPUV_MUX_CMD_PUSH;
+        send_cmd = KCPUV_MUX_CMD_PUSH;
       }
     }
 
     unsigned int total_len = KCPUV_MUX_PROTOCOL_OVERHEAD;
     char *encoded_content = malloc(sizeof(total_len));
-    kcpuv__mux_encode(encoded_content, conn->id, cmd, len);
+    kcpuv__mux_encode(encoded_content, conn->id, send_cmd, len);
     kcpuv_send(sess, encoded_content, total_len);
 
     free(encoded_content);
@@ -282,9 +283,9 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
     if (!cmd) {
       if (conn->send_state == 0) {
         conn->send_state = 1;
-        cmd = KCPUV_MUX_CMD_CONNECT;
+        send_cmd = KCPUV_MUX_CMD_CONNECT;
       } else {
-        cmd = KCPUV_MUX_CMD_PUSH;
+        send_cmd = KCPUV_MUX_CMD_PUSH;
       }
     }
 
@@ -297,9 +298,11 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
     unsigned int part_len = e - s;
     unsigned int total_len = part_len + KCPUV_MUX_PROTOCOL_OVERHEAD;
 
+    // fprintf(stderr, "PART_LEN %d %d %d\n", part_len, cmd, conn->send_state);
+
     // TODO: refactor: copy only once when sending
     char *encoded_content = malloc(sizeof(char) * total_len);
-    kcpuv__mux_encode(encoded_content, conn->id, cmd, part_len);
+    kcpuv__mux_encode(encoded_content, conn->id, send_cmd, part_len);
 
     memcpy(encoded_content + KCPUV_MUX_PROTOCOL_OVERHEAD, content + s,
            part_len);

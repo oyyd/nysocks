@@ -173,4 +173,52 @@ describe('mux', () => {
     stopListen(mux.sess)
     destroy(mux.sess)
   })
+
+  describe('connSend', () => {
+    it('should send a large buffer', done => {
+      startKcpuv()
+
+      const mux1 = createMux({
+        password: 'hello',
+        port: 0,
+      })
+      const mux2 = createMux({
+        password: 'hello',
+        port: 0,
+      })
+      const port1 = getPort(mux1.sess)
+      const port2 = getPort(mux2.sess)
+      setAddr(mux1.sess, ADDR, port2)
+      setAddr(mux2.sess, ADDR, port1)
+
+      const conn1 = createMuxConn(mux1)
+      const BUFFER_LENGTH = 64 * 1024
+
+      muxBindConnection(mux2, conn2 => {
+        let len = 0
+        connListen(conn2, msg => {
+          len += msg.length
+
+          if (len === BUFFER_LENGTH) {
+            setTimeout(() => {
+              _stopLoop()
+              stopListen(mux1.sess)
+              stopListen(mux2.sess)
+              muxFree(mux1)
+              muxFree(mux2)
+
+              // TODO: refactor
+              setTimeout(() => {
+                stopKcpuv()
+                done()
+              }, 100)
+            })
+          }
+        })
+      })
+
+      connSend(conn1, Buffer.alloc(BUFFER_LENGTH, 0))
+      connSendClose(conn1)
+    })
+  })
 })

@@ -36,7 +36,7 @@ extern "C" {
 #define INIT_WND_SIZE 2048
 #define MTU_DEF 1400
 // #define IKCP_OVERHEAD  24
-#define MAX_SENDING_LEN 65535
+#define MAX_SENDING_LEN 65534
 #define BUFFER_LEN MAX_SENDING_LEN
 #define IP4_ADDR_LENTH 17
 #define IP6_ADDR_LENGTH 68
@@ -47,7 +47,8 @@ extern "C" {
 // four byte for id,
 // two byte for length,
 #define KCPUV_MUX_PROTOCOL_OVERHEAD 7
-#define MAX_MUX_CONTENT_LEN (MAX_SENDING_LEN - KCPUV_MUX_PROTOCOL_OVERHEAD)
+#define MAX_MUX_CONTENT_LEN                                                    \
+  (MAX_SENDING_LEN - KCPUV_OVERHEAD - KCPUV_MUX_PROTOCOL_OVERHEAD)
 
 #ifdef __cplusplus
 }

@@ -371,7 +371,7 @@ export const sendBuf = connSend
 
 export const listen = connListen
 
-export const close = connFree
+export const close = (conn) => connFree(conn, false)
 
 export const sendClose = connSendClose
 
