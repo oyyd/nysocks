@@ -14,7 +14,6 @@ import {
   connListen,
   connBindClose,
   muxBindConnection,
-  muxBindClose,
   connSendClose,
   connSend,
   createMux,
@@ -131,7 +130,7 @@ describe('mux', () => {
       targetPort: 20000,
     })
 
-    muxBindClose(mux, () => {
+    mux.event.on('close', () => {
       setTimeout(() => {
         stopKcpuv()
         done()
@@ -160,7 +159,7 @@ describe('mux', () => {
       called = true
     })
 
-    muxBindClose(mux, () => {
+    mux.event.on('close', () => {
       expect(isConnFreed(conn)).toBeTruthy()
       expect(called).toBeTruthy()
 

@@ -14,7 +14,6 @@ import {
   connListen,
   connBindClose,
   muxBindConnection,
-  muxBindClose,
   connSendClose,
   connSend,
   createMux,
@@ -44,7 +43,7 @@ function main() {
   // })
 
 
-  muxBindClose(mux, () => {
+  mux.event.on('close', () => {
     // console.log('mux', conn.isClosed)
     // expect(isConnFreed(conn)).toBeTruthy()
 
@@ -53,7 +52,7 @@ function main() {
     })
   })
 
-  muxFree(mux)
+  // muxFree(mux)
   stopListen(mux.sess)
   destroy(mux.sess)
 }

@@ -78,7 +78,9 @@ int kcpuv_destruct() {
 void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
                     unsigned long len) {
   if (sess->state == KCPUV_STATE_FREED) {
-    fprintf(stderr, "input after freed");
+    if (KCPUV_DEBUG) {
+      fprintf(stderr, "input with invalid state");
+    }
     return;
   }
 
@@ -110,9 +112,11 @@ void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
 
     char *plaintext = malloc(sizeof(char) * (part_len + KCPUV_OVERHEAD));
     kcpuv_protocol_encode(cmd, plaintext);
+
     if (part_len != 0 && msg != NULL) {
       memcpy(plaintext + KCPUV_OVERHEAD, msg + s, part_len);
     }
+
     int rval = ikcp_send(sess->kcp, plaintext, part_len + KCPUV_OVERHEAD);
 
     if (KCPUV_DEBUG == 1 && rval < 0) {
@@ -212,6 +216,7 @@ kcpuv_sess *kcpuv_create() {
   sess->send_ts = now;
   sess->timeout = DEFAULT_TIMEOUT;
   sess->cryptor = NULL;
+  sess->on_before_free = NULL;
 
   // set output func for kcp
   sess->kcp->output = kcp_output;
@@ -385,6 +390,10 @@ void kcpuv_bind_udp_send(kcpuv_sess *sess, kcpuv_udp_send udp_send) {
   sess->udp_send = udp_send;
 }
 
+void kcpuv_bind_before_free(kcpuv_sess *sess, kcpuv_dgram_cb on_before_free) {
+  sess->on_before_free = on_before_free;
+}
+
 // Called when uv receives a msg and pass.
 static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                     const struct sockaddr *addr, unsigned flags) {
@@ -472,14 +481,23 @@ void kcpuv_close(kcpuv_sess *sess) {
     return;
   }
 
+  sess->state = KCPUV_STATE_FIN;
+
   // TODO: what if a sess is not established?
-  kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
+  kcpuv_send_cmd(sess, KCPUV_CMD_FIN);
 
   // mark that this sess could be freed
   // TODO: where to put KCPUV_STATE_CLOSED ?
   // sess->state = KCPUV_STATE_CLOSED;
 
   // uv_close(sess->handle, NULL);
+}
+
+static void trigger_before_free(kcpuv_sess *sess) {
+  if (sess->on_before_free != NULL) {
+    kcpuv_dgram_cb cb = sess->on_before_free;
+    cb(sess);
+  }
 }
 
 // Iterate the session_list and update kcp
@@ -507,6 +525,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
     if (enable_timeout) {
       if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
+        trigger_before_free(sess);
         kcpuv_free(sess, "timeout");
         continue;
       }
@@ -538,7 +557,8 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       } else if (cmd == KCPUV_CMD_FIN) {
         if (sess->state <= KCPUV_STATE_READY) {
           sess->state = KCPUV_STATE_FIN_ACK;
-          kcpuv_close(sess);
+          trigger_before_free(sess);
+          kcpuv_send_cmd(sess, KCPUV_CMD_FIN_ACK);
         }
       } else if (cmd == KCPUV_CMD_FIN_ACK) {
         sess->state = KCPUV_STATE_FIN_ACK;

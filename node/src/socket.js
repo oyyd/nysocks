@@ -4,6 +4,8 @@ import binding from '../../build/Release/addon.node'
 import { createBaseSuite } from './utils'
 // import { record, get } from './monitor'
 
+binding.useDefaultLoop(true)
+
 const suite = createBaseSuite('_sess')
 const { wrap } = suite
 
@@ -18,8 +20,6 @@ const DEFAULT_KCP_OPTIONS = {
   resend: 2,
   nc: 1,
 }
-
-binding.useDefaultLoop(true)
 
 export function create() {
   const sess = binding.create()
@@ -90,6 +90,10 @@ export const destroy = wrap((sess) => {
 })
 
 export const close = wrap((sess) => {
+  if (sess.isClosed) {
+    return
+  }
+
   binding.close(sess)
 
   // NOTE: Force destroying the sess if it takes too many seconds.

@@ -234,8 +234,8 @@ static kcpuv_sess *test6_sender = NULL;
 static kcpuv_sess *test6_recver = NULL;
 
 static void test6_free(uv_timer_t *timer) {
-  kcpuv_free(test6_sender, NULL);
-  kcpuv_free(test6_recver, NULL);
+  // kcpuv_free(test6_sender, NULL);
+  // kcpuv_free(test6_recver, NULL);
 
   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
   kcpuv_stop_loop();

@@ -10,7 +10,7 @@ import {
   createMux, createMuxConn,
   muxBindConnection, connFree, connSend, connListen,
   connSendClose, connBindClose, connSetTimeout,
-  muxFree, muxBindClose,
+  muxFree, muxCloseAll,
 } from './mux'
 import { getIP, debug } from './utils'
 
@@ -110,7 +110,10 @@ function clearBeat(beatInfo) {
 // Manager may not be freed after this call.
 export function freeManager(manager) {
   const {
-    beatInfo, conns, masterMux, masterSocket,
+    beatInfo,
+    conns,
+    masterMux,
+    masterSocket,
   } = manager
 
   clearBeat(beatInfo)
@@ -119,15 +122,15 @@ export function freeManager(manager) {
     conns.forEach((conn) => {
       const { mux, socket } = conn
       // NOTE: freed in next tick
-      muxFree(mux)
-      stopListen(socket)
-      sessClose(socket)
+      // muxFree(mux)
+      // sessClose(socket)
+      muxCloseAll(mux)
     })
   }
 
-  muxFree(masterMux)
-  stopListen(masterSocket)
-  sessClose(masterSocket)
+  // muxFree(masterMux)
+  // sessClose(masterSocket)
+  muxCloseAll(masterMux)
 }
 
 export function initClientMasterSocket(mux) {
@@ -225,10 +228,6 @@ export function createClient(_options) {
   client.masterSocket = masterSocket
   client.masterMux = masterMux
 
-  // muxBindClose(masterMux, () => {
-  //
-  // })
-
   muxBindConnection(client.masterMux, (conn) => {
     connSendClose(conn)
     // connFree(conn)
@@ -321,7 +320,7 @@ export function createManager(_options, onConnection, onClose) {
   manager.masterMux = masterMux
 
   // TODO: free manager from router
-  muxBindClose(masterMux, () => {
+  masterMux.event.on('close', () => {
     if (typeof onClose === 'function') {
       onClose()
     }

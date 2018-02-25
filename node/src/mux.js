@@ -1,7 +1,12 @@
 import EventEmitter from 'events'
 import binding from '../../build/Release/addon.node'
-import { createWithOptions, initCryptor,
-  listen as socketListen, setAddr } from './socket'
+import {
+  createWithOptions,
+  initCryptor,
+  listen as socketListen,
+  setAddr,
+  close,
+} from './socket'
 import { createBaseSuite } from './utils'
 import { record, get } from './monitor'
 // import { logger } from './logger'
@@ -32,6 +37,10 @@ function isValidProperty(value) {
   return !!value
 }
 
+const muxBindClose = muxSuite.wrap((mux, onClose) => {
+  binding.muxBindClose(mux, onClose)
+})
+
 export function createMux(_options) {
   const options = Object.assign({}, DEFAULT_MUX_OPTIONS, _options)
 
@@ -43,9 +52,7 @@ export function createMux(_options) {
     // eslint-disable-next-line
     sess = options.sess
   } else {
-    const {
-      port, password, targetPort, targetAddr,
-    } = options
+    const { port, password, targetPort, targetAddr } = options
 
     if (!isValidProperty(port) || !isValidProperty(password)) {
       throw new Error('invalid mux options')
@@ -66,10 +73,22 @@ export function createMux(_options) {
 
   binding.muxInit(mux, sess)
 
+  muxBindClose(mux, () => {
+    mux.sess.isClosed = true
+    mux.isClosed = true
+    mux.event.emit('close')
+  })
+
   record('mux', get('mux') + 1)
 
   return mux
 }
+
+export const muxCloseAll = muxSuite.wrap(mux => {
+  binding.muxStopAll(mux)
+
+  close(mux.sess)
+})
 
 export const muxFree = muxSuite.wrap((mux, onFree) => {
   if (mux.isClosed) {
@@ -81,14 +100,11 @@ export const muxFree = muxSuite.wrap((mux, onFree) => {
   process.nextTick(() => {
     binding.muxFree(mux)
     record('mux', get('mux') - 1)
+
     if (typeof onFree === 'function') {
       onFree()
     }
   })
-})
-
-export const muxBindClose = muxSuite.wrap((mux, onClose) => {
-  binding.muxBindClose(mux, onClose)
 })
 
 let id = 0
@@ -145,7 +161,7 @@ export const muxBindConnection = muxSuite.wrap((mux, onConnection) => {
     throw new Error('muxBindConnection expect an "onConnection" function')
   }
 
-  binding.muxBindConnection(mux, (conn) => {
+  binding.muxBindConnection(mux, conn => {
     wrapMuxConn(conn)
     onConnection(conn)
   })
@@ -162,7 +178,7 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
   return conn
 })
 
-export const isConnFreed = connSuite.wrap((conn) => conn.isClosed)
+export const isConnFreed = connSuite.wrap(conn => conn.isClosed)
 
 export const connSend = connSuite.wrap((conn, buffer) => {
   if (conn.isClosed) {
@@ -173,7 +189,7 @@ export const connSend = connSuite.wrap((conn, buffer) => {
   binding.connSend(conn, buffer, buffer.length)
 })
 
-export const connSendClose = connSuite.wrap((conn) => {
+export const connSendClose = connSuite.wrap(conn => {
   if (conn.isClosed) {
     return
   }
@@ -192,7 +208,7 @@ export const connSetTimeout = connSuite.wrap((conn, timeout) => {
   binding.connSetTimeout(conn, timeout)
 })
 
-export const connEmitClose = connSuite.wrap((conn) => {
+export const connEmitClose = connSuite.wrap(conn => {
   binding.connEmitClose(conn)
 })
 

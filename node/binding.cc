@@ -35,9 +35,9 @@ public:
   }
 
   ~KcpuvSessBinding() {
-    if (sess) {
-      Free();
-    }
+    // if (sess) {
+    //   Free();
+    // }
   }
 
   static Persistent<Function> constructor;
@@ -46,7 +46,7 @@ public:
   void Free() {
     if (!is_freed) {
       is_freed = 1;
-      kcpuv_stop_listen(sess);
+      // kcpuv_stop_listen(sess);
       kcpuv_free(sess, NULL);
       sess = 0;
     }
@@ -274,7 +274,8 @@ static NAN_METHOD(Free) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
-  delete obj;
+  obj->Free();
+  // delete obj;
 }
 
 // TODO: need to free the object wrap or causing memory leaks
@@ -643,6 +644,20 @@ static NAN_METHOD(ConnEmitClose) {
   kcpuv_mux_conn_emit_close(conn_obj->conn);
 }
 
+static NAN_METHOD(MuxStopAll) {
+  KcpuvMuxBinding *mux_obj =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
+  kcpuv_mux *mux = &mux_obj->mux;
+  // 1. stop all listeners of mux and prevent it from sending
+  kcpuv_mux_stop(mux);
+  // // 2. trigger close msg
+  // kcpuv_close(mux->sess);
+}
+
+// static NAN_METHOD(FreeAll) {
+//   //
+// }
+
 static NAN_MODULE_INIT(Init) {
   Isolate *isolate = target->GetIsolate();
 
@@ -704,6 +719,9 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "connBindClose", ConnBindClose);
   Nan::SetMethod(target, "connSetTimeout", ConnSetTimeout);
   Nan::SetMethod(target, "connEmitClose", ConnEmitClose);
+
+  Nan::SetMethod(target, "muxStopAll", MuxStopAll);
+  // Nan::SetMethod(target, "freeAll", FreeAll);
 }
 
 NODE_MODULE(binding, Init)

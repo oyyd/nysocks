@@ -43,6 +43,8 @@ void kcpuv_set_mux_enable_timeout(short);
 
 void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess);
 
+void kcpuv_mux_stop(kcpuv_mux *mux);
+
 void kcpuv_mux_free(kcpuv_mux *mux);
 
 void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb);

@@ -34,6 +34,7 @@ struct KCPUV_SESS {
   unsigned int timeout;
   kcpuv_listen_cb on_msg_cb;
   kcpuv_dgram_cb on_close_cb;
+  kcpuv_dgram_cb on_before_free;
   kcpuv_udp_send udp_send;
   kcpuv_cryptor *cryptor;
 };
@@ -81,6 +82,8 @@ void kcpuv_bind_close(kcpuv_sess *, kcpuv_dgram_cb);
 void kcpuv_bind_listen(kcpuv_sess *, kcpuv_listen_cb);
 
 void kcpuv_bind_udp_send(kcpuv_sess *sess, kcpuv_udp_send udp_send);
+
+void kcpuv_bind_before_free(kcpuv_sess *sess, kcpuv_dgram_cb on_before_free);
 
 void kcpuv_initialize();
 

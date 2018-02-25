@@ -245,7 +245,7 @@ export function createClient(config, onReconnect) {
   // setInterval(() => {
   //   console.log('re')
   //   closeAndTryRecreate()
-  // }, 3000)
+  // }, 6000)
 }
 
 export function createServer(config, onClose) {

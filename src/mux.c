@@ -136,7 +136,16 @@ static void on_sess_close(kcpuv_sess *sess) {
     return;
   }
 
-  kcpuv_mux_emit_close(sess->mux);
+  kcpuv_mux_free(sess->mux);
+}
+
+static void on_before_free(kcpuv_sess *sess) {
+  if (sess->mux == NULL) {
+    // mux has been freed
+    return;
+  }
+
+  kcpuv_mux_stop(sess->mux);
 }
 
 // Bind a session that is inited.
@@ -150,13 +159,24 @@ void kcpuv_mux_init(kcpuv_mux *mux, kcpuv_sess *sess) {
 
   kcpuv_bind_listen(sess, on_recv_msg);
   kcpuv_bind_close(sess, on_sess_close);
+  kcpuv_bind_before_free(sess, on_before_free);
+}
+
+void kcpuv_mux_stop(kcpuv_mux *mux) {
+  kcpuv_link *link = &mux->conns;
+
+  while (link->next != NULL) {
+    kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
+    conn->send_state = 2;
+    link = link->next;
+  }
 }
 
 void kcpuv_mux_free(kcpuv_mux *mux) {
   kcpuv_link *link = &mux->conns;
 
   while (link->next != NULL) {
-    fprintf(stderr, "%s\n", "mux_conn_free");
+    // fprintf(stderr, "%s\n", "mux_conn_free");
     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
     kcpuv_mux_conn_emit_close(conn);
     // TODO:
@@ -232,6 +252,11 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
   kcpuv_sess *sess = mux->sess;
 
   unsigned long s = 0;
+
+  // prevent sending when closed
+  if (conn->send_state == 2) {
+    return;
+  }
 
   // send cmd with empty content
   if (len == 0) {
