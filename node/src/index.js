@@ -95,17 +95,20 @@ function socksProtocol(config, managerClient) {
 
     // tunnel
     const conn = createConnection(managerClient)
+    let socketEnd = false
 
     // bind
     conn.event.on('close', () => {
       // TODO: error msg
       socket.destroy()
-      // console.log('conn_exit')
-      // close(conn)
     })
 
     listen(conn, buf => {
       // console.log('CONN_SEND', buf.length)
+      if (socketEnd) {
+        return
+      }
+
       socket.write(buf)
     })
 
@@ -116,6 +119,10 @@ function socksProtocol(config, managerClient) {
 
     socket.on('error', err => {
       logger.error(err.message)
+    })
+
+    socket.on('end', () => {
+      socketEnd = true
     })
 
     socket.on('close', () => {
@@ -245,11 +252,6 @@ export function createClient(config, onReconnect) {
 
   // Create first time.
   recreate()
-
-  // setInterval(() => {
-  //   console.log('re')
-  //   closeAndTryRecreate()
-  // }, 6000)
 }
 
 export function createServer(config, onClose) {
@@ -264,6 +266,8 @@ export function createServer(config, onClose) {
       let socket = null
 
       listen(conn, buf => {
+        let socketEnd = false
+
         if (firstBuf) {
           firstBuf = false
           const dstInfo = parseDstInfo(buf)
@@ -292,6 +296,9 @@ export function createServer(config, onClose) {
             sendClose(conn)
             close(conn)
           })
+          socket.on('end', () => {
+            socketEnd = true
+          })
           conn.event.on('close', () => {
             // TODO: error msg
             socket.destroy()
@@ -300,7 +307,9 @@ export function createServer(config, onClose) {
           return
         }
 
-        socket.write(buf)
+        if (!socketEnd) {
+          socket.write(buf)
+        }
       })
     },
     onClose,
