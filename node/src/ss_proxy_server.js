@@ -8,8 +8,10 @@ export function createServer(config, onConnection) {
 
   // NOTE: force false
   config.udpActive = false
-  // Called when ssServers ask for proxy connections
+  // Called when ssServers ask for proxy connections.
   config.connect = onConnection
+  // Make encryptsocks do not log into files.
+  config.logPath = null
 
   return _createServer(config, false, logger)
 }

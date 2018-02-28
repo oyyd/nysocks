@@ -89,5 +89,14 @@
     "testMatch": [
       "**/node/src/**/__tests__/**/*.spec.js"
     ]
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/pac-server/pac/**/*",
+      "node_modules/pac-server/vendor/**/*"
+    ],
+    "targets": [
+      "node8-macos-x64"
+    ]
   }
 }
