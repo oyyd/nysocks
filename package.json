@@ -93,7 +93,8 @@
   "pkg": {
     "assets": [
       "node_modules/pac-server/pac/**/*",
-      "node_modules/pac-server/vendor/**/*"
+      "node_modules/pac-server/vendor/**/*",
+      "bin/**/*"
     ],
     "targets": [
       "node8-macos-x64"

@@ -45,6 +45,8 @@ void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn) {
 
   if (conn->on_close_cb != NULL) {
     cb(conn, NULL);
+  } else {
+    kcpuv_mux_conn_free(conn, NULL);
   }
 }
 

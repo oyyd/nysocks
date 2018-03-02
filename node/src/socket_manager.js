@@ -2,12 +2,10 @@ import EventEmitter from 'events'
 import {
   getPort,
   createWithOptions,
-  close as sessClose,
   listen as socketListen,
   setAddr,
   initCryptor,
   destroy as _destroy,
-  // bindListener, send, startKcpuv,
 } from './socket'
 import {
   createMux,
@@ -17,9 +15,7 @@ import {
   connSend,
   connListen,
   connSendClose,
-  connBindClose,
   connSetTimeout,
-  muxFree,
   muxCloseAll,
 } from './mux'
 import { getIP, debug } from './utils'
