@@ -62,6 +62,8 @@ Still, I'm not a professional C/CPP language user or network programmer. Please 
 npm i nysocks -g
 ```
 
+Or check the executable [here](https://github.com/oyyd/nysocks/releases).
+
 ## Usage
 
 #### 1. Create server service
