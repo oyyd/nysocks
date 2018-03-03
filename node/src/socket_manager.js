@@ -136,13 +136,13 @@ export function freeManager(manager) {
       // NOTE: freed in next tick
       // muxFree(mux)
       // sessClose(socket)
-      muxCloseAll(mux, true)
+      muxCloseAll(mux)
     })
   }
 
   // muxFree(masterMux)
   // sessClose(masterSocket)
-  muxCloseAll(masterMux, true)
+  muxCloseAll(masterMux)
 }
 
 export function initClientMasterSocket(mux) {
@@ -322,10 +322,11 @@ export function createManager(_options, onConnection, onClose) {
   })
   manager.masterSocket = masterSocket
   manager.masterMux = masterMux
+  let muxClosed = false
 
   // TODO: free manager from router
   masterMux.event.on('close', () => {
-    if (typeof onClose === 'function') {
+    if (!muxClosed && typeof onClose === 'function') {
       onClose()
     }
   })
@@ -347,6 +348,7 @@ export function createManager(_options, onConnection, onClose) {
 
       manager.beatInfo = initBeat(conn, () => {
         if (typeof onClose === 'function') {
+          muxClosed = true
           onClose()
         }
       })
