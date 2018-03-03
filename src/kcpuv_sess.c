@@ -144,8 +144,8 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   kcpuv_sess *sess = (kcpuv_sess *)user;
 
-  if (sess->state == KCPUV_STATE_FREED) {
-    fprintf(stderr, "%s\n", "output after freed");
+  if (sess->state == KCPUV_STATE_FREED || sess->state < KCPUV_STATE_READY) {
+    fprintf(stderr, "%s\n", "output with invalid state");
     return -1;
   }
 
