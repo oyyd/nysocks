@@ -322,6 +322,7 @@ export function createManager(_options, onConnection, onClose) {
   })
   manager.masterSocket = masterSocket
   manager.masterMux = masterMux
+  // TODO: prevent from calling `onClose` twice
   let muxClosed = false
 
   // TODO: free manager from router

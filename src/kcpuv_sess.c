@@ -145,7 +145,7 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   kcpuv_sess *sess = (kcpuv_sess *)user;
 
   if (sess->send_addr == NULL) {
-    fprintf(stderr, "%s\n", "NULL send_addr");
+    // fprintf(stderr, "%s\n", "NULL send_addr");
     return -1;
   }
 
@@ -532,7 +532,6 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     if (enable_timeout) {
       if (sess->timeout && now - sess->recv_ts >= sess->timeout) {
         trigger_before_free(sess);
-        fprintf(stderr, "%s\n", "TIMEOUT_FREE");
         kcpuv_free(sess, "timeout");
         continue;
       }
@@ -610,7 +609,6 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
       // Trigger close when all data acked
       if (packets == 0) {
-        fprintf(stderr, "%s\n", "END_FREE");
         kcpuv_free(sess, NULL);
         // NOTE: kcpuv_free will remove ptr
       } else {
