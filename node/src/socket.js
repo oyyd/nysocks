@@ -95,19 +95,23 @@ export const destroy = wrap((sess) => {
   // })
 })
 
-export const close = wrap((sess) => {
+export const close = wrap((sess, destroyDirectly = false) => {
   if (sess.isClosed) {
     return
   }
 
-  binding.close(sess)
+  if (destroyDirectly) {
+    binding.close(sess)
 
-  // NOTE: Force destroying the sess if it takes too many seconds.
-  setTimeout(() => {
-    if (!sess.isClosed) {
-      destroy(sess)
-    }
-  }, CLOSE_TIMEOUT)
+    // NOTE: Force destroying the sess if it takes too many seconds.
+    setTimeout(() => {
+      if (!sess.isClosed) {
+        destroy(sess)
+      }
+    }, CLOSE_TIMEOUT)
+  } else {
+    destroy(sess)
+  }
 })
 
 export const listen = wrap((sess, port = 0, onMessage) => {

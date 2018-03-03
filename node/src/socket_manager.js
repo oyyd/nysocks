@@ -136,13 +136,13 @@ export function freeManager(manager) {
       // NOTE: freed in next tick
       // muxFree(mux)
       // sessClose(socket)
-      muxCloseAll(mux)
+      muxCloseAll(mux, true)
     })
   }
 
   // muxFree(masterMux)
   // sessClose(masterSocket)
-  muxCloseAll(masterMux)
+  muxCloseAll(masterMux, true)
 }
 
 export function initClientMasterSocket(mux) {

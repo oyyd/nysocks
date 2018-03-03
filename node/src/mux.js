@@ -84,10 +84,10 @@ export function createMux(_options) {
   return mux
 }
 
-export const muxCloseAll = muxSuite.wrap(mux => {
+export const muxCloseAll = muxSuite.wrap((mux, destroy) => {
   binding.muxStopAll(mux)
 
-  close(mux.sess)
+  close(mux.sess, destroy)
 })
 
 export const muxFree = muxSuite.wrap((mux, onFree) => {
