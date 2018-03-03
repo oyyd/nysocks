@@ -47,6 +47,7 @@ public:
     if (!is_freed) {
       is_freed = 1;
       // kcpuv_stop_listen(sess);
+      fprintf(stderr, "%s\n", "DELETE_FREE");
       kcpuv_free(sess, NULL);
       sess = 0;
     }
