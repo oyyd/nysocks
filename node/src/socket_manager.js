@@ -121,7 +121,12 @@ function clearBeat(beatInfo) {
 
 // Manager may not be freed after this call.
 export function freeManager(manager) {
-  const { beatInfo, conns, masterMux, masterSocket } = manager
+  const {
+    beatInfo,
+    conns,
+    masterMux,
+    // masterSocket,
+  } = manager
 
   clearBeat(beatInfo)
 
@@ -160,14 +165,6 @@ export function initClientMasterSocket(mux) {
     conn.event.on('close', () => {
       // connFree(conn)
     })
-
-    // sess.event.on('close', (errorMsg) => {
-    //   if (errorMsg) {
-    //     throw new Error(errorMsg)
-    //   }
-    //
-    //   // resolve(data)
-    // })
 
     connSend(conn, msg)
   })

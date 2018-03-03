@@ -80,6 +80,12 @@ export const bindUdpSend = wrap((sess, next) => {
 })
 
 export const destroy = wrap((sess) => {
+  if (sess.isClosed) {
+    return
+  }
+
+  sess.isClosed = true
+
   // TODO:
   setTimeout(() => {
     binding.free(sess)
