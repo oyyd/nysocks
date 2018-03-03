@@ -144,7 +144,12 @@ void kcpuv_send(kcpuv_sess *sess, const char *msg, unsigned long len) {
 static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
   kcpuv_sess *sess = (kcpuv_sess *)user;
 
-  if (sess->state == KCPUV_STATE_FREED || sess->state < KCPUV_STATE_READY) {
+  if (sess->send_addr == NULL) {
+    fprintf(stderr, "%s\n", "NULL send_addr");
+    return -1;
+  }
+
+  if (sess->state == KCPUV_STATE_FREED) {
     fprintf(stderr, "%s\n", "output with invalid state");
     return -1;
   }
@@ -612,7 +617,8 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
     } else {
       if (KCPUV_SESS_HEARTBEAT_ACTIVE) {
         if (sess->send_addr != NULL && sess->state == KCPUV_STATE_READY &&
-            sess->send_ts + KCPUV_SESS_HEARTBEAT_INTERVAL <= now) {
+            sess->send_ts + KCPUV_SESS_HEARTBEAT_INTERVAL <= now &&
+            ikcp_waitsnd(sess->kcp) == 0) {
           kcpuv_send_cmd(sess, KCPUV_CMD_NOO);
         }
       }
