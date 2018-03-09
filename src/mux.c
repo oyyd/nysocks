@@ -95,9 +95,9 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
 
   // NOTE: happend when the conn has been freed
   if (conn == NULL || conn->recv_state == 2) {
-    if (KCPUV_DEBUG) {
-      fprintf(stderr, "%s\n", "DROP");
-    }
+    fprintf(stderr, "%s %d\n", "DROP", id);
+    // if (KCPUV_DEBUG) {
+    // }
     return;
   }
 
@@ -206,6 +206,7 @@ void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb cb) {
 void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   // init conn data
   // TODO: should use the id from the remote
+  // TODO: over two bytes
   // side when connecting
   conn->id = mux->count++;
   conn->timeout = MUX_CONN_DEFAULT_TIMEOUT;
