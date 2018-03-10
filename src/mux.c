@@ -95,9 +95,9 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
 
   // NOTE: happend when the conn has been freed
   if (conn == NULL || conn->recv_state == 2) {
-    fprintf(stderr, "%s %d\n", "DROP", id);
-    // if (KCPUV_DEBUG) {
-    // }
+    if (KCPUV_DEBUG) {
+      fprintf(stderr, "%s %d %d\n", "DROP", id, cmd);
+    }
     return;
   }
 
@@ -114,13 +114,14 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
          len - KCPUV_MUX_PROTOCOL_OVERHEAD);
     } else {
       // TODO: there would be conns are not with on_msg_cb unexpectly
-      // fprintf(stderr, "%s\n", "NO_CB");
+      fprintf(stderr, "%s\n", "no callback specified on conn");
       kcpuv_mux_conn_emit_close(conn);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
     kcpuv_mux_conn_emit_close(conn);
   } else {
     // drop invalid cmd
+    fprintf(stderr, "%s\n", "receive invalid cmd");
   }
 }
 
@@ -205,7 +206,6 @@ void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb cb) {
 
 void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   // init conn data
-  // TODO: should use the id from the remote
   // TODO: over two bytes
   // side when connecting
   conn->id = mux->count++;

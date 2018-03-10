@@ -147,8 +147,10 @@ export function wrapMuxConn(conn) {
   conn.event = new EventEmitter()
 
   connBindClose(conn, () => {
-    connFree(conn, false)
+    // NOTE: Make sure emit 'close' event before free to
+    // give a chance for outside do something.
     conn.event.emit('close')
+    connFree(conn, false)
   })
 
   record('conn', get('conn') + 1)

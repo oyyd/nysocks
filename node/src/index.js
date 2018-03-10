@@ -16,7 +16,6 @@ import {
   sendClose,
   startKcpuv,
   freeManager,
-  destroy,
 } from './socket_manager'
 import { createMonitor } from './network_monitor'
 import { createRouter } from './router'
