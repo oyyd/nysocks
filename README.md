@@ -1,7 +1,5 @@
 # nysocks
 
-    The protocol of nysocks has been changed from v1.3.0 so that you have to install nysocks v1.3.x in both of your client and server.
-
 [![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks) [![travis-ci](https://travis-ci.org/oyyd/nysocks.svg?branch=dev)](https://travis-ci.org/oyyd/nysocks)
 
 [使用简介](./doc/usage_cn.md)
@@ -34,6 +32,9 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 ![work-ss](https://cdn.rawgit.com/oyyd/nysocks/dev/imgs/work-ss.png)
 
 **protocol(unstable):**
+
+**NOTE:** The protocol of nysocks has been changed from v1.3.0 so that you have to install nysocks v1.3.x in both of your client and server.
+
 
 ```
 +-------+-----+-----+---------+---------+--------+------------+
