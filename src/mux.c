@@ -209,6 +209,11 @@ void kcpuv_mux_conn_init(kcpuv_mux *mux, kcpuv_mux_conn *conn) {
   // TODO: over two bytes
   // side when connecting
   conn->id = mux->count++;
+
+  if (mux->count >= 65535) {
+    mux->count = 0;
+  }
+
   conn->timeout = MUX_CONN_DEFAULT_TIMEOUT;
   conn->ts = iclock();
   conn->mux = mux;

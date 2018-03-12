@@ -1,0 +1,22 @@
+{
+  "serverAddr": "0.0.0.0",
+  "serverPort": 20000,
+  "socketAmount": 10,
+  "password": "YOUR_PASSWORD_HERE",
+  "mode": "fast2",
+  "kcp": {
+    "sndwnd": 512,
+    "rcvwnd": 512,
+    "nodelay": 0,
+    "interval": 30,
+    "resend": 2,
+    "nc": 1
+  },
+  "clientProtocol": "SOCKS",
+  "pac": {
+    "pacServerPort": 8090
+  },
+  "SOCKS": {
+    "port": 1080
+  }
+}

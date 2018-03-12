@@ -19,7 +19,7 @@ node_modules
 node_lib
 node/lib/**/*
 WORK.md
-config.json
+/config.json
 test.json
 *.log
 README_CN.md
