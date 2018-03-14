@@ -78,11 +78,11 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
                 conn->recv_state);
         return;
       }
-    } else {
+    } else if (id == mux->count) {
       // create new one
       conn = malloc(sizeof(kcpuv_mux_conn));
-      kcpuv_mux_conn_init(mux, conn);
 
+      kcpuv_mux_conn_init(mux, conn);
       if (mux->on_connection_cb != NULL) {
         mux_on_connection_cb cb = mux->on_connection_cb;
         cb(conn);
@@ -90,6 +90,8 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
       // else {
       //   fprintf(stderr, "%s\n", "'on_connection_cb' is not specified");
       // }
+    } else {
+      fprintf(stderr, "%s %d\n", "receive invlid msg with id", id);
     }
   }
 
@@ -114,7 +116,8 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
          len - KCPUV_MUX_PROTOCOL_OVERHEAD);
     } else {
       // TODO: there would be conns are not with on_msg_cb unexpectly
-      fprintf(stderr, "%s\n", "no callback specified on conn");
+      fprintf(stderr, "%s: %d %d\n", "no callback specified on conn", conn->id,
+              conn->send_state);
       kcpuv_mux_conn_emit_close(conn);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
