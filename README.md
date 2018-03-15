@@ -51,8 +51,6 @@ The tunnel connections in nysocks is implemented as a [node-addon(C/CPP)](https:
 0. Node don't support setting send/recv buffer size of udp connections before v8.7.0.
 0. In large data transmissions, udp message callback is too frequently and manipulating buffers in js(or any other script languages) is relatively expensive which would make the total performace unacceptable. You can check my pure js implementation [here](https://github.com/oyyd/kcp-node/).
 
-Still, I'm not a professional C/CPP language user or network programmer. Please submit PRs or issues to help us improve it!
-
 ## Installation
 
 `node >= 6.x`
