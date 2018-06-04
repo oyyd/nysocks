@@ -23,5 +23,6 @@ WORK.md
 test.json
 *.log
 README_CN.md
+nohup.out
 
 package-lock.json

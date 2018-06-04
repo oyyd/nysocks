@@ -99,6 +99,7 @@ function parseConfig(argv) {
   const configJsonFromFile = getFile(formatConfig(argv.config)) || {}
   // const authList = getFile(formatConfig(argv.socks_auth)) || null
   const modeKcpOptions = getMode(argv.mode ? argv.mode : configJsonFromFile.mode)
+
   let config = {
     pac: DEFAULT_PAC_SERVER,
     SOCKS: DEFAULT_SOCKS_CONFIG,
