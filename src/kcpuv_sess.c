@@ -13,6 +13,23 @@ long kcpuv_udp_buf_size = 4 * 1024 * 1024;
 
 static short enable_timeout = KCPUV_SESS_TIMEOUT;
 
+int kcpuv__should_output_buf(unsigned int recv_buf_length,
+                             unsigned int content_length) {
+  return ((long)(recv_buf_length + content_length)) >= KCPUV_SESS_BUFFER_SIZE;
+}
+
+void kcpuv__replace_buf(kcpuv_sess *sess, const char *content,
+                        unsigned int content_length) {
+  sess->recv_buf_length = content_length;
+  memcpy(sess->recv_buf, content, content_length);
+}
+
+void kcpuv__put_buf(kcpuv_sess *sess, const char *content,
+                    unsigned int content_length) {
+  memcpy(sess->recv_buf + sess->recv_buf_length, content, content_length);
+  sess->recv_buf_length += content_length;
+}
+
 void kcpuv__print_sess_list() {
   if (sess_list == NULL) {
     fprintf(stderr, "sess_list_length: 0\n");
@@ -102,6 +119,7 @@ void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
   unsigned long s = 0;
 
   while (s == 0 || s < len) {
+    // The position that we have send the data before it.
     unsigned long e = s + MAX_SENDING_LEN - KCPUV_OVERHEAD;
 
     if (e > len) {
@@ -210,6 +228,8 @@ kcpuv_sess *kcpuv_create() {
   sess->handle = malloc(sizeof(uv_udp_t));
   uv_udp_init(kcpuv_get_loop(), sess->handle);
 
+  sess->recv_buf_length = 0;
+  sess->recv_buf = malloc(sizeof(char) * KCPUV_SESS_BUFFER_SIZE);
   sess->mux = NULL;
   sess->handle->data = sess;
   sess->send_addr = NULL;
@@ -291,6 +311,7 @@ void kcpuv_free(kcpuv_sess *sess, const char *error_msg) {
   //   // free(sess->handle);
   // }
 
+  free(sess->recv_buf);
   ikcp_release(sess->kcp);
 
   free(sess);
@@ -569,11 +590,22 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       } else if (cmd == KCPUV_CMD_FIN_ACK) {
         sess->state = KCPUV_STATE_FIN_ACK;
       } else if (cmd == KCPUV_CMD_PUSH) {
-        if (sess->on_msg_cb != NULL) {
-          // update receive data
-          kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
-          on_msg_cb(sess, (const char *)(buffer + KCPUV_OVERHEAD),
-                    size - KCPUV_OVERHEAD);
+        unsigned int content_length = size - KCPUV_OVERHEAD;
+        // fprintf(stderr, "%d %d\n", size, sess->recv_buf_length);
+        // Push the packet into recv_buf.
+        if (!kcpuv__should_output_buf(sess->recv_buf_length, content_length)) {
+          kcpuv__put_buf(sess, (const char *)(buffer + KCPUV_OVERHEAD),
+                         content_length);
+        } else {
+          if (sess->on_msg_cb != NULL) {
+            // update receive data
+            kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
+            on_msg_cb(sess, (const char *)sess->recv_buf,
+                      sess->recv_buf_length);
+          }
+
+          kcpuv__replace_buf(sess, (const char *)(buffer + KCPUV_OVERHEAD),
+                             content_length);
         }
       } else {
         // invalid CMD
@@ -581,6 +613,24 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
       }
 
       size = ikcp_recv(sess->kcp, buffer, BUFFER_LEN);
+
+      // TODO: remove
+      // if (size > 0) {
+      //   fprintf(stderr, "same_tick\n");
+      // } else if (size == 0) {
+      //   fprintf(stderr, "not_same_tick\n");
+      // }
+    }
+
+    // TODO: Is call next function in the same tick makes it more efficient?
+    if (sess->recv_buf_length > 0) {
+      if (sess->on_msg_cb != NULL) {
+        // update receive data
+        kcpuv_listen_cb on_msg_cb = sess->on_msg_cb;
+        on_msg_cb(sess, sess->recv_buf, sess->recv_buf_length);
+      }
+
+      kcpuv__replace_buf(sess, NULL, 0);
     }
 
     if (size < 0) {

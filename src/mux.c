@@ -50,11 +50,8 @@ void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn) {
   }
 }
 
-// TODO: drop invalid msg
-static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
-  int cmd;
-  int length;
-  unsigned int id = kcpuv__mux_decode((const char *)data, &cmd, &length);
+static void put_data_to_conn(kcpuv_sess *sess, const char *data,
+                             unsigned int len, unsigned int id, int cmd) {
   kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
   kcpuv_mux_conn *conn = NULL;
 
@@ -91,7 +88,7 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
       //   fprintf(stderr, "%s\n", "'on_connection_cb' is not specified");
       // }
     } else {
-      fprintf(stderr, "%s %d\n", "receive invlid msg with id", id);
+      fprintf(stderr, "%s %d\n", "receive invalid msg with id", id);
     }
   }
 
@@ -112,8 +109,7 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
   if (cmd == KCPUV_MUX_CMD_PUSH || cmd == KCPUV_MUX_CMD_CONNECT) {
     if (conn->on_msg_cb != NULL) {
       conn_on_msg_cb cb = conn->on_msg_cb;
-      cb(conn, data + KCPUV_MUX_PROTOCOL_OVERHEAD,
-         len - KCPUV_MUX_PROTOCOL_OVERHEAD);
+      cb(conn, data, len);
     } else {
       // TODO: there would be conns are not with on_msg_cb unexpectly
       fprintf(stderr, "%s: %d %d\n", "no callback specified on conn", conn->id,
@@ -125,6 +121,27 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, int len) {
   } else {
     // drop invalid cmd
     fprintf(stderr, "%s\n", "receive invalid cmd");
+  }
+}
+
+// TODO: drop invalid msg
+static void on_recv_msg(kcpuv_sess *sess, const char *data, unsigned int len) {
+  int cmd;
+  int content_length;
+  unsigned int id;
+  unsigned int offset = 0;
+
+  while (offset < len) {
+    id =
+        kcpuv__mux_decode((const char *)(data + offset), &cmd, &content_length);
+
+    // fprintf(stderr, "%d %d %d %d %d\n", id, cmd, content_length, offset,
+    // len);
+    put_data_to_conn(
+        sess, (const char *)(data + offset + KCPUV_MUX_PROTOCOL_OVERHEAD),
+        content_length, id, cmd);
+
+    offset += content_length + KCPUV_MUX_PROTOCOL_OVERHEAD;
   }
 }
 

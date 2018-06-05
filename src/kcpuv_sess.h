@@ -14,7 +14,8 @@ extern "C" {
 
 typedef struct KCPUV_SESS kcpuv_sess;
 
-typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, const char *data, int len);
+typedef void (*kcpuv_listen_cb)(kcpuv_sess *sess, const char *data,
+                                unsigned int len);
 typedef void (*kcpuv_dgram_cb)(kcpuv_sess *sess);
 typedef void (*kcpuv_udp_send)(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
                                const struct sockaddr *);
@@ -37,6 +38,8 @@ struct KCPUV_SESS {
   kcpuv_dgram_cb on_before_free;
   kcpuv_udp_send udp_send;
   kcpuv_cryptor *cryptor;
+  char *recv_buf;
+  unsigned int recv_buf_length;
 };
 
 typedef struct KCPUV_SESS_LIST {

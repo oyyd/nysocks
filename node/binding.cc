@@ -138,7 +138,7 @@ void KcpuvMuxBinding::Create(const FunctionCallbackInfo<Value> &args) {
 
 // void buffer_delete_callback(char *data, void *hint) { free(data); }
 
-static void on_listen_cb(kcpuv_sess *sess, const char *data, int len) {
+static void on_listen_cb(kcpuv_sess *sess, const char *data, unsigned int len) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
   // NOTE: Create a scope for the allocation of v8 memories
   // as we are calling a js function outside the v8
