@@ -59,9 +59,7 @@ static int protocol_len[8] = {4, 1, 1, 2, 4, 4, 4, 4};
 // static int protocol_length = 24;
 
 void kcpuv__print_all_as_hex(const char *msg, int len) {
-  int i;
   int j;
-  int cur = 0;
 
   for (j = 0; j < len; j += 1) {
     printf("%x ", (unsigned)(unsigned char)msg[j]);

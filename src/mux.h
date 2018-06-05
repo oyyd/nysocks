@@ -55,8 +55,8 @@ void kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
 
 int kcpuv_mux_conn_free(kcpuv_mux_conn *, const char *);
 
-void kcpuv_mux_conn_send(kcpuv_mux_conn *, const char *content, int length,
-                         int cmd);
+int kcpuv_mux_conn_send(kcpuv_mux_conn *, const char *content, int length,
+                        int cmd);
 
 void kcpuv_mux_conn_send_close(kcpuv_mux_conn *);
 

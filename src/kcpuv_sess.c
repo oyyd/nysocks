@@ -77,7 +77,7 @@ int kcpuv_destruct() {
 // Send raw data through kcp.
 void kcpuv_raw_send(kcpuv_sess *sess, const int cmd, const char *msg,
                     unsigned long len) {
-  if (sess->state == KCPUV_STATE_FREED) {
+  if (kcpuv_is_freed(sess)) {
     if (KCPUV_DEBUG) {
       fprintf(stderr, "input with invalid state");
     }
@@ -149,7 +149,7 @@ static int kcp_output(const char *msg, int len, ikcpcb *kcp, void *user) {
     return -1;
   }
 
-  if (sess->state == KCPUV_STATE_FREED) {
+  if (kcpuv_is_freed(sess)) {
     fprintf(stderr, "%s\n", "output with invalid state");
     return -1;
   }
@@ -245,7 +245,7 @@ void kcpuv_sess_init_cryptor(kcpuv_sess *sess, const char *key, int len) {
 
 // Free a kcpuv session.
 void kcpuv_free(kcpuv_sess *sess, const char *error_msg) {
-  if (sess->state == KCPUV_STATE_FREED) {
+  if (kcpuv_is_freed(sess)) {
     fprintf(stderr, "%s\n", "sess have been freed");
     return;
   }
@@ -351,7 +351,7 @@ static int input_kcp(kcpuv_sess *sess, const char *msg, int length) {
 // Input dgram mannualy
 void kcpuv_input(kcpuv_sess *sess, ssize_t nread, const uv_buf_t *buf,
                  const struct sockaddr *addr) {
-  if (sess->state == KCPUV_STATE_CREATED || sess->state == KCPUV_STATE_FREED) {
+  if (sess->state == KCPUV_STATE_CREATED || kcpuv_is_freed(sess)) {
     fprintf(stderr, "%s\n", "invalid msg input");
     return;
   }
@@ -609,6 +609,7 @@ void kcpuv__update_kcp_sess(uv_timer_t *timer) {
 
       // Trigger close when all data acked
       if (packets == 0) {
+        trigger_before_free(sess);
         kcpuv_free(sess, NULL);
         // NOTE: kcpuv_free will remove ptr
       } else {

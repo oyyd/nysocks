@@ -9,6 +9,8 @@
 #include <v8.h>
 
 namespace kcpuv_addons {
+using Nan::AsyncResource;
+using Nan::New;
 using std::cout;
 using v8::Boolean;
 using v8::Context;
@@ -25,6 +27,8 @@ using v8::Object;
 using v8::Persistent;
 using v8::String;
 using v8::Value;
+
+AsyncResource *asyncResource = new AsyncResource("nysocks:callback");
 
 class KcpuvSessBinding : public Nan::ObjectWrap {
 public:
@@ -152,15 +156,15 @@ static void on_listen_cb(kcpuv_sess *sess, const char *data, int len) {
   const int argc = 1;
   Local<Value> args[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->listen_cb), argc, args);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(binding->listen_cb), argc, args);
 }
 
 static void closing_cb(kcpuv_sess *sess) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
 
   Nan::HandleScope scope;
-  Isolate *isolate = Isolate::GetCurrent();
+  // Isolate *isolate = Isolate::GetCurrent();
   // const char *error_msg = reinterpret_cast<const char *>(data);
   const int argc = 1;
   Local<Value> args[argc] = {Nan::Undefined()};
@@ -175,8 +179,8 @@ static void closing_cb(kcpuv_sess *sess) {
   //   args[0] = String::NewFromUtf8(isolate, error_msg);
   // }
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->close_cb), argc, args);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(binding->close_cb), argc, args);
 }
 
 static void on_udp_send(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
@@ -200,8 +204,8 @@ static void on_udp_send(kcpuv_sess *sess, uv_buf_t *buf, int buf_count,
   Local<Value> args[argc] = {
       Nan::NewBuffer(buf_data, buf->len).ToLocalChecked(), js_address, js_port};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->udp_send_cb), argc, args);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(binding->udp_send_cb), argc, args);
 }
 
 void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &args) {
@@ -468,8 +472,8 @@ static void mux_binding_on_close_cb(kcpuv_mux *mux, const char *error_msg) {
     argv[0] = Nan::Undefined();
   }
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(mux_obj->on_close), argc, argv);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(mux_obj->on_close), argc, argv);
 }
 
 static NAN_METHOD(MuxBindClose) {
@@ -507,8 +511,8 @@ static void mux_binding_on_connection_cb(kcpuv_mux_conn *conn) {
   const int argc = 1;
   Local<Value> argv[argc] = {conn_instance};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(mux_obj->on_connection), argc, argv);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(mux_obj->on_connection), argc, argv);
 }
 
 static NAN_METHOD(MuxBindConnection) {
@@ -574,8 +578,8 @@ static void conn_binding_on_message_cb(kcpuv_mux_conn *conn, const char *data,
   const int argc = 1;
   Local<Value> args[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(conn_obj->on_message), argc, args);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(conn_obj->on_message), argc, args);
 }
 
 static NAN_METHOD(ConnListen) {
@@ -610,8 +614,8 @@ static void conn_binding_on_close_cb(kcpuv_mux_conn *conn,
     argv[0] = Nan::Undefined();
   }
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(conn_obj->on_close), argc, argv);
+  asyncResource->runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                                 Nan::New(conn_obj->on_close), argc, argv);
 }
 
 static NAN_METHOD(ConnBindClose) {
@@ -653,10 +657,6 @@ static NAN_METHOD(MuxStopAll) {
   // // 2. trigger close msg
   // kcpuv_close(mux->sess);
 }
-
-// static NAN_METHOD(FreeAll) {
-//   //
-// }
 
 static NAN_MODULE_INIT(Init) {
   Isolate *isolate = target->GetIsolate();
@@ -721,7 +721,6 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "connEmitClose", ConnEmitClose);
 
   Nan::SetMethod(target, "muxStopAll", MuxStopAll);
-  // Nan::SetMethod(target, "freeAll", FreeAll);
 }
 
 NODE_MODULE(binding, Init)

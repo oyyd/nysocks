@@ -257,8 +257,8 @@ void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *conn, conn_on_close_cb cb) {
 }
 
 // NOTE: Conns don't need complex mechannisms to close.
-void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
-                         int cmd) {
+int kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
+                        int cmd) {
   kcpuv_mux *mux = conn->mux;
   kcpuv_sess *sess = mux->sess;
 
@@ -267,7 +267,7 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
 
   // prevent sending when closed
   if (conn->send_state == 2) {
-    return;
+    return -1;
   }
 
   // send cmd with empty content
@@ -287,7 +287,7 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
     kcpuv_send(sess, encoded_content, total_len);
 
     free(encoded_content);
-    return;
+    return 0;
   }
 
   while (s < (unsigned int)len) {
@@ -323,6 +323,8 @@ void kcpuv_mux_conn_send(kcpuv_mux_conn *conn, const char *content, int len,
     free(encoded_content);
     s = e;
   }
+
+  return 0;
 }
 
 void kcpuv_mux_conn_send_close(kcpuv_mux_conn *conn) {
