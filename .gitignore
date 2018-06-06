@@ -27,3 +27,4 @@ nohup.out
 
 package-lock.json
 *.zip
+test/Makefile
