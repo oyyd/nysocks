@@ -26,3 +26,4 @@ README_CN.md
 nohup.out
 
 package-lock.json
+*.zip

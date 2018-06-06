@@ -11,6 +11,7 @@
     "copy_lib": "node tools/copy_lib",
     "build": "npm run copy_lib && babel node/src --out-dir node/lib",
     "install": "node-gyp rebuild",
+    "package": "node tools/package.js",
     "test": "jest"
   },
   "repository": {
@@ -53,7 +54,8 @@
     "eslint-plugin-import": "^2.8.0",
     "fs-extra": "^4.0.2",
     "jest": "^21.2.1",
-    "segfault-handler": "^1.0.0"
+    "segfault-handler": "^1.0.0",
+    "yazl": "^2.4.3"
   },
   "eslintConfig": {
     "env": {

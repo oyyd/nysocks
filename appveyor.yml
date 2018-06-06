@@ -1,0 +1,39 @@
+version: "{build}"
+
+os: Visual Studio 2017
+
+init:
+  - git config --global core.autocrlf input
+
+platform:
+  - x64
+  - x86
+
+install:
+  - ps: Install-Product node 8.9.4 $env:platform
+  - cmd: SET PATH=C:\Program Files (x86)\MSBuild\14.0\bin\;%PATH%
+  - cmd: SET PATH=C:\python27;%PATH%
+  - cmd: npm install
+  - cmd: npm run package
+
+# disable build and test pahses
+build: off
+test_script:
+  - npm run test
+
+artifacts:
+  - path: '*.zip'
+
+deploy:
+  release: nysocks-v$(appveyor_build_version)
+  description: 'draft'
+  provider: GitHub
+  auth_token:
+    secure: GSj6chIrzHPnWapSoD9Cl2JjiwNaaA20dYPxyZK+BW1zVnGZAKPxyFrHAd9kXo1G
+  artifact: /.*\.zip/            # upload all NuGet packages to release assets
+  draft: true
+  force_update: true
+  prerelease: false
+  on:
+    branch: dev                    # release from master branch only
+    appveyor_repo_tag: true        # deploy on tag push only
