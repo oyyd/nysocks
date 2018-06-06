@@ -80,6 +80,7 @@ static void put_data_to_conn(kcpuv_sess *sess, const char *data,
       conn = malloc(sizeof(kcpuv_mux_conn));
 
       kcpuv_mux_conn_init(mux, conn);
+
       if (mux->on_connection_cb != NULL) {
         mux_on_connection_cb cb = mux->on_connection_cb;
         cb(conn);
@@ -88,7 +89,8 @@ static void put_data_to_conn(kcpuv_sess *sess, const char *data,
       //   fprintf(stderr, "%s\n", "'on_connection_cb' is not specified");
       // }
     } else {
-      fprintf(stderr, "%s %d\n", "receive invalid msg with id", id);
+      fprintf(stderr, "receive invalid msg with id: %d, currenct: %d\n", id,
+              mux->count);
     }
   }
 
