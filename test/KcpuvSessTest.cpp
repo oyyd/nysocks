@@ -57,7 +57,7 @@ static void test2_free(uv_timer_t *timer) {
   kcpuv_stop_loop();
 }
 
-void recver_cb(kcpuv_sess *sess, const char *data, int len) {
+void recver_cb(kcpuv_sess *sess, const char *data, unsigned int len) {
   test_callback1->Call(data);
   delete test_callback1;
 
@@ -102,7 +102,7 @@ static void test3_free(uv_timer_t *timer) {
   kcpuv_stop_loop();
 }
 
-void recver_cb2(kcpuv_sess *sess, const char *data, int len) {
+void recver_cb2(kcpuv_sess *sess, const char *data, unsigned int len) {
   test_callback2->Call(len);
   delete test_callback2;
 
@@ -152,7 +152,7 @@ static void test4_free(uv_timer_t *timer) {
   kcpuv_stop_loop();
 }
 
-void recver_cb22(kcpuv_sess *sess, const char *data, int len) {
+void recver_cb22(kcpuv_sess *sess, const char *data, unsigned int len) {
   test_callback22->Call(len);
   delete test_callback22;
 

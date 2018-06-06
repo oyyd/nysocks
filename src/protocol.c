@@ -88,8 +88,16 @@ unsigned char *kcpuv_cryptor_decrypt(kcpuv_cryptor *cryptor,
 // TODO: salt should be chars
 int kcpuv_cryptor_init(kcpuv_cryptor *cryptor, const char *key, int key_len,
                        unsigned int salt[]) {
+
+// NOTE: Openssl has changed this api from 1.1.0
+#if OPENSSL_VERSION_NUMBER >= 0x010100000
+  cryptor->en = EVP_CIPHER_CTX_new();
+  cryptor->de = EVP_CIPHER_CTX_new();
+#endif
+#if OPENSSL_VERSION_NUMBER < 0x010100000
   cryptor->en = malloc(sizeof(EVP_CIPHER_CTX));
   cryptor->de = malloc(sizeof(EVP_CIPHER_CTX));
+#endif
 
   if (aes_init((unsigned char *)key, key_len, (unsigned char *)salt,
                cryptor->en, cryptor->de)) {
