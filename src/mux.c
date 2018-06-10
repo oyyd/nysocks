@@ -137,6 +137,7 @@ static void on_recv_msg(kcpuv_sess *sess, const char *data, unsigned int len) {
     id =
         kcpuv__mux_decode((const char *)(data + offset), &cmd, &content_length);
 
+    // fprintf(stderr, "len: %d\n", content_length);
     // fprintf(stderr, "%d %d %d %d %d\n", id, cmd, content_length, offset,
     // len);
     put_data_to_conn(

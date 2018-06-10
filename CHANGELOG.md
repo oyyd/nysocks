@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2.0.0
+
+- Dep: Update libuv to the latest master branch.
+- Feature: Add buffers for each connections to make them call js callbacks less frequently.
+- CLI: Log pid.
+
 ## 1.2.9
 - Feature: Use `--daemon_status`, `-s` to show the status of running daemons.
 - C/C++: Refactor cpp tests.
