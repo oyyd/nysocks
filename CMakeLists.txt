@@ -13,7 +13,7 @@ add_compile_options(-Wno-incompatible-pointer-types)
 include_directories(./deps/libuv/include)
 
 # ikcp
-include_directories(./deps/kcp)
+include_directories(./lib/kcp)
 add_library(ikcp ./lib/kcp/ikcp.h ./lib/kcp/ikcp.c)
 
 # openssl
