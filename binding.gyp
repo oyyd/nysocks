@@ -14,7 +14,7 @@
       'src/protocol.c',
       'src/mux.c',
       'src/loop.c',
-      'node/binding.cc',
+      'src/binding.cc',
     ],
     'conditions' : [
       ['OS=="win"', {

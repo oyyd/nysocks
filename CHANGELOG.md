@@ -4,7 +4,9 @@
 
 - Dep: Update libuv to the latest master branch.
 - Feature: Add buffers for each connections to make them call js callbacks less frequently.
+- Deployment: Add docker configuration.
 - CLI: Log pid.
+- Doc: Add basic docs.
 
 ## 1.2.9
 - Feature: Use `--daemon_status`, `-s` to show the status of running daemons.

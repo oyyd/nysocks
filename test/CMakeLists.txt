@@ -18,15 +18,16 @@ add_subdirectory(../
 # libuv
 include_directories(../deps/libuv/include)
 # ikcp
-include_directories(../deps/kcp)
+include_directories(../lib/kcp)
+# source code
 include_directories(../src/)
 
 add_executable(unit_test
-  KcpuvTest.cpp
-  KcpuvSessTest.cpp
-  UtilsTest.cpp
-  ProtocolTest.cpp
-  MuxTest.cpp
+  KcpuvTest.cc
+  KcpuvSessTest.cc
+  UtilsTest.cc
+  ProtocolTest.cc
+  MuxTest.cc
 )
 target_link_libraries(unit_test
   kcpuv

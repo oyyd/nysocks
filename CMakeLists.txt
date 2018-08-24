@@ -1,10 +1,11 @@
+# NOTE: Cmake build is only for tests.
 cmake_minimum_required(VERSION 3.5)
 
 project(kcpuv)
 
 # known warnings
-# CMAKE_CXX_FLAGS doesn't work
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types -g")
+# TODO: CMAKE_CXX_FLAGS doesn't work
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types -g")
 add_compile_options(-g)
 add_compile_options(-Wno-incompatible-pointer-types)
 
@@ -13,7 +14,7 @@ include_directories(./deps/libuv/include)
 
 # ikcp
 include_directories(./deps/kcp)
-add_library(ikcp ./deps/kcp/ikcp.h ./deps/kcp/ikcp.c)
+add_library(ikcp ./lib/kcp/ikcp.h ./lib/kcp/ikcp.c)
 
 # openssl
 include_directories(/usr/local/opt/openssl/include)
@@ -41,9 +42,11 @@ set(
 
 add_library(kcpuv ${KCPUV_SOURCES} ${KCPUV_HEADERS})
 
+# NOTE: Make sure both the libs of libuv.a and libcrypto.a exist.
+# See ../tools/build.js for how to build libuv indepently.
 target_link_libraries(kcpuv
   ikcp
-  ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/build/Default/libuv.a
+  ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/out/Debug/libuv.a
   /usr/local/opt/openssl/lib/libcrypto.a
 )
 
