@@ -22,22 +22,20 @@ include_directories(/usr/local/opt/openssl/include)
 # local sources
 set(
   KCPUV_HEADERS
-  src/kcpuv_sess.h
-  src/protocol.h
   src/utils.h
   src/kcpuv.h
-  src/mux.h
-  src/loop.h
+  src/Loop.h
+  src/SessUDP.h
+  src/Cryptor.h
 )
 
 set(
   KCPUV_SOURCES
-  src/kcpuv_sess.c
-  src/protocol.c
   src/utils.c
   src/kcpuv.c
-  src/mux.c
-  src/loop.c
+  src/Loop.cc
+  src/SessUDP.cc
+  src/Cryptor.cc
 )
 
 add_library(kcpuv ${KCPUV_SOURCES} ${KCPUV_HEADERS})
@@ -50,19 +48,19 @@ target_link_libraries(kcpuv
   /usr/local/opt/openssl/lib/libcrypto.a
 )
 
-add_executable(benchmark_udp
-  src/benchmark_udp.c
-)
-
-add_executable(benchmark_openssl
-  src/benchmark_openssl.c
-)
+# add_executable(benchmark_udp
+#   src/benchmark_udp.c
+# )
+#
+# add_executable(benchmark_openssl
+#   src/benchmark_openssl.c
+# )
 
 # benchmark
-target_link_libraries(benchmark_udp
-  kcpuv
-)
+# target_link_libraries(benchmark_udp
+#   kcpuv
+# )
 
-target_link_libraries(benchmark_openssl
-  kcpuv
-)
+# target_link_libraries(benchmark_openssl
+#   kcpuv
+# )

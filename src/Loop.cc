@@ -1,4 +1,4 @@
-#include "loop.h"
+#include "Loop.h"
 #include "kcpuv.h"
 #include "utils.h"
 
@@ -7,15 +7,28 @@ static int use_default_loop = 0;
 // static uv_idle_t *idle = NULL;
 static uv_timer_t *timer = NULL;
 
-// NOTE: Don't change this while looping.
-void kcpuv_use_default_loop(int value) { use_default_loop = value; }
+// Force closing all handles
+static void closing_walk(uv_handle_t *handle, void *arg) {
+  if (!uv_is_closing(handle)) {
+    uv_close(handle, NULL);
+  }
+}
+
+static void check_handles(uv_handle_t *handle, void *arg) {
+  fprintf(stderr, "handle_type: %d\n", handle->type);
+}
 
 static void init_loop() {
   if (!use_default_loop && kcpuv_loop == NULL) {
-    kcpuv_loop = malloc(sizeof(uv_loop_t));
+    kcpuv_loop = new uv_loop_t;
     uv_loop_init(kcpuv_loop);
   }
 }
+
+namespace kcpuv {
+
+// NOTE: Don't change this while looping.
+void Loop::KcpuvUseDefaultLoop(int value) { use_default_loop = value; }
 
 // Get or create a loop.
 uv_loop_t *kcpuv_get_loop() {
@@ -29,27 +42,27 @@ uv_loop_t *kcpuv_get_loop() {
   return kcpuv_loop;
 }
 
-void kcpuv__next_tick(uv_timer_t *timer, uv_timer_cb cb) {
+void Loop::KcpuvNextTick_(uv_timer_t *timer, uv_timer_cb cb) {
   uv_timer_init(kcpuv_get_loop(), timer);
 
   uv_timer_start(timer, cb, 0, 0);
 }
 
-void kcpuv__add_idle(uv_idle_t *idle) {
+void Loop::KcpuvAddIdle_(uv_idle_t *idle) {
   //
   uv_idle_init(kcpuv_get_loop(), idle);
 }
 
-void kcpuv__add_timer(uv_timer_t *timer) {
+void Loop::KcpuvAddTimer_(uv_timer_t *timer) {
   uv_timer_init(kcpuv_get_loop(), timer);
 }
 
 // Start uv kcpuv_loop and updating kcp.
-void kcpuv_start_loop(uv_timer_cb cb) {
+void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
   init_loop();
   // inited before
 
-  timer = malloc(sizeof(uv_timer_t));
+  timer = new uv_timer_t;
   timer->data = NULL;
   uv_timer_init(kcpuv_get_loop(), timer);
   uv_timer_start(timer, cb, 0, KCPUV_TIMER_INTERVAL);
@@ -59,24 +72,15 @@ void kcpuv_start_loop(uv_timer_cb cb) {
   }
 }
 
-// Force closing all handles
-static void closing_walk(uv_handle_t *handle, void *arg) {
-  if (!uv_is_closing(handle)) {
-    uv_close(handle, NULL);
-  }
-}
-
-void kcpuv__loop_close_handles() {
+void Loop::KcpuvLoopCloseHandles_() {
   uv_walk(kcpuv_get_loop(), closing_walk, NULL);
 }
 
-static void check_handles(uv_handle_t *handle, void *arg) {
-  fprintf(stderr, "handle_type: %d\n", handle->type);
+void Loop::KcpuvCheckHandles_() {
+  uv_walk(kcpuv_get_loop(), check_handles, NULL);
 }
 
-void kcpuv__check_handles() { uv_walk(kcpuv_get_loop(), check_handles, NULL); }
-
-int kcpuv_stop_loop() {
+int Loop::KcpuvStopLoop() {
   if (timer != NULL) {
     int rval = uv_timer_stop(timer);
 
@@ -92,7 +96,7 @@ int kcpuv_stop_loop() {
   }
 
   if (!use_default_loop && kcpuv_get_loop() != NULL) {
-    kcpuv__loop_close_handles();
+    KcpuvLoopCloseHandles_();
     // uv_stop(kcpuv_get_loop());
 
     // uv_walk(kcpuv_get_loop(), closing_walk, NULL);
@@ -111,7 +115,7 @@ int kcpuv_stop_loop() {
   return 0;
 }
 
-void kcpuv__destroy_loop() {
+void Loop::KcpuvDestroyLoop_() {
   if (!use_default_loop && kcpuv_loop != NULL) {
     int rval = uv_loop_close(kcpuv_get_loop());
 
@@ -123,3 +127,4 @@ void kcpuv__destroy_loop() {
     kcpuv_loop = NULL;
   }
 }
+} // namespace kcpuv

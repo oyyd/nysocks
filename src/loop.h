@@ -1,34 +1,35 @@
 #ifndef KCPUV_LOOP_H
 #define KCPUV_LOOP_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "uv.h"
 
-uv_loop_t *kcpuv_get_loop();
+namespace kcpuv {
 
-void kcpuv__next_tick(uv_timer_t *timer, uv_timer_cb cb);
+class Loop {
+public:
+  Loop(){};
+  ~Loop(){};
 
-void kcpuv_use_default_loop(int value);
+  static uv_loop_t *kcpuv_get_loop();
 
-void kcpuv__add_idle(uv_idle_t *idle);
+  static void KcpuvNextTick_(uv_timer_t *timer, uv_timer_cb cb);
 
-void kcpuv__add_timer(uv_timer_t *timer);
+  static void KcpuvUseDefaultLoop(int value);
 
-void kcpuv_start_loop(uv_timer_cb cb);
+  static void KcpuvAddIdle_(uv_idle_t *idle);
 
-void kcpuv__loop_close_handles();
+  static void KcpuvAddTimer_(uv_timer_t *timer);
 
-int kcpuv_stop_loop();
+  static void KcpuvStartLoop_(uv_timer_cb cb);
 
-void kcpuv__destroy_loop();
+  static void KcpuvLoopCloseHandles_();
 
-void kcpuv__check_handles();
+  static int KcpuvStopLoop();
 
-#ifdef __cplusplus
-}
-#endif
+  static void KcpuvDestroyLoop_();
 
-#endif
+  static void KcpuvCheckHandles_();
+};
+
+} // namespace kcpuv
+#endif // KCPUV_LOOP_H

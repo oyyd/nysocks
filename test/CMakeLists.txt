@@ -23,11 +23,10 @@ include_directories(../lib/kcp)
 include_directories(../src/)
 
 add_executable(unit_test
-  KcpuvTest.cc
-  KcpuvSessTest.cc
   UtilsTest.cc
-  ProtocolTest.cc
-  MuxTest.cc
+  KcpuvTest.cc
+  CryptorTest.cc
+  SessUDPTest.cc
 )
 target_link_libraries(unit_test
   kcpuv

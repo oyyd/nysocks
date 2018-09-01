@@ -28,3 +28,6 @@ nohup.out
 package-lock.json
 *.zip
 test/Makefile
+src_
+src__
+test_
