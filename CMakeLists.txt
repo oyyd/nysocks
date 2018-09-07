@@ -27,7 +27,6 @@ set(
   src/Loop.h
   src/SessUDP.h
   src/Cryptor.h
-  src/Protocol.h
   src/KcpuvSess.h
 )
 
@@ -37,7 +36,6 @@ set(
   src/Loop.cc
   src/SessUDP.cc
   src/Cryptor.cc
-  src/Protocol.cc
   src/KcpuvSess.cc
 )
 

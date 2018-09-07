@@ -16,6 +16,22 @@ protected:
   virtual ~KcpuvSessTest(){};
 };
 
+static int loopCallbackCalled = 0;
+static void LoopCallback(uv_timer_t *timer) {
+  loopCallbackCalled = 1;
+  Loop::KcpuvStopLoop();
+}
+
+TEST_F(KcpuvSessTest, start_loop_and_exit) {
+  KcpuvSess::KcpuvInitialize();
+
+  Loop::KcpuvStartLoop_(LoopCallback);
+
+  EXPECT_EQ(loopCallbackCalled, 1);
+
+  KCPUV_TRY_STOPPING_LOOP();
+}
+
 static KcpuvSess *test1_sess = NULL;
 
 static void timer_cb(uv_timer_t *timer) {
@@ -48,50 +64,51 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
   KCPUV_TRY_STOPPING_LOOP();
 }
 
-// static KcpuvSess *test2_sender = NULL;
-// static KcpuvSess *test2_recver = NULL;
-//
-// static void test2_free(uv_timer_t *timer) {
-//   delete test2_sender;
-//   delete test2_recver;
-//
-//   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
-//   Loop::KcpuvStopLoop();
-// }
-//
-// void recver_cb(KcpuvSess *sess, const char *data, unsigned int len) {
-//   test_callback1->Call(data);
-//   delete test_callback1;
-//
-//   uv_timer_t *timer = new uv_timer_t;
-//   kcpuv__next_tick(timer, test2_free);
-// }
-//
-// TEST_F(KcpuvSessTest, transfer_one_packet) {
-//   KcpuvInitialize();
-//
-//   test_callback1 = new testing::MockFunction<void(const char *)>();
-//   test2_sender = new KcpuvSess();
-//   test2_recver = new KcpuvSess();
-//   KCPUV_INIT_ENCRYPTOR(test2_sender);
-//   KCPUV_INIT_ENCRYPTOR(test2_recver);
-//   int send_port = 12305;
-//   int receive_port = 12306;
-//   char *msg = "Hello";
-//
-//   // bind local
-//   KcpuvListen(test2_recver, receive_port, &recver_cb);
-//   KcpuvInitSend(test2_sender, "127.0.0.1", receive_port);
-//
-//   KcpuvSend(test2_sender, msg, strlen(msg));
-//
-//   EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
-//
-//   Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
-//
-//   KCPUV_TRY_STOPPING_LOOP();
-// }
-//
+static KcpuvSess *test2_sender = NULL;
+static KcpuvSess *test2_recver = NULL;
+
+static void test2_free(uv_timer_t *timer) {
+  delete test2_sender;
+  delete test2_recver;
+
+  uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
+  Loop::KcpuvStopLoop();
+}
+
+void recver_cb(KcpuvSess *sess, const char *data, unsigned int len) {
+  test_callback1->Call(data);
+  delete test_callback1;
+
+  uv_timer_t *timer = new uv_timer_t;
+  Loop::KcpuvNextTick_(timer, test2_free);
+}
+
+TEST_F(KcpuvSessTest, transfer_one_packet) {
+  KcpuvSess::KcpuvInitialize();
+
+  test_callback1 = new testing::MockFunction<void(const char *)>();
+  test2_sender = new KcpuvSess;
+  test2_recver = new KcpuvSess;
+  KCPUV_INIT_ENCRYPTOR(test2_sender);
+  KCPUV_INIT_ENCRYPTOR(test2_recver);
+  int send_port = 12305;
+  int receive_port = 12306;
+  char msg[] = "Hello";
+  char addr[] = "0.0.0.0";
+
+  // bind local
+  KcpuvSess::KcpuvListen(test2_recver, receive_port, &recver_cb);
+  KcpuvSess::KcpuvInitSend(test2_sender, addr, receive_port);
+
+  KcpuvSess::KcpuvSend(test2_sender, msg, strlen(msg));
+
+  EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
+
+  Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
+
+  KCPUV_TRY_STOPPING_LOOP();
+}
+
 // static testing::MockFunction<void(int)> *test_callback2;
 // static KcpuvSess *test3_sender = NULL;
 // static KcpuvSess *test3_recver = NULL;
@@ -109,7 +126,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 //   delete test_callback2;
 //
 //   uv_timer_t *timer = new uv_timer_t;
-//   kcpuv__next_tick(timer, test3_free);
+//   Loop::KcpuvNextTick_(timer, test3_free);
 // }
 //
 // TEST_F(KcpuvSessTest, transfer_multiple_packets) {
@@ -159,7 +176,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 //   delete test_callback22;
 //
 //   uv_timer_t *timer = new uv_timer_t;
-//   kcpuv__next_tick(timer, test4_free);
+//   Loop::KcpuvNextTick_(timer, test4_free);
 // }
 //
 // TEST_F(KcpuvSessTest, mock_implementation) {
@@ -248,7 +265,7 @@ TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
 //   delete test_callback4;
 //
 //   uv_timer_t *timer = new uv_timer_t;
-//   kcpuv__next_tick(timer, test6_free);
+//   Loop::KcpuvNextTick_(timer, test6_free);
 // }
 //
 // TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {

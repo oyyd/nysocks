@@ -1,5 +1,5 @@
-#ifndef KCPUV_PROTOCOL_H
-#define KCPUV_PROTOCOL_H
+#ifndef KCPUV_CRYPTOR_H
+#define KCPUV_CRYPTOR_H
 
 #include "kcpuv.h"
 #include "utils.h"
@@ -36,4 +36,4 @@ public:
 
 } // namespace kcpuv
 
-#endif // KCPUV_PROTOCOL_H
+#endif // KCPUV_CRYPTOR_H
