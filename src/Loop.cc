@@ -31,7 +31,7 @@ namespace kcpuv {
 void Loop::KcpuvUseDefaultLoop(int value) { use_default_loop = value; }
 
 // Get or create a loop.
-uv_loop_t *kcpuv_get_loop() {
+uv_loop_t *Loop::kcpuv_get_loop() {
   // init loop
   if (use_default_loop) {
     return uv_default_loop();
