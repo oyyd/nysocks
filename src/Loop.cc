@@ -86,7 +86,7 @@ int Loop::KcpuvStopLoop() {
     int rval = uv_timer_stop(timer);
 
     if (rval) {
-      fprintf(stderr, "%s\n", uv_strerror(rval));
+      fprintf(stderr, "close timer error: %s\n", uv_strerror(rval));
     }
 
     kcpuv__try_close_handle((uv_handle_t *)timer);
@@ -96,19 +96,6 @@ int Loop::KcpuvStopLoop() {
 
   if (!use_default_loop && kcpuv_get_loop() != NULL) {
     KcpuvLoopCloseHandles_();
-    // uv_stop(kcpuv_get_loop());
-
-    // uv_walk(kcpuv_get_loop(), closing_walk, NULL);
-    //
-    // uv_run(kcpuv_get_loop(), UV_RUN_DEFAULT);
-
-    // int rval = uv_loop_close(kcpuv_get_loop());
-    //
-    // if (rval) {
-    //   fprintf(stderr, "%s\n", uv_strerror(rval));
-    // }
-    //
-    // return rval;
   }
 
   return 0;
@@ -119,7 +106,7 @@ void Loop::KcpuvDestroyLoop_() {
     int rval = uv_loop_close(kcpuv_get_loop());
 
     if (rval) {
-      fprintf(stderr, "%s\n", uv_strerror(rval));
+      fprintf(stderr, "close loop error: %s\n", uv_strerror(rval));
     }
 
     free(kcpuv_loop);

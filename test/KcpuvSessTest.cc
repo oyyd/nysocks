@@ -22,12 +22,30 @@ static void LoopCallback(uv_timer_t *timer) {
   Loop::KcpuvStopLoop();
 }
 
+// NOTE: Libuv may failed to trigger some callbacks if we don't actually send
+// msgs.
+#define ENALBE_EMPTY_TIMER()                                                   \
+  uv_timer_t *timer = new uv_timer_t;                                          \
+  uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
+  uv_timer_start(timer, emptyTimerCb, 10, 0)
+
+#define CLOSE_EMPTY_TIMER()                                                    \
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer))
+
+static void emptyTimerCb(uv_timer_t *timer) {
+  //
+}
+
 TEST_F(KcpuvSessTest, start_loop_and_exit) {
   KcpuvSess::KcpuvInitialize();
+
+  ENALBE_EMPTY_TIMER();
 
   Loop::KcpuvStartLoop_(LoopCallback);
 
   EXPECT_EQ(loopCallbackCalled, 1);
+
+  CLOSE_EMPTY_TIMER();
 
   KCPUV_TRY_STOPPING_LOOP();
 }
@@ -238,11 +256,12 @@ TEST_F(KcpuvSessTest, on_close_cb) {
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
 
-  uv_timer_t *timer = new uv_timer_t;
+  uv_timer_t *close_timer = new uv_timer_t;
 
-  timer->data = sender;
-  Loop::KcpuvAddTimer_(timer);
-  uv_timer_start(timer, do_close_cb, 0, 0);
+  close_timer->data = sender;
+  Loop::KcpuvAddTimer_(close_timer);
+  uv_timer_start(close_timer, do_close_cb, 0, 10);
+
   Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
 
   // refector

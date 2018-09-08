@@ -190,6 +190,7 @@ static int KcpOutput(const char *msg, int len, ikcpcb *kcp, void *user) {
 
   sess->sessUDP->Send(data, len);
 
+  delete[] data;
   return 0;
 }
 
