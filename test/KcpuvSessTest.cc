@@ -95,13 +95,13 @@ TEST_F(KcpuvSessTest, transfer_one_packet) {
   char addr[] = "127.0.0.1";
 
   // bind local
-  int rval = KcpuvSess::KcpuvListen(test2_recver, receive_port, &recver_cb);
+  int rval = test2_recver->Listen(receive_port, &recver_cb);
 
   EXPECT_GE(rval, 0);
 
-  KcpuvSess::KcpuvInitSend(test2_sender, addr, receive_port);
+  test2_sender->InitSend(addr, receive_port);
 
-  KcpuvSess::KcpuvSend(test2_sender, msg, strlen(msg));
+  test2_sender->Send(msg, strlen(msg));
 
   EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
 
@@ -150,10 +150,10 @@ TEST_F(KcpuvSessTest, transfer_multiple_packets) {
   memset(msg, 65, size);
 
   // bind local
-  KcpuvSess::KcpuvListen(test3_recver, receive_port, &recver_cb2);
-  KcpuvSess::KcpuvInitSend(test3_sender, addr, receive_port);
+  test3_recver->Listen(receive_port, &recver_cb2);
+  test3_sender->InitSend(addr, receive_port);
 
-  KcpuvSess::KcpuvSend(test3_sender, msg, size);
+  test3_sender->Send(msg, size);
 
   EXPECT_CALL(*test_callback2, Call(size)).Times(1);
 
@@ -199,10 +199,10 @@ TEST_F(KcpuvSessTest, mock_implementation) {
   KCPUV_INIT_ENCRYPTOR(test4_sender);
   KCPUV_INIT_ENCRYPTOR(test4_receiver);
 
-  KcpuvSess::KcpuvListen(test4_receiver, receiver_port, &recver_cb22);
-  KcpuvSess::KcpuvInitSend(test4_sender, addr, receiver_port);
+  test4_receiver->Listen(receiver_port, &recver_cb22);
+  test4_sender->InitSend(addr, receiver_port);
 
-  KcpuvSess::KcpuvSend(test4_sender, msg, msg_len);
+  test4_sender->Send(msg, msg_len);
 
   EXPECT_CALL(*test_callback22, Call(_)).Times(1);
 
@@ -234,7 +234,7 @@ TEST_F(KcpuvSessTest, on_close_cb) {
   KcpuvSess *sender = new KcpuvSess();
   KCPUV_INIT_ENCRYPTOR(sender);
 
-  KcpuvSess::KcpuvBindClose(sender, &close_cb);
+  sender->BindClose(&close_cb);
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
 
@@ -281,16 +281,16 @@ TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
   char localaddr[] = "127.0.0.1";
 
   // bind local
-  KcpuvSess::KcpuvListen(test6_sender, send_port, NULL);
-  KcpuvSess::KcpuvListen(test6_recver, receive_port, NULL);
-  KcpuvSess::KcpuvInitSend(test6_sender, localaddr, receive_port);
-  KcpuvSess::KcpuvInitSend(test6_recver, localaddr, send_port);
+  test6_sender->Listen(send_port, NULL);
+  test6_recver->Listen(receive_port, NULL);
+  test6_sender->InitSend(localaddr, receive_port);
+  test6_recver->InitSend(localaddr, send_port);
 
-  KcpuvSess::KcpuvBindClose(test6_sender, &close_cb2);
-  KcpuvSess::KcpuvBindClose(test6_recver, &close_cb2);
+  test6_sender->BindClose(&close_cb2);
+  test6_recver->BindClose(&close_cb2);
 
   EXPECT_CALL(*test_callback4, Call()).Times(1);
-  KcpuvSess::KcpuvClose(test6_sender);
+  test6_sender->Close();
 
   Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
 
@@ -318,11 +318,11 @@ TEST_F(KcpuvSessTest, timeout) {
   int receive_port = 12306;
   char localaddr[] = "127.0.0.1";
 
-  KcpuvSess::KcpuvListen(sender, send_port, NULL);
-  KcpuvSess::KcpuvInitSend(sender, localaddr, receive_port);
+  sender->Listen(send_port, NULL);
+  sender->InitSend(localaddr, receive_port);
 
   sender->SetTimeout(100);
-  KcpuvSess::KcpuvBindClose(sender, &close_cb3);
+  sender->BindClose(&close_cb3);
 
   EXPECT_CALL(*test_callback5, Call()).Times(1);
 
@@ -333,38 +333,37 @@ TEST_F(KcpuvSessTest, timeout) {
   KCPUV_TRY_STOPPING_LOOP();
 }
 
-// static void timer_cb2(uv_timer_t *timer) {
-//   KcpuvSess* sess = static_cast<KcpuvSess *>(timer->data)
-//   delete sess;
-//   Loop::KcpuvStopLoop();
-// }
-//
-// TEST_F(KcpuvSessTest, KcpuvGetAddress) {
-//   KcpuvInitialize();
-//
-//   int bind_port = 8990;
-//   KcpuvSess *sess = new KcpuvSess();
-//   KCPUV_INIT_ENCRYPTOR(sess);
-//   KcpuvListen(sess, bind_port, NULL);
-//
-//   char *ip_addr = new char[16];
-//   int port = 0;
-//   int namelen = 0;
-//   int rval = KcpuvGetAddress(sess, ip_addr, &namelen, &port);
-//
-//   EXPECT_EQ(rval, 0);
-//   EXPECT_EQ(port, bind_port);
-//
-//   uv_timer_t *timer = new uv_timer_t;
-//   timer->data = sess;
-//   Loop::KcpuvAddTimer_(timer);
-//   uv_timer_start(timer, timer_cb2, 0, 0);
-//   Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
-//
-//   delete timer;
-//   delete[] ip_addr;
-//   // KcpuvStopListen(sess);
-//   KCPUV_TRY_STOPPING_LOOP();
-// }
+static void timer_cb2(uv_timer_t *timer) {
+  KcpuvSess *sess = static_cast<KcpuvSess *>(timer->data);
+  Loop::KcpuvStopLoop();
+}
+
+TEST_F(KcpuvSessTest, GetAddressPort) {
+  KcpuvSess::KcpuvInitialize();
+
+  int bind_port = 8990;
+  KcpuvSess *sess = new KcpuvSess;
+  KCPUV_INIT_ENCRYPTOR(sess);
+  sess->Listen(bind_port, NULL);
+
+  char *ip_addr = new char[16];
+  int port = 0;
+  int namelen = 0;
+  int rval = sess->GetAddressPort(ip_addr, &namelen, &port);
+
+  EXPECT_EQ(rval, 0);
+  EXPECT_EQ(port, bind_port);
+
+  uv_timer_t *timer = new uv_timer_t;
+  timer->data = sess;
+  Loop::KcpuvAddTimer_(timer);
+  uv_timer_start(timer, timer_cb2, 0, 0);
+  Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
+
+  delete[] ip_addr;
+  delete sess;
+
+  KCPUV_TRY_STOPPING_LOOP();
+}
 
 } // namespace kcpuv_test
