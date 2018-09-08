@@ -54,6 +54,10 @@ void free_handle_cb(uv_handle_t *handle);
 
 void kcpuv_print_protocol(const char *content, int len);
 
+void kcpuv__try_close_handle(uv_handle_t *handle);
+
+void kcpuv__print_link(kcpuv_link *head);
+
 #ifdef __cplusplus
 }
 #endif

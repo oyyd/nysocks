@@ -9,7 +9,8 @@ namespace kcpuv {
 
 class SessUDP;
 
-typedef void (*DataCb)(SessUDP *udp, const char *data, unsigned int len);
+typedef void (*DgramCb)(SessUDP *udp, const struct sockaddr *addr,
+                        const char *data, int len);
 
 // TODO: All uv methods used:
 // uv_udp_try_send
@@ -26,19 +27,24 @@ public:
   static void RecvCb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                      const struct sockaddr *addr, unsigned flags);
 
+  void SetSendAddrBySockaddr(const struct sockaddr *addr);
   void SetSendAddr(const char *addr, const int port);
   // NOTE: Send may failed.
   int Send(const char *data, int len);
-  int Bind(int port, DataCb cb);
+  int Bind(int port, DgramCb cb);
   int GetAddressPort(int *namelength, char *addr, int *port);
+  bool HasSendAddr();
 
   // user data
   void *data;
 
 private:
-  uv_udp_t handle;
+  // Operations in uv are mostly asynchronous so that we should not try to
+  // delete it synchchronously.
+  uv_udp_t *handle;
 
-  DataCb dataCb;
+  // TODO: Change the name to `dgramCb`.
+  DgramCb dataCb;
 
   struct sockaddr *sendAddr;
   struct sockaddr *recvAddr;

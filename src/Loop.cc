@@ -9,9 +9,7 @@ static uv_timer_t *timer = NULL;
 
 // Force closing all handles
 static void closing_walk(uv_handle_t *handle, void *arg) {
-  if (!uv_is_closing(handle)) {
-    uv_close(handle, NULL);
-  }
+  kcpuv__try_close_handle(handle);
 }
 
 static void check_handles(uv_handle_t *handle, void *arg) {
@@ -49,7 +47,6 @@ void Loop::KcpuvNextTick_(uv_timer_t *timer, uv_timer_cb cb) {
 }
 
 void Loop::KcpuvAddIdle_(uv_idle_t *idle) {
-  //
   uv_idle_init(kcpuv_get_loop(), idle);
 }
 
@@ -88,9 +85,7 @@ int Loop::KcpuvStopLoop() {
       fprintf(stderr, "%s\n", uv_strerror(rval));
     }
 
-    if (!uv_is_closing((uv_handle_t *)timer)) {
-      uv_close((uv_handle_t *)timer, free_handle_cb);
-    }
+    kcpuv__try_close_handle((uv_handle_t *)timer);
 
     timer = NULL;
   }

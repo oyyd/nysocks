@@ -12,11 +12,15 @@ SessUDP::SessUDP(uv_loop_t *loop) {
   sendAddr = nullptr;
   recvAddr = nullptr;
   data = nullptr;
-  handle.data = this;
-  uv_udp_init(loop, &handle);
+  handle = new uv_udp_t;
+  handle->data = this;
+  uv_udp_init(loop, handle);
 }
 
 SessUDP::~SessUDP() {
+  // TODO: We may still need to free it manualy.
+  kcpuv__try_close_handle((uv_handle_t *)handle);
+
   if (sendAddr != nullptr) {
     delete sendAddr;
   }
@@ -29,37 +33,57 @@ SessUDP::~SessUDP() {
 void SessUDP::RecvCb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                      const struct sockaddr *addr, unsigned flags) {
   SessUDP *udp = reinterpret_cast<SessUDP *>(handle->data);
-  DataCb dataCb = udp->dataCb;
+  DgramCb dataCb = udp->dataCb;
 
-  dataCb(udp, buf->base, nread);
+  dataCb(udp, addr, buf->base, nread);
+
+  delete buf->base;
+}
+
+void SessUDP::SetSendAddrBySockaddr(const struct sockaddr *addr) {
+  assert(!sendAddr);
+  sendAddr = new (struct sockaddr);
+  memcpy(sendAddr, addr, sizeof(struct sockaddr));
 }
 
 void SessUDP::SetSendAddr(const char *addr, const int port) {
-  if (!sendAddr) {
-    sendAddr = new (struct sockaddr);
-  }
+  // NOTE: Do not allow SetSendAddr twice.
+  assert(!sendAddr);
+  sendAddr = new (struct sockaddr);
 
   uv_ip4_addr(addr, port, reinterpret_cast<struct sockaddr_in *>(sendAddr));
 }
 
-int SessUDP::Bind(int port, DataCb cb) {
+int SessUDP::Bind(int port, DgramCb cb) {
   assert(cb);
+  // NOTE: Do not allow bind twice.
+  assert(!recvAddr);
+
+  int rval = 0;
+
   dataCb = cb;
 
   if (!recvAddr) {
-    recvAddr = new (struct sockaddr);
-    uv_ip4_addr("0.0.0.0", port,
+    recvAddr = new struct sockaddr;
+    uv_ip4_addr("127.0.0.1", port,
                 reinterpret_cast<struct sockaddr_in *>(recvAddr));
   }
 
-  int rval = uv_udp_bind(
-      &handle, reinterpret_cast<const struct sockaddr *>(recvAddr), port);
+  // No binding before `uv_udp_recv_start` will make uv bind at a random port.
+  if (port != 0) {
+    rval = uv_udp_bind(handle,
+                       reinterpret_cast<const struct sockaddr *>(recvAddr), 0);
 
-  uv_udp_recv_start(&handle, alloc_cb, &RecvCb);
+    if (rval < 0) {
+      return rval;
+    }
+  }
+
+  uv_udp_recv_start(handle, alloc_cb, &RecvCb);
   // NOTE: it seems setting options before uv_udp_recv_start won't work
-  uv_send_buffer_size(reinterpret_cast<uv_handle_t *>(&handle),
+  uv_send_buffer_size(reinterpret_cast<uv_handle_t *>(handle),
                       reinterpret_cast<int *>(&kcpuvUDPBufSize));
-  uv_recv_buffer_size(reinterpret_cast<uv_handle_t *>(&handle),
+  uv_recv_buffer_size(reinterpret_cast<uv_handle_t *>(handle),
                       reinterpret_cast<int *>(&kcpuvUDPBufSize));
 
   return rval;
@@ -76,7 +100,8 @@ int SessUDP::Send(const char *data, int dataLen) {
   // Transfer `data` into buf.
   uv_buf_t buf = uv_buf_init(bufData, dataLen);
 
-  rval = uv_udp_try_send(&handle, &buf, 1,
+  // TODO: Maybe handle error here.
+  rval = uv_udp_try_send(handle, &buf, 1,
                          reinterpret_cast<const struct sockaddr *>(sendAddr));
 
   delete[] bufData;
@@ -89,7 +114,7 @@ int SessUDP::GetAddressPort(int *userNameLength, char *userAddr,
   int rval;
 
   *userNameLength = sizeof(struct sockaddr);
-  rval = uv_udp_getsockname(reinterpret_cast<const uv_udp_t *>(&handle), &addr,
+  rval = uv_udp_getsockname(reinterpret_cast<const uv_udp_t *>(handle), &addr,
                             userNameLength);
   if (rval) {
     return rval;
@@ -110,5 +135,7 @@ int SessUDP::GetAddressPort(int *userNameLength, char *userAddr,
 
   return 0;
 }
+
+bool SessUDP::HasSendAddr() { return sendAddr != nullptr; }
 
 } // namespace kcpuv

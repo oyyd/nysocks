@@ -1,5 +1,6 @@
 #include "KcpuvSess.h"
 #include "utils.h"
+#include <cassert>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,6 +83,7 @@ int KcpuvSess::KcpuvDestruct() {
   // destruct all nodes
   while (ptr_next != NULL) {
     KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(ptr_next->node);
+    // TODO: Inconsistency.
     delete sess;
     ptr_next = ptr->next;
   }
@@ -93,14 +95,17 @@ int KcpuvSess::KcpuvDestruct() {
   return 0;
 }
 
-int KcpuvSess::KcpuvIsFreed(KcpuvSess *sess) {
-  return sess->state == KCPUV_STATE_FREED;
+bool KcpuvSess::AllowSend() {
+  return state != KCPUV_STATE_WAIT_PASSIVELY && state < KCPUV_STATE_FIN_ACK;
 }
 
+bool KcpuvSess::AllowInput() { return state < KCPUV_STATE_FIN_ACK; }
+
+// TODO: Allow outside to know if the operation is successful.
 // Send raw data through kcp.
-void KcpuvSess::kcpuv_raw_send(KcpuvSess *sess, const int cmd, const char *msg,
-                               unsigned long len) {
-  if (KcpuvSess::KcpuvIsFreed(sess)) {
+void KcpuvSess::KcpuvRawSend(KcpuvSess *sess, const int cmd, const char *msg,
+                             unsigned long len) {
+  if (!sess->AllowSend()) {
     if (KCPUV_DEBUG) {
       fprintf(stderr, "input with invalid state");
     }
@@ -140,7 +145,6 @@ void KcpuvSess::kcpuv_raw_send(KcpuvSess *sess, const int cmd, const char *msg,
     if (part_len != 0 && msg != NULL) {
       memcpy(plaintext + KCPUV_OVERHEAD, msg + s, part_len);
     }
-
     int rval = ikcp_send(sess->kcp, plaintext, part_len + KCPUV_OVERHEAD);
 
     if (KCPUV_DEBUG == 1 && rval < 0) {
@@ -159,7 +163,7 @@ void KcpuvSess::kcpuv_raw_send(KcpuvSess *sess, const int cmd, const char *msg,
 
 // Send app data through kcp.
 void KcpuvSess::KcpuvSend(KcpuvSess *sess, const char *msg, unsigned long len) {
-  kcpuv_raw_send(sess, KCPUV_CMD_PUSH, msg, len);
+  KcpuvRawSend(sess, KCPUV_CMD_PUSH, msg, len);
 }
 
 // Func to output data for kcp through udp.
@@ -168,18 +172,12 @@ void KcpuvSess::KcpuvSend(KcpuvSess *sess, const char *msg, unsigned long len) {
 static int KcpOutput(const char *msg, int len, ikcpcb *kcp, void *user) {
   KcpuvSess *sess = (KcpuvSess *)user;
 
-  if (sess->sendAddr == NULL) {
-    // fprintf(stderr, "%s\n", "NULL sendAddr");
-    return -1;
-  }
-
-  if (KcpuvSess::KcpuvIsFreed(sess)) {
+  if (!sess->AllowSend()) {
     fprintf(stderr, "%s\n", "output with invalid state");
     return -1;
   }
 
   if (KCPUV_DEBUG) {
-    // kcpuv__print_sockaddr(((KcpuvSess *)user)->sendAddr);
     printf("output: %d %lld\n", len, iclock64());
     printf("content: ");
     print_as_hex(msg, len);
@@ -190,27 +188,14 @@ static int KcpOutput(const char *msg, int len, ikcpcb *kcp, void *user) {
   char *data = reinterpret_cast<char *>(
       Cryptor::KcpuvCryptorEncrypt(sess->cryptor, (unsigned char *)msg, &len));
 
-  // make buffers from string
-  uv_buf_t buf = uv_buf_init(data, len);
-
-  if (sess->state != KCPUV_STATE_FREED) {
-    if (sess->udpSend != NULL) {
-      kcpuv_udp_send udpSend = sess->udpSend;
-      udpSend(sess, &buf, 1, (const struct sockaddr *)sess->sendAddr);
-    } else {
-      uv_udp_try_send(sess->handle, &buf, 1,
-                      (const struct sockaddr *)sess->sendAddr);
-    }
-  }
-
-  delete buf.base;
+  sess->sessUDP->Send(data, len);
 
   return 0;
 }
 
 // // Send cmds.
 void KcpuvSess::KcpuvSendCMD(KcpuvSess *sess, const int cmd) {
-  kcpuv_raw_send(sess, cmd, NULL, 0);
+  KcpuvRawSend(sess, cmd, NULL, 0);
 }
 
 // Create a kcpuv session. This is a common structure for
@@ -230,18 +215,17 @@ KcpuvSess::KcpuvSess() {
   // kcp->rmt_wnd = INIT_WND_SIZE;
 
   // NOTE: uv_handle_t will be freed automatically
-  handle = new uv_udp_t;
-  uv_udp_init(Loop::kcpuv_get_loop(), handle);
+  sessUDP = new SessUDP(Loop::kcpuv_get_loop());
+  sessUDP->data = this;
 
   recvBufLength = 0;
   recvBuf = new char[KCPUV_SESS_BUFFER_SIZE];
   mux = NULL;
-  handle->data = this;
-  sendAddr = NULL;
+  // TODO:
+  // handle->data = this;
   recvAddr = NULL;
   onMsgCb = NULL;
   onCloseCb = NULL;
-  udpSend = NULL;
   state = KCPUV_STATE_CREATED;
   recvTs = now;
   sendTs = now;
@@ -259,44 +243,53 @@ KcpuvSess::KcpuvSess() {
   sess_list->len += 1;
 }
 
-// Free a kcpuv session.
-KcpuvSess::~KcpuvSess() {
-  if (KcpuvIsFreed(this)) {
-    fprintf(stderr, "%s\n", "sess have been freed");
-    return;
+bool KcpuvSess::ExitUpdateQueue() {
+  if (state == KCPUV_STATE_WAIT_FREE) {
+    return 0;
   }
 
-  state = KCPUV_STATE_FREED;
+  state = KCPUV_STATE_WAIT_FREE;
 
+  // Possible created without sess_list.
+  if (sess_list == NULL || sess_list->list == NULL) {
+    return 0;
+  }
+
+  kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, this);
+  assert(ptr != NULL);
+  delete ptr;
+  sess_list->len -= 1;
+
+  return 1;
+}
+
+// NOTE: Outside is expected to delete instances manually.
+void KcpuvSess::TriggerClose() {
   if (onCloseCb != NULL) {
     // call callback to inform outside
-    kcpuv_dgram_cb onCloseCb = onCloseCb;
-    onCloseCb(this);
+    CloseCb cb = onCloseCb;
+    cb(this);
   }
+}
 
-  if (sess_list != NULL && sess_list->list != NULL) {
-    kcpuv_link *ptr = kcpuv_link_get_pointer(sess_list->list, this);
-    if (ptr != NULL) {
-      delete ptr;
-    }
-    sess_list->len -= 1;
-  }
+// Free a kcpuv session.
+KcpuvSess::~KcpuvSess() {
+  this->ExitUpdateQueue();
 
   if (cryptor != NULL) {
     Cryptor::KcpuvCryptorClean(cryptor);
     delete cryptor;
   }
 
-  if (sendAddr != NULL) {
-    delete sendAddr;
-  }
   if (recvAddr != NULL) {
     delete recvAddr;
   }
 
-  if (!uv_is_closing((uv_handle_t *)handle)) {
-    uv_close((uv_handle_t *)handle, free_handle_cb);
-  }
+  // TODO: Make sure sessUdp will be closed correctly.
+  // if (!uv_is_closing((uv_handle_t *)handle)) {
+  //   uv_close((uv_handle_t *)handle, free_handle_cb);
+  // }
+  delete sessUDP;
 
   // // TODO: should stop listening
   // if (handle->data != NULL) {
@@ -319,39 +312,9 @@ void KcpuvSess::KcpuvSessInitCryptor(KcpuvSess *sess, const char *key,
   Cryptor::KcpuvCryptorInit(sess->cryptor, key, len, salt);
 }
 
-// int kcpuv_get_last_packet_addr(KcpuvSess *sess, char *name, int *port) {
-//   if (last_packet_addr == NULL) {
-//     return 0;
-//   }
-//
-//   if (last_packet_addr->sa_family == AF_INET) {
-//     uv_ip4_name((const struct sockaddr_in *)last_packet_addr, name,
-//                 IP4_ADDR_LENTH);
-//     *port = ntohs(((struct sockaddr_in *)last_packet_addr)->sin_port);
-//     return IP4_ADDR_LENTH;
-//   }
-//
-//   uv_ip6_name((const struct sockaddr_in6 *)last_packet_addr, name,
-//               IP6_ADDR_LENGTH);
-//   *port = ntohs(((struct sockaddr_in6 *)last_packet_addr)->sin6_port);
-//   return IP6_ADDR_LENGTH;
-// }
-
-static void init_send(KcpuvSess *sess, const struct sockaddr *addr) {
-  if (sess->sendAddr != NULL) {
-    delete sess->sendAddr;
-  }
-
-  sess->sendAddr = new struct sockaddr;
-  memcpy(sess->sendAddr, addr, sizeof(struct sockaddr));
-}
-
 // Set sending info.
 void KcpuvSess::KcpuvInitSend(KcpuvSess *sess, char *addr, int port) {
-  struct sockaddr addr_info;
-
-  uv_ip4_addr(addr, port, (struct sockaddr_in *)&addr_info);
-  init_send(sess, &addr_info);
+  sess->sessUDP->SetSendAddr(addr, port);
 }
 
 // TODO: remove this
@@ -367,31 +330,41 @@ static int input_kcp(KcpuvSess *sess, const char *msg, int length) {
   return rval;
 }
 
-// Input dgram mannualy
-void KcpuvSess::KcpuvInput(KcpuvSess *sess, ssize_t nread, const uv_buf_t *buf,
-                           const struct sockaddr *addr) {
-  if (sess->state == KCPUV_STATE_CREATED || KcpuvIsFreed(sess)) {
+// Input dgram mannualy.
+// `len` is also `nread`.
+void KcpuvSess::KcpuvInput(KcpuvSess *sess, const struct sockaddr *addr,
+                           const char *data, int len) {
+  if (!sess->AllowInput()) {
     fprintf(stderr, "%s\n", "invalid msg input");
     return;
   }
 
-  if (nread < 0) {
+  if (len < 0) {
     // TODO:
-    fprintf(stderr, "uv error: %s\n", uv_strerror(nread));
+    fprintf(stderr, "uv error: %s\n", uv_strerror(len));
   }
 
-  if (nread > 0) {
-    if (sess->state == KCPUV_STATE_WAIT_ACK) {
+  if (len > 0) {
+    // Mainly for the side that starts the conversation.
+    if (sess->state == KCPUV_STATE_CREATED) {
       sess->state = KCPUV_STATE_READY;
-      init_send(sess, addr);
-      // if (KCPUV_DEBUG) {
-      //   kcpuv__print_sockaddr(addr);
-      // }
     }
 
-    int read_len = nread;
+    // Mainlyy for the side waiting for a conversation.
+    if (sess->state == KCPUV_STATE_WAIT_PASSIVELY) {
+      sess->state = KCPUV_STATE_READY;
+
+      if (!sess->sessUDP->HasSendAddr()) {
+        sess->sessUDP->SetSendAddrBySockaddr(addr);
+        // if (KCPUV_DEBUG) {
+        //   kcpuv__print_sockaddr(addr);
+        // }
+      }
+    }
+
+    int read_len = len;
     char *read_msg = reinterpret_cast<char *>(Cryptor::KcpuvCryptorDecrypt(
-        sess->cryptor, (unsigned char *)buf->base, &read_len));
+        sess->cryptor, (unsigned char *)data, &read_len));
 
     // if (KCPUV_DEBUG) {
     //   print_as_hex(buf->base, nread);
@@ -405,53 +378,25 @@ void KcpuvSess::KcpuvInput(KcpuvSess *sess, ssize_t nread, const uv_buf_t *buf,
 
     delete[] read_msg;
   }
-
-  // release uv buf
-  delete buf->base;
 }
 
-// // Bind a proxy function for sending udp.
-// void KcpuvBindUdpSend(KcpuvSess *sess, kcpuv_udpSend udpSend) {
-//   udpSend = udpSend;
-// }
-//
-// void KcpuvBindBeforeFree(KcpuvSess *sess, kcpuv_dgram_cb onBeforeFree) {
+// void KcpuvBindBeforeFree(KcpuvSess *sess, CloseCb onBeforeFree) {
 //   onBeforeFree = onBeforeFree;
 // }
 
 // Called when uv receives a msg and pass.
-static void on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
-                    const struct sockaddr *addr, unsigned flags) {
-  KcpuvSess *sess = (KcpuvSess *)handle->data;
-  KcpuvSess::KcpuvInput(sess, nread, buf, addr);
+static void OnDgramCb(SessUDP *sessUDP, const struct sockaddr *addr,
+                      const char *data, int len) {
+  KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(sessUDP->data);
+  KcpuvSess::KcpuvInput(sess, addr, data, len);
 }
 
 // Set receiving info.
-int KcpuvSess::KcpuvListen(KcpuvSess *sess, int port, kcpuv_listen_cb cb) {
-  sess->state = KCPUV_STATE_WAIT_ACK;
+int KcpuvSess::KcpuvListen(KcpuvSess *sess, int port, DataCb cb) {
+  assert(sess->state == KCPUV_STATE_CREATED);
+  sess->state = KCPUV_STATE_WAIT_PASSIVELY;
   sess->onMsgCb = cb;
-  // get local addr
-  sess->recvAddr = new struct sockaddr;
-  uv_ip4_addr("0.0.0.0", port,
-              reinterpret_cast<struct sockaddr_in *>(sess->recvAddr));
-
-  // bind local and start recv
-  int rval =
-      uv_udp_bind(sess->handle,
-                  reinterpret_cast<const struct sockaddr *>(sess->recvAddr), 0);
-
-  if (rval != 0) {
-    fprintf(stderr, "uv error: %s\n", uv_strerror(rval));
-    return rval;
-  }
-
-  uv_udp_recv_start(sess->handle, alloc_cb, *on_recv);
-  // NOTE: it seems setting options before uv_udp_recv_start won't work
-  uv_send_buffer_size(reinterpret_cast<uv_handle_t *>(sess->handle),
-                      reinterpret_cast<int *>(&kcpuv_udp_buf_size));
-  uv_recv_buffer_size(reinterpret_cast<uv_handle_t *>(sess->handle),
-                      reinterpret_cast<int *>(&kcpuv_udp_buf_size));
-  return 0;
+  return sess->sessUDP->Bind(port, OnDgramCb);
 }
 
 // // Stop listening
@@ -481,10 +426,13 @@ int KcpuvSess::KcpuvListen(KcpuvSess *sess, int port, kcpuv_listen_cb cb) {
 //   free(name);
 //   return 0;
 // }
-//
-// // Set close msg listener
-// void KcpuvBindClose(KcpuvSess *sess, kcpuv_dgram_cb cb) { onCloseCb = cb; }
-//
+
+// Set close msg listener
+void KcpuvSess::KcpuvBindClose(KcpuvSess *sess, CloseCb cb) {
+  assert(cb);
+  sess->onCloseCb = cb;
+}
+
 // void KcpuvBindListen(KcpuvSess *sess, kcpuv_listen_cb cb) { onMsgCb = cb; }
 //
 // int KcpuvSetState(KcpuvSess *sess, int state) {
@@ -497,28 +445,28 @@ int KcpuvSess::KcpuvListen(KcpuvSess *sess, int port, kcpuv_listen_cb cb) {
 //   state = state;
 //   return 0;
 // }
-//
-// // Close
-// void KcpuvClose(KcpuvSess *sess) {
-//   if (state >= KCPUV_STATE_FIN) {
-//     return;
-//   }
-//
-//   state = KCPUV_STATE_FIN;
-//
-//   // TODO: what if a sess is not established?
-//   KcpuvSendCMD(sess, KCPUV_CMD_FIN);
-//
-//   // mark that this sess could be freed
-//   // TODO: where to put KCPUV_STATE_CLOSED ?
-//   // state = KCPUV_STATE_CLOSED;
-//
-//   // uv_close(handle, NULL);
-// }
 
-static void trigger_before_free(KcpuvSess *sess) {
+// Close
+void KcpuvSess::KcpuvClose(KcpuvSess *sess) {
+  if (sess->state >= KCPUV_STATE_FIN) {
+    return;
+  }
+
+  sess->state = KCPUV_STATE_FIN;
+
+  // TODO: what if a sess is not established?
+  KcpuvSendCMD(sess, KCPUV_CMD_FIN);
+
+  // mark that this sess could be freed
+  // TODO: where to put KCPUV_STATE_CLOSED ?
+  // state = KCPUV_STATE_CLOSED;
+
+  // uv_close(handle, NULL);
+}
+
+static void TriggerBeforeClose(KcpuvSess *sess) {
   if (sess->onBeforeFree != NULL) {
-    kcpuv_dgram_cb cb = sess->onBeforeFree;
+    CloseCb cb = sess->onBeforeFree;
     cb(sess);
   }
 }
@@ -544,19 +492,18 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
 
     KcpuvSess *sess = (KcpuvSess *)ptr->next->node;
     unsigned int timeout = sess->timeout;
-    IUINT32 recvTs = sess->recvTs;
     ikcpcb *kcp = sess->kcp;
     int state = sess->state;
 
     now = iclock();
 
-    if (enable_timeout) {
-      if (timeout && now - recvTs >= timeout) {
-        trigger_before_free(sess);
-        // TODO: Tell outside that it exits because of timeout.
-        delete sess;
-        continue;
-      }
+    if (enable_timeout && timeout && now - sess->recvTs >= timeout &&
+        sess->state < KCPUV_STATE_WAIT_FREE) {
+      sess->ExitUpdateQueue();
+      TriggerBeforeClose(sess);
+      // TODO: Tell outside that it exits because of timeout.
+      sess->TriggerClose();
+      continue;
     }
 
     IUINT32 time_to_update = ikcp_check(kcp, now);
@@ -584,15 +531,13 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
         // do nothing
       } else if (cmd == KCPUV_CMD_FIN) {
         if (state <= KCPUV_STATE_READY) {
-          state = KCPUV_STATE_FIN_ACK;
-          trigger_before_free(sess);
+          sess->state = KCPUV_STATE_FIN_ACK;
           KcpuvSendCMD(sess, KCPUV_CMD_FIN_ACK);
         }
       } else if (cmd == KCPUV_CMD_FIN_ACK) {
-        state = KCPUV_STATE_FIN_ACK;
+        sess->state = KCPUV_STATE_FIN_ACK;
       } else if (cmd == KCPUV_CMD_PUSH) {
         unsigned int content_length = size - KCPUV_OVERHEAD;
-        // fprintf(stderr, "%d %d\n", size, recvBufLength);
         // Push the packet into recvBuf.
         if (!kcpuv__should_output_buf(sess->recvBufLength, content_length)) {
           kcpuv__put_buf(sess, (const char *)(buffer + KCPUV_OVERHEAD),
@@ -600,7 +545,7 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
         } else {
           if (sess->onMsgCb != NULL) {
             // update receive data
-            kcpuv_listen_cb onMsgCb = onMsgCb;
+            DataCb onMsgCb = onMsgCb;
             onMsgCb(sess, sess->recvBuf, sess->recvBufLength);
           }
 
@@ -612,20 +557,13 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
       }
 
       size = ikcp_recv(kcp, buffer, BUFFER_LEN);
-
-      // TODO: remove
-      // if (size > 0) {
-      //   fprintf(stderr, "same_tick\n");
-      // } else if (size == 0) {
-      //   fprintf(stderr, "not_same_tick\n");
-      // }
     }
 
     // TODO: Is call next function in the same tick makes it more efficient?
     if (sess->recvBufLength > 0) {
       if (sess->onMsgCb != NULL) {
         // update receive data
-        kcpuv_listen_cb onMsgCb = sess->onMsgCb;
+        DataCb onMsgCb = sess->onMsgCb;
         onMsgCb(sess, sess->recvBuf, sess->recvBufLength);
       }
 
@@ -658,22 +596,25 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
 
       // Trigger close when all data acked
       if (packets == 0) {
-        trigger_before_free(sess);
+        sess->ExitUpdateQueue();
+        TriggerBeforeClose(sess);
         // NOTE: kcpuv free will remove ptr
-        delete sess;
-      } else {
-        ptr = ptr->next;
+        sess->TriggerClose();
+        continue;
       }
     } else {
-      if (KCPUV_SESS_HEARTBEAT_ACTIVE) {
-        if (sess->sendAddr != NULL && sess->state == KCPUV_STATE_READY &&
-            sess->sendTs + KCPUV_SESS_HEARTBEAT_INTERVAL <= now &&
-            ikcp_waitsnd(sess->kcp) == 0) {
-          KcpuvSendCMD(sess, KCPUV_CMD_NOO);
-        }
+      if (KCPUV_SESS_HEARTBEAT_ACTIVE && sess->sessUDP->HasSendAddr() &&
+          sess->state == KCPUV_STATE_READY &&
+          sess->sendTs + KCPUV_SESS_HEARTBEAT_INTERVAL <= now &&
+          ikcp_waitsnd(sess->kcp) == 0) {
+        KcpuvSendCMD(sess, KCPUV_CMD_NOO);
       }
-      ptr = ptr->next;
     }
+
+    // Might more than one sessions exit.
+    ptr = ptr->next;
   }
 }
+
+void KcpuvSess::SetTimeout(unsigned int t) { timeout = t; }
 } // namespace kcpuv
