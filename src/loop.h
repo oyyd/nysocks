@@ -29,6 +29,8 @@ public:
   static void KcpuvDestroyLoop_();
 
   static void KcpuvCheckHandles_();
+
+  static void CloseLoopHandles_(uv_loop_t *);
 };
 
 } // namespace kcpuv

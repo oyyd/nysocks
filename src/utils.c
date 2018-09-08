@@ -172,10 +172,16 @@ void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->len = suggested_size;
 }
 
-void free_handle_cb(uv_handle_t *handle) { free(handle); }
+void free_handle_cb(uv_handle_t *handle) {
+  fprintf(stderr, "%s\n", "HANDLE_FREED");
+  free(handle);
+}
 
 void kcpuv__try_close_handle(uv_handle_t *handle) {
-  if (!uv_is_closing(handle)) {
+  // TODO: This might be not correct.
+  if (!uv_loop_alive(handle->loop)) {
+    free(handle);
+  } else if (!uv_is_closing(handle)) {
     uv_close(handle, free_handle_cb);
   }
 }

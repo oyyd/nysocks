@@ -260,17 +260,13 @@ bool KcpuvSess::ExitUpdateQueue() {
   return 1;
 }
 
-static void TriggerBeforeClose(KcpuvSess *sess) {
-  if (sess->onBeforeFree != NULL) {
-    CloseCb cb = sess->onBeforeFree;
-    cb(sess);
-  }
-}
-
 // NOTE: Outside should not delete other instances in the same tick.
 // NOTE: Outside is expected to delete instances manually.
 void KcpuvSess::TriggerClose() {
-  TriggerBeforeClose(this);
+  if (onBeforeFree != NULL) {
+    CloseCb cb = onBeforeFree;
+    cb(this);
+  }
 
   if (onCloseCb != NULL) {
     // call callback to inform outside

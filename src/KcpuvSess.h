@@ -105,11 +105,15 @@ public:
 
   void SetTimeout(unsigned int);
 
-  // TODO: Make these private.
+  unsigned int recvBufLength;
+  char *recvBuf;
   ikcpcb *kcp;
   SessUDP *sessUDP;
-  int state;
   kcpuv_cryptor *cryptor;
+  CloseCb onBeforeFree;
+
+private:
+  int state;
   struct sockaddr *recvAddr;
   // User defined data.
   void *data;
@@ -120,11 +124,6 @@ public:
   unsigned int timeout;
   DataCb onMsgCb;
   CloseCb onCloseCb;
-  CloseCb onBeforeFree;
-  char *recvBuf;
-  unsigned int recvBufLength;
-
-private:
 };
 
 } // namespace kcpuv

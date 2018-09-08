@@ -32,6 +32,7 @@ public:
   // NOTE: Send may failed.
   int Send(const char *data, int len);
   int Bind(int port, DgramCb cb);
+  int Unbind();
   int GetAddressPort(int *namelength, char *addr, int *port);
   bool HasSendAddr();
 

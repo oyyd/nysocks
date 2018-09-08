@@ -69,8 +69,12 @@ void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
   }
 }
 
+void Loop::CloseLoopHandles_(uv_loop_t *loop) {
+  uv_walk(loop, closing_walk, NULL);
+}
+
 void Loop::KcpuvLoopCloseHandles_() {
-  uv_walk(kcpuv_get_loop(), closing_walk, NULL);
+  Loop::CloseLoopHandles_(kcpuv_get_loop());
 }
 
 void Loop::KcpuvCheckHandles_() {
