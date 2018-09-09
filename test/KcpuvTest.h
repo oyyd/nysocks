@@ -16,6 +16,14 @@ static uv_timer_t *timer = NULL;
 
 static void emptyTimerCb(uv_timer_t *timer) {}
 
+static void EmptyLoopCallback(uv_timer_t *timer) {
+  kcpuv::Loop::KcpuvStopLoop();
+}
+
+#ifndef RUN_EMPTY_LOOP
+#define RUN_EMPTY_LOOP() Loop::KcpuvStartLoop_(EmptyLoopCallback)
+#endif
+
 // NOTE: Libuv may failed to trigger some callbacks if we don't actually use it.
 #ifndef ENABLE_EMPTY_TIMER
 #define ENABLE_EMPTY_TIMER()                                                   \

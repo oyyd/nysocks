@@ -6,110 +6,132 @@
 #include "utils.h"
 
 namespace kcpuv {
-typedef struct KCPUV_MUX kcpuv_mux;
-typedef struct KCPUV_MUX_CONN kcpuv_mux_conn;
+// typedef struct KCPUV_MUX Mux;
+// typedef struct KCPUV_MUX_CONN Conn;
 
 // typedef struct KCPUV_MUX {
 //   void *data;
 //   unsigned int count;
 //   kcpuv_link conns;
 //   KcpuvSess *sess;
-//   mux_on_connection_cb on_connection_cb;
-//   mux_on_close_cb on_close_cb;
-// } kcpuv_mux;
+//   MuxOnConnectionCb on_connection_cb;
+//   MuxOnCloseCb on_close_cb;
+// } Mux;
 //
 // typedef struct KCPUV_MUX_CONN {
 //   void *data;
-//   kcpuv_mux *mux;
+//   Mux *mux;
 //   short send_state;
 //   short recv_state;
 //   unsigned int id;
 //   unsigned long timeout;
 //   IUINT32 ts;
-//   conn_on_msg_cb on_msg_cb;
-//   conn_on_close_cb on_close_cb;
-// } kcpuv_mux_conn;
+//   ConnOnMsgCb on_msg_cb;
+//   ConnOnCloseCb on_close_cb;
+// } Conn;
 
-typedef void (*mux_on_connection_cb)(kcpuv_mux_conn *);
-typedef void (*mux_on_close_cb)(kcpuv_mux *mux, const char *error_msg);
-typedef void (*conn_on_msg_cb)(kcpuv_mux_conn *conn, const char *buffer,
-                               int length);
-typedef void (*conn_on_close_cb)(kcpuv_mux_conn *conn, const char *error_msg);
+class Mux;
+
+class Conn;
+
+typedef void (*MuxOnConnectionCb)(Conn *);
+typedef void (*MuxOnCloseCb)(Mux *mux, const char *error_msg);
+typedef void (*ConnOnMsgCb)(Conn *conn, const char *buffer, int length);
+typedef void (*ConnOnCloseCb)(Conn *conn, const char *error_msg);
+typedef void (*ConnOnOthersideEnd)(Conn *conn);
 
 class Mux {
 public:
   Mux(KcpuvSess *s);
   ~Mux();
-  // Set mux timeout.
-  // static void kcpuv_set_mux_enable_timeout(short);
-  // TODO: Remove this.
-  // void kcpuv_mux_init(kcpuv_mux *mux, KcpuvSess *sess);
-  // TODO: Remove this.
-  // void kcpuv_mux_free(kcpuv_mux *mux);
 
-  // Prevent conns from sending data.
-  // void kcpuv_mux_stop(kcpuv_mux *mux);
-  //
-  // // Bind close event.
-  // void kcpuv_mux_bind_close(kcpuv_mux *mux, mux_on_close_cb);
-  //
-  // // Bind new connections event.
-  // void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb);
+  // Get data from raw data.
+  static unsigned int Decode(const char *buffer, int *cmd, int *length);
+
+  // Add data with protocol info.
+  static void Encode(char *buffer, unsigned int id, int cmd, int length);
+
+  // Set mux timeout.
+  static void SetEnableTimeout(short);
+
+  // Func to digest input data.
+  static void UpdateMux(uv_timer_t *timer);
+
+  Conn *CreateConn();
+
+  unsigned int GetIncreaseID();
+
+  void SetZeroID();
+
+  void AddConnToList(Conn *);
+
+  kcpuv_link *RemoveConnFromList(Conn *);
+
+  kcpuv_link *GetConns_() { return conns; };
+
+  void Input(const char *data, unsigned int len, unsigned int id, int cmd);
+
+  // Release all relative resources and trigger on close.
+  void Close();
+
+  // Bind close event.
+  void BindClose(MuxOnCloseCb);
+
+  // Bind new connections event.
+  void BindConnection(MuxOnConnectionCb cb);
+
+  KcpuvSess *sess;
+  kcpuv_link *conns;
 
 private:
   void *data;
   unsigned int count;
-  kcpuv_link conns;
-  KcpuvSess *sess;
-  mux_on_connection_cb on_connection_cb;
-  mux_on_close_cb on_close_cb;
+  MuxOnConnectionCb on_connection_cb;
+  MuxOnCloseCb on_close_cb;
 };
 
-// class Conn {
-// public:
-//   Conn();
-//   ~Conn();
-//   // TODO: remove
-//   // void kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
-//   // int kcpuv_mux_conn_free(kcpuv_mux_conn *, const char *);
-//
-//   // Tell conn to send data.
-//   // int kcpuv_mux_conn_send(kcpuv_mux_conn *, const char *content, int
-//   length,
-//   //                         int cmd);
-//   //
-//   // // Tell conn to send closing message.
-//   // void kcpuv_mux_conn_send_close(kcpuv_mux_conn *);
-//   //
-//   // // Bind on message callback.
-//   // void kcpuv_mux_conn_listen(kcpuv_mux_conn *, conn_on_msg_cb);
-//   //
-//   // // Bind on close callback.
-//   // void kcpuv_mux_conn_bind_close(kcpuv_mux_conn *, conn_on_close_cb);
-//   //
-//   // // Trigger close event and prevent conn from sending data.
-//   // void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn);
-//
-// private:
-//   void *data;
-//   kcpuv_mux *mux;
-//   short send_state;
-//   short recv_state;
-//   unsigned int id;
-//   unsigned long timeout;
-//   IUINT32 ts;
-//   conn_on_msg_cb on_msg_cb;
-//   conn_on_close_cb on_close_cb;
-// };
+class Conn {
+public:
+  Conn(Mux *);
+  ~Conn();
 
-// Get data from raw data.
-unsigned int kcpuv__mux_decode(const char *buffer, int *cmd, int *length);
+  // Tell conn to send data.
+  int Send(const char *content, int length, int cmd);
 
-// Add data with protocol info.
-void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length);
+  // Bind on message callback.
+  void BindMsg(ConnOnMsgCb);
 
-// Func to digest input data.
-void kcpuv__mux_updater(uv_timer_t *timer);
+  // The conn won't send any more data.
+  void SendStopSending();
+
+  // Event when the other side won't send any more data.
+  void BindOthersideEnd(ConnOnOthersideEnd cb);
+
+  // Tell conn to send closing message.
+  void SendClose();
+
+  // Bind on close callback.
+  void BindClose(ConnOnCloseCb);
+
+  // Trigger close event and prevent conn from sending data.
+  // Users are expected to free conn after callback.
+  void Close();
+
+  unsigned int GetId() { return id; }
+
+  void *data;
+  short send_state;
+  short recv_state;
+  ConnOnMsgCb on_msg_cb;
+  ConnOnCloseCb on_close_cb;
+  ConnOnOthersideEnd on_otherside_end;
+  IUINT32 ts;
+  unsigned long timeout;
+
+private:
+  Mux *mux;
+  unsigned int id;
+};
 } // namespace kcpuv
 
 #endif

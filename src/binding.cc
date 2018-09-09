@@ -431,7 +431,7 @@ static NAN_METHOD(Send) {
   kcpuv_send(obj->GetSess(), reinterpret_cast<char *>(buf), size);
 }
 
-static NAN_METHOD(StartLoop) { kcpuv_start_loop(kcpuv__mux_updater); }
+static NAN_METHOD(StartLoop) { kcpuv_start_loop(UpdateMux); }
 
 static NAN_METHOD(StopLoop) { kcpuv_stop_loop(); }
 
@@ -454,7 +454,7 @@ static NAN_METHOD(MuxFree) {
   delete mux_obj;
 }
 
-static void mux_binding_on_close_cb(kcpuv_mux *mux, const char *error_msg) {
+static void mux_binding_on_close_cb(Mux*mux, const char *error_msg) {
   KcpuvMuxBinding *mux_obj = static_cast<KcpuvMuxBinding *>(mux->data);
   Nan::HandleScope scope;
   Isolate *isolate = Isolate::GetCurrent();
@@ -488,7 +488,7 @@ static NAN_METHOD(MuxBindClose) {
 }
 
 static void mux_binding_on_connection_cb(kcpuv_mux_conn *conn) {
-  kcpuv_mux *mux = static_cast<kcpuv_mux *>(conn->mux);
+  Mux*mux = static_cast<Mux*>(conn->mux);
   KcpuvMuxBinding *mux_obj = static_cast<KcpuvMuxBinding *>(mux->data);
 
   Nan::HandleScope scope;
@@ -647,7 +647,7 @@ static NAN_METHOD(ConnEmitClose) {
 static NAN_METHOD(MuxStopAll) {
   KcpuvMuxBinding *mux_obj =
       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
-  kcpuv_mux *mux = &mux_obj->mux;
+  Mux*mux = &mux_obj->mux;
   // 1. stop all listeners of mux and prevent it from sending
   kcpuv_mux_stop(mux);
   // // 2. trigger close msg

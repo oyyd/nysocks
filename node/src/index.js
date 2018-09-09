@@ -92,6 +92,7 @@ function socksProtocol(config, managerClient) {
   return createSocksServer(config.SOCKS, (info, socket) => {
     const { chunk } = info
 
+    // TODO: We don't need to use 'end' event.
     // tunnel
     const conn = createConnection(managerClient)
     let socketEnd = false

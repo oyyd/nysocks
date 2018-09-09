@@ -1,5 +1,7 @@
 #include "Mux.h"
+#include "KcpuvSess.h"
 #include "KcpuvTest.h"
+#include <cassert>
 #include <iostream>
 
 namespace kcpuv_test {
@@ -8,20 +10,45 @@ using namespace std;
 
 class MuxTest : public testing::Test {
 protected:
-  MuxTest(){
-      // TODO:
-      // kcpuv_set_mux_enable_timeout(1);
-  };
+  MuxTest() { Mux::SetEnableTimeout(1); };
   virtual ~MuxTest(){};
 };
 
-TEST_F(MuxTest, Mux) {
+static testing::MockFunction<void(void)> *ConnCloseCalled;
+static testing::MockFunction<void(void)> *MuxCloseCalled;
+
+static void ConnOnClose(Conn *conn, const char *error_msg) {
+  ConnCloseCalled->Call();
+  delete ConnCloseCalled;
+}
+
+static void MuxOnClose(Mux *mux, const char *error_msg) {
+  MuxCloseCalled->Call();
+  delete MuxCloseCalled;
+}
+
+TEST_F(MuxTest, NewAndDelete) {
   KcpuvSess::KcpuvInitialize();
   ENABLE_EMPTY_TIMER();
 
+  ConnCloseCalled = new testing::MockFunction<void(void)>();
+  MuxCloseCalled = new testing::MockFunction<void(void)>();
+  EXPECT_CALL(*ConnCloseCalled, Call()).Times(1);
+
   KcpuvSess *sess = new KcpuvSess;
   Mux *mux = new Mux(sess);
+  kcpuv_link *conns = mux->GetConns_();
 
+  // Assert mux->conns.
+  assert(conns->next == NULL);
+
+  Conn *conn = mux->CreateConn();
+  conn->BindClose(ConnOnClose);
+
+  assert(conns->next != NULL);
+  assert(conns->next->next == NULL);
+
+  // TODO: Assert close event of both Mux and Conn.
   delete mux;
   delete sess;
 
@@ -29,42 +56,42 @@ TEST_F(MuxTest, Mux) {
   KCPUV_TRY_STOPPING_LOOP();
 }
 
-// TEST_F(MuxTest, mux_encode_and_decode) {
-//   char *buf = new char[10];
-//
-//   int cmd = 10;
-//   int length = 1400;
-//   unsigned int id = 65535;
-//
-//   kcpuv__mux_encode(buf, id, cmd, length);
-//
-//   EXPECT_EQ(buf[0], cmd);
-//   EXPECT_EQ(buf[1] & 0xFF, (id >> 24) & 0xFF);
-//   EXPECT_EQ(buf[2] & 0xFF, (id >> 16) & 0xFF);
-//   EXPECT_EQ(buf[3] & 0xFF, (id >> 8) & 0xFF);
-//   EXPECT_EQ((buf[4] & 0xFF), (id)&0xFF);
-//   EXPECT_EQ(buf[5] & 0xFF, (length >> 8) & 0xFF);
-//   EXPECT_EQ(buf[6] & 0xFF, (length)&0xFF);
-//
-//   int decoded_cmd;
-//   int decoded_length;
-//   unsigned int decoded_id;
-//
-//   decoded_id = kcpuv__mux_decode(buf, &decoded_cmd, &decoded_length);
-//
-//   EXPECT_EQ(id, decoded_id);
-//   EXPECT_EQ(cmd, decoded_cmd);
-//   EXPECT_EQ(length, decoded_length);
-//
-//   delete[] buf;
-// }
-//
+TEST_F(MuxTest, EncodeAndDecode) {
+  char *buf = new char[10];
+
+  int cmd = 10;
+  int length = 1400;
+  unsigned int id = 65535;
+
+  Mux::Encode(buf, id, cmd, length);
+
+  EXPECT_EQ(buf[0], cmd);
+  EXPECT_EQ(buf[1] & 0xFF, (id >> 24) & 0xFF);
+  EXPECT_EQ(buf[2] & 0xFF, (id >> 16) & 0xFF);
+  EXPECT_EQ(buf[3] & 0xFF, (id >> 8) & 0xFF);
+  EXPECT_EQ((buf[4] & 0xFF), (id)&0xFF);
+  EXPECT_EQ(buf[5] & 0xFF, (length >> 8) & 0xFF);
+  EXPECT_EQ(buf[6] & 0xFF, (length)&0xFF);
+
+  int decoded_cmd;
+  int decoded_length;
+  unsigned int decoded_id;
+
+  decoded_id = Mux::Decode(buf, &decoded_cmd, &decoded_length);
+
+  EXPECT_EQ(id, decoded_id);
+  EXPECT_EQ(cmd, decoded_cmd);
+  EXPECT_EQ(length, decoded_length);
+
+  delete[] buf;
+}
+
 // static int received_conns = 0;
 // static kcpuv_sess *sess_p1 = nullptr;
 // static kcpuv_sess *sess_p2 = nullptr;
 // // mux
-// static kcpuv_mux *mux_p1 = nullptr;
-// static kcpuv_mux *mux_p2 = nullptr;
+// static Mux*mux_p1 = nullptr;
+// static Mux*mux_p2 = nullptr;
 // static kcpuv_mux_conn *mux_p1_conn_p1 = nullptr;
 // static kcpuv_mux_conn *mux_p1_conn_p2 = nullptr;
 //
@@ -155,7 +182,7 @@ TEST_F(MuxTest, Mux) {
 //   kcpuv_mux_bind_connection(mux_p2, on_p2_conn);
 //
 //   // loop
-//   kcpuv_start_loop(kcpuv__mux_updater);
+//   kcpuv_start_loop(UpdateMux);
 //
 //   delete[] content;
 //   delete[] addr_p1;
@@ -164,7 +191,7 @@ TEST_F(MuxTest, Mux) {
 //   KCPUV_TRY_STOPPING_LOOP();
 // }
 //
-// static int get_mux_conns_count(kcpuv_mux *mux) {
+// static int get_mux_conns_count(Mux*mux) {
 //   int count = 0;
 //
 //   kcpuv_link *link = &(mux->conns);
@@ -178,12 +205,12 @@ TEST_F(MuxTest, Mux) {
 // }
 //
 // // void close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
-// //   kcpuv_mux *mux = conn->mux;
+// //   Mux*mux = conn->mux;
 // //   EXPECT_EQ(get_mux_conns_count(mux), 1);
 // // }
 //
 // static kcpuv_sess *test_close_sess_p1 = nullptr;
-// static kcpuv_mux *test_close_mux = nullptr;
+// static Mux*test_close_mux = nullptr;
 // static kcpuv_mux_conn *test_close_sess_p1_conn_p2 = nullptr;
 //
 // static void test_close_free_cb(uv_timer_t *timer) {
@@ -196,7 +223,7 @@ TEST_F(MuxTest, Mux) {
 // }
 //
 // void timeout_close_cb(kcpuv_mux_conn *conn, const char *error_msg) {
-//   kcpuv_mux *mux = conn->mux;
+//   Mux*mux = conn->mux;
 //   EXPECT_EQ(get_mux_conns_count(mux), 1);
 //
 //   uv_timer_t *timer = new uv_timer_t;
@@ -227,7 +254,7 @@ TEST_F(MuxTest, Mux) {
 //
 //   kcpuv_mux_conn_bind_close(test_close_sess_p1_conn_p2, timeout_close_cb);
 //
-//   kcpuv_start_loop(kcpuv__mux_updater);
+//   kcpuv_start_loop(UpdateMux);
 //
 //   KCPUV_TRY_STOPPING_LOOP();
 // }

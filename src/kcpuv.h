@@ -46,7 +46,14 @@ extern "C" {
 #define IP6_ADDR_LENGTH 68
 #define KCPUV_MUX_CMD_CONNECT 1
 #define KCPUV_MUX_CMD_PUSH 10
+#define KCPUV_MUX_CMD_FIN 20
 #define KCPUV_MUX_CMD_CLS 40
+#define KCPUV_CONN_SEND_NOT_CONNECTED 10
+#define KCPUV_CONN_SEND_READY 20
+#define KCPUV_CONN_SEND_STOPPED 30
+#define KCPUV_CONN_RECV_NOT_CONNECTED 10
+#define KCPUV_CONN_RECV_READY 20
+#define KCPUV_CONN_RECV_STOP 30
 // one byte for cmd,
 // four byte for id,
 // two byte for length,

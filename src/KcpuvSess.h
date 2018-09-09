@@ -112,6 +112,7 @@ public:
   kcpuv_cryptor *cryptor;
   CloseCb onBeforeFree;
   void *mux;
+  IUINT32 recvTs;
 
 private:
   int state;
@@ -119,7 +120,6 @@ private:
   // User defined data.
   void *data;
   // TODO: make mux store sess sf a clearer solution
-  IUINT32 recvTs;
   IUINT32 sendTs;
   unsigned int timeout;
   DataCb onMsgCb;
