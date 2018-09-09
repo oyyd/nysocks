@@ -39,7 +39,7 @@ static void OnRecvMsg(KcpuvSess *sess, const char *data, unsigned int len) {
 }
 
 static void OnSessClose(KcpuvSess *sess) {
-  if (sess->mux == NULL) {
+  if (sess->mux == nullptr) {
     // mux has been freed
     return;
   }
@@ -49,7 +49,7 @@ static void OnSessClose(KcpuvSess *sess) {
 }
 
 static void OnBeforeFree(KcpuvSess *sess) {
-  if (sess->mux == NULL) {
+  if (sess->mux == nullptr) {
     // mux has been freed
     return;
   }
@@ -68,14 +68,37 @@ static void int_to_bytes(unsigned char *buffer, unsigned int id) {
 Mux::Mux(KcpuvSess *s) {
   count = 0;
   sess = s;
-  conns.next = NULL;
-  on_connection_cb = NULL;
-  on_close_cb = NULL;
+  conns.next = nullptr;
+  on_connection_cb = nullptr;
+  on_close_cb = nullptr;
   sess->mux = this;
 
   sess->BindListen(OnRecvMsg);
   sess->BindClose(OnSessClose);
   sess->BindBeforeClose(OnBeforeFree);
+}
+
+Mux::~Mux() {
+  kcpuv_link *link = &this->conns;
+
+  while (link->next != nullptr) {
+    // fprintf(stderr, "%s\n", "mux_conn_free");
+    // TODO: enable
+    // kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
+    // kcpuv_mux_conn_emit_close(conn);
+    // TODO:
+    // NOTE: expect js to call the free func
+    // kcpuv_mux_conn_free(conn, nullptr);
+    // link = link->next;
+  }
+
+  // TODO: enable
+  // kcpuv_mux_emit_close(this);
+
+  this->sess->mux = nullptr;
+  this->sess = nullptr;
+  this->on_connection_cb = nullptr;
+  this->on_close_cb = nullptr;
 }
 
 // Return sid, set cmd and length.
@@ -99,22 +122,22 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 // static void put_data_to_conn(KcpuvSess *sess, const char *data,
 //                              unsigned int len, unsigned int id, int cmd) {
 //   kcpuv_mux *mux = (kcpuv_mux *)sess->mux;
-//   kcpuv_mux_conn *conn = NULL;
+//   kcpuv_mux_conn *conn = nullptr;
 //
 //   // find conn
 //   kcpuv_link *link = mux->conns.next;
 //
-//   while (link != NULL && ((kcpuv_mux_conn *)link->node)->id != id) {
+//   while (link != nullptr && ((kcpuv_mux_conn *)link->node)->id != id) {
 //     link = link->next;
 //   }
 //
-//   if (link != NULL) {
+//   if (link != nullptr) {
 //     conn = (kcpuv_mux_conn *)link->node;
 //   }
 //
 //   if (cmd == KCPUV_MUX_CMD_CONNECT) {
 //     // when the conn is connected
-//     if (conn != NULL) {
+//     if (conn != nullptr) {
 //       if (conn->recv_state != 0) {
 //         // NOTE: drop invalid conn
 //         fprintf(stderr, "%s: %d\n", "receive invalid CONNECT cmd, state",
@@ -127,7 +150,7 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 //
 //       kcpuv_mux_conn_init(mux, conn);
 //
-//       if (mux->on_connection_cb != NULL) {
+//       if (mux->on_connection_cb != nullptr) {
 //         mux_on_connection_cb cb = mux->on_connection_cb;
 //         cb(conn);
 //       }
@@ -141,7 +164,7 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 //   }
 //
 //   // NOTE: happend when the conn has been freed
-//   if (conn == NULL || conn->recv_state == 2) {
+//   if (conn == nullptr || conn->recv_state == 2) {
 //     if (KCPUV_DEBUG) {
 //       fprintf(stderr, "%s %d %d\n", "DROP", id, cmd);
 //     }
@@ -155,7 +178,7 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 //
 //   // handle cmd
 //   if (cmd == KCPUV_MUX_CMD_PUSH || cmd == KCPUV_MUX_CMD_CONNECT) {
-//     if (conn->on_msg_cb != NULL) {
+//     if (conn->on_msg_cb != nullptr) {
 //       conn_on_msg_cb cb = conn->on_msg_cb;
 //       cb(conn, data, len);
 //     } else {
@@ -178,18 +201,18 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 //   conn_on_close_cb cb = conn->on_close_cb;
 //   conn->recv_state = 2;
 //
-//   if (conn->on_close_cb != NULL) {
-//     cb(conn, NULL);
+//   if (conn->on_close_cb != nullptr) {
+//     cb(conn, nullptr);
 //   } else {
-//     kcpuv_mux_conn_free(conn, NULL);
+//     kcpuv_mux_conn_free(conn, nullptr);
 //   }
 // }
 
 // static void kcpuv_mux_emit_close(kcpuv_mux *mux) {
-//   if (mux->on_close_cb != NULL) {
+//   if (mux->on_close_cb != nullptr) {
 //     mux_on_close_cb cb = (mux_on_close_cb)mux->on_close_cb;
 //     // TODO:
-//     cb(mux, NULL);
+//     cb(mux, nullptr);
 //   }
 // }
 
@@ -197,9 +220,9 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 // void kcpuv_mux_init(kcpuv_mux *mux, KcpuvSess *sess) {
 //   mux->count = 0;
 //   mux->sess = sess;
-//   mux->conns.next = NULL;
-//   mux->on_connection_cb = NULL;
-//   mux->on_close_cb = NULL;
+//   mux->conns.next = nullptr;
+//   mux->on_connection_cb = nullptr;
+//   mux->on_close_cb = nullptr;
 //   sess->mux = mux;
 //
 //   kcpuv_bind_listen(sess, OnRecvMsg);
@@ -210,33 +233,13 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 // void kcpuv_mux_stop(kcpuv_mux *mux) {
 //   kcpuv_link *link = &mux->conns;
 //
-//   while (link->next != NULL) {
+//   while (link->next != nullptr) {
 //     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
 //     conn->send_state = 2;
 //     link = link->next;
 //   }
 // }
 //
-// void kcpuv_mux_free(kcpuv_mux *mux) {
-//   kcpuv_link *link = &mux->conns;
-//
-//   while (link->next != NULL) {
-//     // fprintf(stderr, "%s\n", "mux_conn_free");
-//     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
-//     kcpuv_mux_conn_emit_close(conn);
-//     // TODO:
-//     // NOTE: expect js to call the free func
-//     // kcpuv_mux_conn_free(conn, NULL);
-//     // link = link->next;
-//   }
-//
-//   kcpuv_mux_emit_close(mux);
-//
-//   mux->sess->mux = NULL;
-//   mux->sess = NULL;
-//   mux->on_connection_cb = NULL;
-//   mux->on_close_cb = NULL;
-// }
 //
 // void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb) {
 //   mux->on_connection_cb = cb;
@@ -259,8 +262,8 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 //   conn->timeout = MUX_CONN_DEFAULT_TIMEOUT;
 //   conn->ts = iclock();
 //   conn->mux = mux;
-//   conn->on_msg_cb = NULL;
-//   conn->on_close_cb = NULL;
+//   conn->on_msg_cb = nullptr;
+//   conn->on_close_cb = nullptr;
 //   conn->recv_state = 0;
 //   conn->send_state = 0;
 //
@@ -274,11 +277,11 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 // int kcpuv_mux_conn_free(kcpuv_mux_conn *conn, const char *error_msg) {
 //   kcpuv_link *ptr = kcpuv_link_get_pointer(&(conn->mux->conns), conn);
 //
-//   if (ptr == NULL) {
+//   if (ptr == nullptr) {
 //     return -1;
 //   }
 //
-//   // if (conn->on_close_cb != NULL) {
+//   // if (conn->on_close_cb != nullptr) {
 //   //   conn_on_close_cb cb = (conn_on_close_cb *)conn->on_close_cb;
 //   //   cb(conn, error_msg);
 //   // }
@@ -368,14 +371,14 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 // }
 //
 // void kcpuv_mux_conn_send_close(kcpuv_mux_conn *conn) {
-//   kcpuv_mux_conn_send(conn, NULL, 0, KCPUV_MUX_CMD_CLS);
+//   kcpuv_mux_conn_send(conn, nullptr, 0, KCPUV_MUX_CMD_CLS);
 // }
 //
 // static void kcpuv_mux_check(kcpuv_mux *mux) {
 //   IUINT32 current = iclock();
 //   kcpuv_link *link = &mux->conns;
 //
-//   while (link->next != NULL) {
+//   while (link->next != nullptr) {
 //     kcpuv_mux_conn *conn = (kcpuv_mux_conn *)link->next->node;
 //
 //     // check conns timeout
@@ -398,18 +401,18 @@ void kcpuv__mux_encode(char *buffer, unsigned int id, int cmd, int length) {
 //
 //   // TODO: depending on kcpuv_sess_list may cause
 //   // some mux without sess to be ignored
-//   if (kcpuv_get_sess_list() == NULL) {
+//   if (kcpuv_get_sess_list() == nullptr) {
 //     return;
 //   }
 //
 //   kcpuv_link *link = kcpuv_get_sess_list()->list;
 //
-//   while (link->next != NULL) {
+//   while (link->next != nullptr) {
 //     link = link->next;
 //
 //     kcpuv_mux *mux = (kcpuv_mux *)(((KcpuvSess *)(link->node))->mux);
 //
-//     if (mux != NULL) {
+//     if (mux != nullptr) {
 //       kcpuv_mux_check(mux);
 //     }
 //   }

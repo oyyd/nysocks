@@ -38,6 +38,8 @@ typedef void (*conn_on_close_cb)(kcpuv_mux_conn *conn, const char *error_msg);
 
 class Mux {
 public:
+  Mux(KcpuvSess *s);
+  ~Mux();
   // Set mux timeout.
   // static void kcpuv_set_mux_enable_timeout(short);
   // TODO: Remove this.
@@ -54,10 +56,6 @@ public:
   // // Bind new connections event.
   // void kcpuv_mux_bind_connection(kcpuv_mux *mux, mux_on_connection_cb cb);
 
-protected:
-  Mux(KcpuvSess *s);
-  ~Mux();
-
 private:
   void *data;
   unsigned int count;
@@ -69,6 +67,8 @@ private:
 
 // class Conn {
 // public:
+//   Conn();
+//   ~Conn();
 //   // TODO: remove
 //   // void kcpuv_mux_conn_init(kcpuv_mux *, kcpuv_mux_conn *);
 //   // int kcpuv_mux_conn_free(kcpuv_mux_conn *, const char *);
@@ -89,10 +89,6 @@ private:
 //   //
 //   // // Trigger close event and prevent conn from sending data.
 //   // void kcpuv_mux_conn_emit_close(kcpuv_mux_conn *conn);
-//
-// protected:
-//   Conn();
-//   ~Conn();
 //
 // private:
 //   void *data;

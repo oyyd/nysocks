@@ -22,24 +22,10 @@ static void LoopCallback(uv_timer_t *timer) {
   Loop::KcpuvStopLoop();
 }
 
-// NOTE: Libuv may failed to trigger some callbacks if we don't actually send
-// msgs.
-#define ENALBE_EMPTY_TIMER()                                                   \
-  uv_timer_t *timer = new uv_timer_t;                                          \
-  uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
-  uv_timer_start(timer, emptyTimerCb, 10, 0)
-
-#define CLOSE_EMPTY_TIMER()                                                    \
-  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer))
-
-static void emptyTimerCb(uv_timer_t *timer) {
-  //
-}
-
 TEST_F(KcpuvSessTest, StartLoopAndExit) {
   KcpuvSess::KcpuvInitialize();
 
-  ENALBE_EMPTY_TIMER();
+  ENABLE_EMPTY_TIMER();
 
   Loop::KcpuvStartLoop_(LoopCallback);
 

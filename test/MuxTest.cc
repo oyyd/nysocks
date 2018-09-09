@@ -3,6 +3,7 @@
 #include <iostream>
 
 namespace kcpuv_test {
+using namespace kcpuv;
 using namespace std;
 
 class MuxTest : public testing::Test {
@@ -13,6 +14,20 @@ protected:
   };
   virtual ~MuxTest(){};
 };
+
+TEST_F(MuxTest, Mux) {
+  KcpuvSess::KcpuvInitialize();
+  ENABLE_EMPTY_TIMER();
+
+  KcpuvSess *sess = new KcpuvSess;
+  Mux *mux = new Mux(sess);
+
+  delete mux;
+  delete sess;
+
+  CLOSE_EMPTY_TIMER();
+  KCPUV_TRY_STOPPING_LOOP();
+}
 
 // TEST_F(MuxTest, mux_encode_and_decode) {
 //   char *buf = new char[10];
@@ -45,17 +60,17 @@ protected:
 // }
 //
 // static int received_conns = 0;
-// static kcpuv_sess *sess_p1 = NULL;
-// static kcpuv_sess *sess_p2 = NULL;
+// static kcpuv_sess *sess_p1 = nullptr;
+// static kcpuv_sess *sess_p2 = nullptr;
 // // mux
-// static kcpuv_mux *mux_p1 = NULL;
-// static kcpuv_mux *mux_p2 = NULL;
-// static kcpuv_mux_conn *mux_p1_conn_p1 = NULL;
-// static kcpuv_mux_conn *mux_p1_conn_p2 = NULL;
+// static kcpuv_mux *mux_p1 = nullptr;
+// static kcpuv_mux *mux_p2 = nullptr;
+// static kcpuv_mux_conn *mux_p1_conn_p1 = nullptr;
+// static kcpuv_mux_conn *mux_p1_conn_p2 = nullptr;
 //
 // static void free_resource(uv_timer_t *timer) {
-//   kcpuv_mux_conn_free(mux_p1_conn_p1, NULL);
-//   kcpuv_mux_conn_free(mux_p1_conn_p2, NULL);
+//   kcpuv_mux_conn_free(mux_p1_conn_p1, nullptr);
+//   kcpuv_mux_conn_free(mux_p1_conn_p2, nullptr);
 //   kcpuv_mux_free(mux_p1);
 //   kcpuv_mux_free(mux_p2);
 //   delete mux_p1;
@@ -63,8 +78,8 @@ protected:
 //   delete mux_p1_conn_p1;
 //   delete mux_p1_conn_p2;
 //
-//   kcpuv_free(sess_p1, NULL);
-//   kcpuv_free(sess_p2, NULL);
+//   kcpuv_free(sess_p1, nullptr);
+//   kcpuv_free(sess_p2, nullptr);
 //
 //   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
 //
@@ -82,7 +97,7 @@ protected:
 //     kcpuv__next_tick(timer, free_resource);
 //   }
 //
-//   kcpuv_mux_conn_free(conn, NULL);
+//   kcpuv_mux_conn_free(conn, nullptr);
 //   free(conn);
 // }
 //
@@ -104,8 +119,8 @@ protected:
 //   KCPUV_INIT_ENCRYPTOR(sess_p1);
 //   KCPUV_INIT_ENCRYPTOR(sess_p2);
 //
-//   kcpuv_listen(sess_p1, 0, NULL);
-//   kcpuv_listen(sess_p2, 0, NULL);
+//   kcpuv_listen(sess_p1, 0, nullptr);
+//   kcpuv_listen(sess_p2, 0, nullptr);
 //
 //   char *addr_p1 = new char[16];
 //   char *addr_p2 = new char[16];
@@ -154,7 +169,7 @@ protected:
 //
 //   kcpuv_link *link = &(mux->conns);
 //
-//   while (link->next != NULL) {
+//   while (link->next != nullptr) {
 //     count += 1;
 //     link = link->next;
 //   }
@@ -167,14 +182,14 @@ protected:
 // //   EXPECT_EQ(get_mux_conns_count(mux), 1);
 // // }
 //
-// static kcpuv_sess *test_close_sess_p1 = NULL;
-// static kcpuv_mux *test_close_mux = NULL;
-// static kcpuv_mux_conn *test_close_sess_p1_conn_p2 = NULL;
+// static kcpuv_sess *test_close_sess_p1 = nullptr;
+// static kcpuv_mux *test_close_mux = nullptr;
+// static kcpuv_mux_conn *test_close_sess_p1_conn_p2 = nullptr;
 //
 // static void test_close_free_cb(uv_timer_t *timer) {
-//   kcpuv_mux_conn_free(test_close_sess_p1_conn_p2, NULL);
+//   kcpuv_mux_conn_free(test_close_sess_p1_conn_p2, nullptr);
 //   kcpuv_mux_free(test_close_mux);
-//   kcpuv_free(test_close_sess_p1, NULL);
+//   kcpuv_free(test_close_sess_p1, nullptr);
 //
 //   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
 //   kcpuv_stop_loop();
@@ -208,7 +223,7 @@ protected:
 //   EXPECT_EQ(get_mux_conns_count(test_close_mux), 1);
 //
 //   // kcpuv_mux_conn_bind_close(sess_p1_conn_p1, close_cb);
-//   // kcpuv_mux_conn_free(sess_p1_conn_p1, NULL);
+//   // kcpuv_mux_conn_free(sess_p1_conn_p1, nullptr);
 //
 //   kcpuv_mux_conn_bind_close(test_close_sess_p1_conn_p2, timeout_close_cb);
 //
