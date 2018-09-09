@@ -385,9 +385,7 @@ void KcpuvSess::KcpInput(const struct sockaddr *addr, const char *data,
   }
 }
 
-// void KcpuvBindBeforeFree(KcpuvSess *sess, CloseCb onBeforeFree) {
-//   onBeforeFree = onBeforeFree;
-// }
+void KcpuvSess::BindBeforeClose(CloseCb cb) { onBeforeFree = cb; }
 
 // Called when uv receives a msg and pass.
 static void OnDgramCb(SessUDP *sessUDP, const struct sockaddr *addr,
@@ -419,8 +417,8 @@ void KcpuvSess::BindClose(CloseCb cb) {
   onCloseCb = cb;
 }
 
-// void KcpuvBindListen(KcpuvSess *sess, kcpuv_listen_cb cb) { onMsgCb = cb; }
-//
+void KcpuvSess::BindListen(DataCb cb) { onMsgCb = cb; }
+
 // int KcpuvSetState(KcpuvSess *sess, int state) {
 //   // do not allow to change state when it's KCPUV_STATE_WAIT_FREE
 //   // if (state != KCPUV_STATE_WAIT_FREE && state == KCPUV_STATE_WAIT_FREE)

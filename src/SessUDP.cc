@@ -17,9 +17,21 @@ SessUDP::SessUDP(uv_loop_t *loop) {
   uv_udp_init(loop, handle);
 }
 
+// The `handle` might be closed in two situations:
+// 1. SessUDPs freed.
+// 2. UV loop stopped and all handle closed.
+void SessUDP::CloseHandle() {
+  if (handle != nullptr) {
+    uv_udp_t *h = handle;
+    handle = nullptr;
+    h->data = nullptr;
+    // TODO: We may still need to free it manualy.
+    kcpuv__try_close_handle((uv_handle_t *)h);
+  }
+}
+
 SessUDP::~SessUDP() {
-  // TODO: We may still need to free it manualy.
-  kcpuv__try_close_handle((uv_handle_t *)handle);
+  CloseHandle();
 
   if (sendAddr != nullptr) {
     delete sendAddr;

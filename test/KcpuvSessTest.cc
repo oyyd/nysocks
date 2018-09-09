@@ -36,7 +36,7 @@ static void emptyTimerCb(uv_timer_t *timer) {
   //
 }
 
-TEST_F(KcpuvSessTest, start_loop_and_exit) {
+TEST_F(KcpuvSessTest, StartLoopAndExit) {
   KcpuvSess::KcpuvInitialize();
 
   ENALBE_EMPTY_TIMER();
@@ -57,7 +57,7 @@ static void timer_cb(uv_timer_t *timer) {
   Loop::KcpuvStopLoop();
 }
 
-TEST_F(KcpuvSessTest, push_the_sess_to_sess_list_when_created) {
+TEST_F(KcpuvSessTest, PushSessToSessList) {
   KcpuvSess::KcpuvInitialize();
 
   test1_sess = new KcpuvSess();
@@ -99,7 +99,7 @@ void recver_cb(KcpuvSess *sess, const char *data, unsigned int len) {
   Loop::KcpuvNextTick_(timer, test2_free);
 }
 
-TEST_F(KcpuvSessTest, transfer_one_packet) {
+TEST_F(KcpuvSessTest, TransferOnePacket) {
   KcpuvSess::KcpuvInitialize();
 
   test_callback1 = new testing::MockFunction<void(const char *)>();
@@ -150,7 +150,7 @@ void recver_cb2(KcpuvSess *sess, const char *data, unsigned int len) {
   Loop::KcpuvNextTick_(timer, test3_free);
 }
 
-TEST_F(KcpuvSessTest, transfer_multiple_packets) {
+TEST_F(KcpuvSessTest, TransferMultiplePackets) {
   KcpuvSess::KcpuvInitialize();
 
   test_callback2 = new testing::MockFunction<void(int)>();
@@ -201,7 +201,7 @@ void recver_cb22(KcpuvSess *sess, const char *data, unsigned int len) {
   Loop::KcpuvNextTick_(timer, test4_free);
 }
 
-TEST_F(KcpuvSessTest, mock_implementation) {
+TEST_F(KcpuvSessTest, MockImplementation) {
   KcpuvSess::KcpuvInitialize();
 
   test_callback22 = new testing::MockFunction<void(int)>();
@@ -230,31 +230,43 @@ TEST_F(KcpuvSessTest, mock_implementation) {
 }
 
 static testing::MockFunction<void(void)> *test_callback3;
+static testing::MockFunction<void(void)> *beforeCloseCallback;
+static bool closeCalled = 0;
 
 static void close_cb(KcpuvSess *sess) {
   test_callback3->Call();
+  closeCalled = 1;
 
   delete test_callback3;
 }
 
-void do_close_cb(uv_timer_t *timer) {
+static void BeforeClose(KcpuvSess *sess) {
+  EXPECT_EQ(closeCalled, 0);
+  beforeCloseCallback->Call();
+  delete beforeCloseCallback;
+}
+
+static void do_close_cb(uv_timer_t *timer) {
   KcpuvSess *sess = static_cast<KcpuvSess *>(timer->data);
   sess->TriggerClose();
 
   Loop::KcpuvStopLoop();
 }
 
-TEST_F(KcpuvSessTest, on_close_cb) {
+TEST_F(KcpuvSessTest, OnCloseCb) {
   KcpuvSess::KcpuvInitialize();
 
   test_callback3 = new testing::MockFunction<void(void)>();
+  beforeCloseCallback = new testing::MockFunction<void(void)>();
 
   KcpuvSess *sender = new KcpuvSess();
   KCPUV_INIT_ENCRYPTOR(sender);
 
   sender->BindClose(&close_cb);
+  sender->BindBeforeClose(&BeforeClose);
 
   EXPECT_CALL(*test_callback3, Call()).Times(1);
+  EXPECT_CALL(*beforeCloseCallback, Call()).Times(1);
 
   uv_timer_t *close_timer = new uv_timer_t;
 
@@ -325,7 +337,7 @@ static void close_cb3(KcpuvSess *sess) {
   Loop::KcpuvStopLoop();
 }
 
-TEST_F(KcpuvSessTest, timeout) {
+TEST_F(KcpuvSessTest, Timeout) {
   KcpuvSess::KcpuvInitialize();
 
   test_callback5 = new testing::MockFunction<void(void)>();

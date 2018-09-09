@@ -26,7 +26,7 @@ public:
 
   static void RecvCb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                      const struct sockaddr *addr, unsigned flags);
-
+  void CloseHandle();
   void SetSendAddrBySockaddr(const struct sockaddr *addr);
   void SetSendAddr(const char *addr, const int port);
   // NOTE: Send may failed.

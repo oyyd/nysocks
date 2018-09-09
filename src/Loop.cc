@@ -1,6 +1,9 @@
 #include "Loop.h"
+#include "SessUDP.h"
 #include "kcpuv.h"
 #include "utils.h"
+
+namespace kcpuv {
 
 static uv_loop_t *kcpuv_loop = NULL;
 static int use_default_loop = 0;
@@ -9,7 +12,12 @@ static uv_timer_t *timer = NULL;
 
 // Force closing all handles
 static void closing_walk(uv_handle_t *handle, void *arg) {
-  kcpuv__try_close_handle(handle);
+  if (uv_handle_get_type(handle) == UV_UDP && handle->data != nullptr) {
+    SessUDP *sessUDP = reinterpret_cast<SessUDP *>(handle->data);
+    sessUDP->CloseHandle();
+  } else {
+    kcpuv__try_close_handle(handle);
+  }
 }
 
 static void check_handles(uv_handle_t *handle, void *arg) {
@@ -22,8 +30,6 @@ static void init_loop() {
     uv_loop_init(kcpuv_loop);
   }
 }
-
-namespace kcpuv {
 
 // NOTE: Don't change this while looping.
 void Loop::KcpuvUseDefaultLoop(int value) { use_default_loop = value; }

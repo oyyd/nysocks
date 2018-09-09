@@ -28,6 +28,7 @@ set(
   src/SessUDP.h
   src/Cryptor.h
   src/KcpuvSess.h
+  src/Mux.h
 )
 
 set(
@@ -37,6 +38,7 @@ set(
   src/SessUDP.cc
   src/Cryptor.cc
   src/KcpuvSess.cc
+  src/Mux.cc
 )
 
 add_library(kcpuv ${KCPUV_SOURCES} ${KCPUV_HEADERS})

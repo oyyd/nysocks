@@ -80,12 +80,12 @@ public:
   // Trigger close callback.
   void TriggerClose();
 
-  // // Bind listener on listen.
-  // void KcpuvBindListen(KcpuvSess *, DataCb);
-  //
-  // // Bind listener on before_free.
-  // void KcpuvBindBeforeFree(KcpuvSess *sess, CloseCb onBeforeFree);
-  //
+  // Bind listener on listen.
+  void BindListen(DataCb);
+
+  // Bind listener on before_free.
+  void BindBeforeClose(CloseCb onBeforeFree);
+
   // Init global variables like sess_list.
   static void KcpuvInitialize();
 
@@ -111,6 +111,7 @@ public:
   SessUDP *sessUDP;
   kcpuv_cryptor *cryptor;
   CloseCb onBeforeFree;
+  void *mux;
 
 private:
   int state;
@@ -118,7 +119,6 @@ private:
   // User defined data.
   void *data;
   // TODO: make mux store sess sf a clearer solution
-  void *mux;
   IUINT32 recvTs;
   IUINT32 sendTs;
   unsigned int timeout;

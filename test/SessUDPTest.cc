@@ -42,11 +42,8 @@ TEST_F(SessUDPTest, DeleteSessUDPTest) {
 
   // NOTE: For valgrind, make uv loop exit automatically.
   uv_run(loop, UV_RUN_DEFAULT);
-  fprintf(stderr, "alive: %d\n", uv_loop_alive(loop));
   Loop::CloseLoopHandles_(loop);
   int rval = uv_loop_close(loop);
-
-  fprintf(stderr, "rval: %d\n", rval);
 
   delete udp;
   delete loop;
