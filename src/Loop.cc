@@ -47,7 +47,6 @@ static void NextTickCb_(uv_timer_t *timer) {
   KcpuvCallbackInfo *info = reinterpret_cast<KcpuvCallbackInfo *>(timer->data);
   NextTickCb cb = info->cb;
   cb(info);
-  fprintf(stderr, "%s\n", "NEXT_TICK");
   kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
 }
 

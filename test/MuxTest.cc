@@ -58,11 +58,27 @@ static void ConnOnClose(Conn *conn, const char *error_msg) {
   delete conn;
 }
 
-static void MuxOnClose(Mux *mux, const char *error_msg) { delete mux; }
+static void MuxOnClose(Mux *mux, const char *error_msg) {
+  delete mux;
+  MuxCloseCalled->Call();
+  Loop::KcpuvStopUpdaterTimer();
+}
+
+// static void DeleteSess(KcpuvSess *sess) {
+//   delete sess;
+//   Loop::KcpuvStopUpdaterTimer();
+// }
+
+static void TimerCloseMux(uv_timer_t *timer) {
+  Mux *mux = reinterpret_cast<Mux *>(timer->data);
+  mux->Close();
+
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
+}
 
 TEST_F(MuxTest, NewAndDelete) {
   KcpuvSess::KcpuvInitialize();
-  ENABLE_100MS_TIMER();
+  START_TEST_TIMER(TimerCloseMux);
   int connCount = 2;
   unsigned int maxId = 65535;
 
@@ -72,8 +88,7 @@ TEST_F(MuxTest, NewAndDelete) {
   EXPECT_CALL(*ConnCloseCalled, Call()).Times(connCount);
   EXPECT_CALL(*MuxCloseCalled, Call()).Times(1);
 
-  KcpuvSess *sess = new KcpuvSess;
-  Mux *mux = new Mux(sess);
+  Mux *mux = new Mux();
   mux->count = maxId;
   kcpuv_link *conns = mux->GetConns_();
 
@@ -96,40 +111,35 @@ TEST_F(MuxTest, NewAndDelete) {
 
   assert(conns->next != NULL);
 
-  mux->Close();
-
+  timer->data = mux; // From macro.
   Loop::KcpuvStartLoop_(Mux::UpdateMux);
 
-  delete sess;
   delete ConnCloseCalled;
   delete MuxCloseCalled;
 
-  CLOSE_TEST_TIMER();
   KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 
-TEST_F(MuxTest, ClosingSessShouldMakeMuxClose) {
-  KcpuvSess::KcpuvInitialize();
-  ENABLE_EMPTY_TIMER();
-
-  MuxCloseCalled = new testing::MockFunction<void(void)>();
-  EXPECT_CALL(*MuxCloseCalled, Call()).Times(1);
-
-  KcpuvSess *sess = new KcpuvSess;
-  Mux *mux = new Mux(sess);
-
-  mux->BindClose(MuxOnClose);
-
-  sess->TriggerClose();
-
-  // Loop::KcpuvStartLoop_();
-
-  delete sess;
-  delete MuxCloseCalled;
-
-  CLOSE_TEST_TIMER();
-  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
-}
+// TEST_F(MuxTest, ClosingSessShouldMakeMuxClose) {
+//   KcpuvSess::KcpuvInitialize();
+//   ENABLE_EMPTY_TIMER();
+//
+//   MuxCloseCalled = new testing::MockFunction<void(void)>();
+//   EXPECT_CALL(*MuxCloseCalled, Call()).Times(1);
+//
+//   Mux *mux = new Mux();
+//
+//   mux->BindClose(MuxOnClose);
+//
+//
+//   // Loop::KcpuvStartLoop_();
+//
+//   delete sess;
+//   delete MuxCloseCalled;
+//
+//   CLOSE_TEST_TIMER();
+//   KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
+// }
 
 static int received_conns = 0;
 static KcpuvSess *sess_p1 = nullptr;
@@ -139,19 +149,14 @@ static Mux *mux_p1 = nullptr;
 static Mux *mux_p2 = nullptr;
 static Conn *mux_p1_conn_p1 = nullptr;
 // static Conn *mux_p1_conn_p2 = nullptr;
+static int muxClosed = 0;
 
-static void FreeSource(uv_timer_t *timer) {
-  mux_p1_conn_p1->Close();
+static void CloseMuxCounter(Mux *mux, const char *msg) {
+  delete mux;
 
-  mux_p1->Close();
-  mux_p2->Close();
-
-  delete sess_p1;
-  delete sess_p2;
-
-  uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
-
-  Loop::KcpuvStopUpdaterTimer();
+  if (++muxClosed == 2) {
+    Loop::KcpuvStopUpdaterTimer();
+  }
 }
 
 void P2OnMessage(Conn *conn, const char *buffer, int length) {
@@ -165,8 +170,6 @@ void P2OnMessage(Conn *conn, const char *buffer, int length) {
     return;
   }
 
-  uv_timer_t *timer = new uv_timer_t;
-  Loop::KcpuvNextTick_(timer, FreeSource);
   conn->Close();
 }
 
@@ -175,11 +178,17 @@ static void OnP2Conn(Conn *conn) {
   conn->BindMsg(P2OnMessage);
 }
 
+static int receiveHello = 0;
+
 static void OnDateReturn(Conn *conn, const char *buffer, int length) {
   EXPECT_EQ(length, 5);
-}
 
-static void IgnoreMsgCb(Conn *conn, const char *buffer, int length) {}
+  if (++receiveHello == 2) {
+    conn->Close();
+    mux_p1->Close();
+    mux_p2->Close();
+  }
+}
 
 TEST_F(MuxTest, Transmission) {
   KcpuvSess::KcpuvInitialize();
@@ -210,9 +219,9 @@ TEST_F(MuxTest, Transmission) {
   EXPECT_EQ(sess_p2->sessUDP->HasSendAddr(), 0);
 
   mux_p1 = new Mux(sess_p1);
-  mux_p1->BindClose(CloseMux);
+  mux_p1->BindClose(CloseMuxCounter);
   mux_p2 = new Mux(sess_p2);
-  mux_p2->BindClose(CloseMux);
+  mux_p2->BindClose(CloseMuxCounter);
 
   mux_p1_conn_p1 = mux_p1->CreateConn();
   mux_p1_conn_p1->BindClose(CloseConn);
@@ -227,7 +236,6 @@ TEST_F(MuxTest, Transmission) {
   mux_p1_conn_p1->Send(content, content_len, 0);
   // mux_p1_conn_p2->Send(content, content_len, 0);
   mux_p1_conn_p1->BindMsg(OnDateReturn);
-  // mux_p1_conn_p2->BindMsg(IgnoreMsgCb);
 
   mux_p2->BindConnection(OnP2Conn);
 
@@ -254,12 +262,11 @@ static int get_mux_conns_count(Mux *mux) {
   return count;
 }
 
-static KcpuvSess *test_close_sess_p1 = nullptr;
 static Mux *test_close_mux = nullptr;
 static Conn *test_close_sess_p1_conn_p2 = nullptr;
 
-static void test_close_free_cb(uv_timer_t *timer) {
-  uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
+static void CloseMuxAndStopTimer(Mux *mux, const char *msg) {
+  delete mux;
   Loop::KcpuvStopUpdaterTimer();
 }
 
@@ -267,18 +274,17 @@ void timeout_close_cb(Conn *conn, const char *error_msg) {
   Mux *mux = conn->mux;
   EXPECT_EQ(mux->GetConnLength(), 0);
 
-  uv_timer_t *timer = new uv_timer_t;
-  Loop::KcpuvNextTick_(timer, test_close_free_cb);
+  delete conn;
+  mux->Close();
 }
 
-TEST_F(MuxTest, Close) {
+TEST_F(MuxTest, ConnTimeout) {
   KcpuvSess::KcpuvInitialize();
 
-  test_close_sess_p1 = new KcpuvSess;
-  KCPUV_INIT_ENCRYPTOR(test_close_sess_p1);
+  test_close_mux = new Mux();
+  KCPUV_INIT_ENCRYPTOR(test_close_mux->sess);
 
-  test_close_mux = new Mux(test_close_sess_p1);
-  test_close_mux->BindClose(CloseMux);
+  test_close_mux->BindClose(CloseMuxAndStopTimer);
 
   // Conn sess_p1_conn_p1;
   test_close_sess_p1_conn_p2 = test_close_mux->CreateConn();
@@ -291,10 +297,8 @@ TEST_F(MuxTest, Close) {
 
   Loop::KcpuvStartLoop_(Mux::UpdateMux);
 
-  test_close_mux->Close();
-  delete test_close_sess_p1_conn_p2;
-  delete test_close_sess_p1;
-
+  // TODO:
+  // test_close_mux->Close();
   KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 

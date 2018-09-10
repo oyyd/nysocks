@@ -20,13 +20,19 @@ static void EmptyLoopCallback(uv_timer_t *timer) {
   kcpuv::Loop::KcpuvStopUpdaterTimer();
 }
 
+#ifndef START_TEST_TIMER
+#define START_TEST_TIMER(CbName)                                               \
+  uv_timer_t *timer = new uv_timer_t;                                          \
+  uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
+  uv_timer_start(timer, CbName, 100, 0)
+#endif
+
 #ifndef RUN_EMPTY_LOOP
 #define RUN_EMPTY_LOOP() Loop::KcpuvStartLoop_(EmptyLoopCallback)
 #endif
 
 #ifndef ENABLE_100MS_TIMER
 #define ENABLE_100MS_TIMER()                                                   \
-  assert(timer == NULL);                                                       \
   uv_timer_t *timer = new uv_timer_t;                                          \
   uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
   uv_timer_start(timer, EmptyLoopCallback, 100, 0)
@@ -35,7 +41,6 @@ static void EmptyLoopCallback(uv_timer_t *timer) {
 // NOTE: Libuv may failed to trigger some callbacks if we don't actually use it.
 #ifndef ENABLE_EMPTY_TIMER
 #define ENABLE_EMPTY_TIMER()                                                   \
-  assert(timer == NULL);                                                       \
   uv_timer_t *timer = new uv_timer_t;                                          \
   uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
   uv_timer_start(timer, emptyTimerCb, 10, 0)

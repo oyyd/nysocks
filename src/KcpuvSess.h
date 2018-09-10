@@ -114,6 +114,8 @@ public:
 
   bool GetPassive() { return passive; }
 
+  void Close_();
+
   unsigned int recvBufLength;
   char *recvBuf;
   ikcpcb *kcp;

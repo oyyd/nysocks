@@ -6,32 +6,8 @@
 #include "utils.h"
 
 namespace kcpuv {
-// typedef struct KCPUV_MUX Mux;
-// typedef struct KCPUV_MUX_CONN Conn;
-
-// typedef struct KCPUV_MUX {
-//   void *data;
-//   unsigned int count;
-//   kcpuv_link conns;
-//   KcpuvSess *sess;
-//   MuxOnConnectionCb on_connection_cb;
-//   MuxOnCloseCb on_close_cb;
-// } Mux;
-//
-// typedef struct KCPUV_MUX_CONN {
-//   void *data;
-//   Mux *mux;
-//   short send_state;
-//   short recv_state;
-//   unsigned int id;
-//   unsigned long timeout;
-//   IUINT32 ts;
-//   ConnOnMsgCb on_msg_cb;
-//   ConnOnCloseCb on_close_cb;
-// } Conn;
 
 class Mux;
-
 class Conn;
 
 typedef void (*MuxOnConnectionCb)(Conn *);
@@ -42,7 +18,7 @@ typedef void (*ConnOnOthersideEnd)(Conn *conn);
 
 class Mux {
 public:
-  Mux(KcpuvSess *s);
+  Mux(KcpuvSess *s = NULL);
   ~Mux();
 
   // Get data from raw data.
@@ -83,6 +59,8 @@ public:
   bool HasConnWithId(unsigned int id);
 
   int GetConnLength();
+
+  bool IsIdFromOtherSide(unsigned int);
 
   KcpuvSess *sess;
   kcpuv_link *conns;

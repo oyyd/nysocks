@@ -33,11 +33,17 @@ static void OnRecvMsg(KcpuvSess *sess, const char *data, unsigned int len) {
   }
 }
 
-static void OnSessClose(KcpuvSess *sess) {
+// TODO: The sess to be freed.
+static void SessCloseFirst(KcpuvSess *sess) {
   assert(sess->mux != NULL);
 
   Mux *mux = (Mux *)sess->mux;
-  mux->Close();
+
+  fprintf(stderr, "sess is closed before closing mux\n");
+  assert(0);
+
+  // delete sess;
+  // mux->Close();
 }
 
 static void int_to_bytes(unsigned char *buffer, unsigned int id) {
@@ -66,21 +72,25 @@ void Mux::Encode(char *buffer, unsigned int id, int cmd, int length) {
 }
 
 Mux::Mux(KcpuvSess *s) {
-  sess = s;
+  if (s == NULL) {
+    sess = new KcpuvSess;
+  } else {
+    sess = s;
+  }
+
   conns = kcpuv_link_create(NULL);
   on_connection_cb = NULL;
   on_close_cb = NULL;
   sess->mux = this;
 
   SetZeroID();
+
   sess->BindListen(OnRecvMsg);
-  sess->BindClose(OnSessClose);
+  sess->BindClose(SessCloseFirst);
 }
 
 Mux::~Mux() {
   delete this->conns;
-  this->sess->mux = NULL;
-  this->sess = NULL;
   this->on_connection_cb = NULL;
   this->on_close_cb = NULL;
 }
@@ -129,6 +139,10 @@ int Mux::GetConnLength() {
   return length;
 }
 
+bool Mux::IsIdFromOtherSide(unsigned int id) {
+  return id % 2 == (sess->GetPassive() ? 1 : 0);
+}
+
 void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
   Mux *mux = this;
   KcpuvSess *sess = mux->sess;
@@ -145,7 +159,7 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
     conn = (Conn *)link->node;
   }
 
-  if (cmd == KCPUV_MUX_CMD_CONNECT) {
+  if (cmd == KCPUV_MUX_CMD_CONNECT && IsIdFromOtherSide(id)) {
     // when the conn is connected
     if (conn != NULL) {
       // Possible the conn starts the conversation.
@@ -162,11 +176,15 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
       if (mux->on_connection_cb != NULL) {
         MuxOnConnectionCb cb = mux->on_connection_cb;
         cb(conn);
+      } else {
+        // TODO: Should not exit.
+        assert(0);
       }
     } else {
+      // Fin sended and ignore.
       // TODO: this may happen
-      fprintf(stderr, "receive invalid msg with id: %d, currenct: %d\n", id,
-              mux->count);
+      // fprintf(stderr, "receive invalid msg with id: %d, currenct: %d\n", id,
+      //         mux->count);
     }
   }
 
@@ -211,14 +229,28 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
 
 static void RemoveAndTriggerMuxClose(KcpuvCallbackInfo *info) {
   Mux *mux = reinterpret_cast<Mux *>(info->data);
-  delete info;
 
   assert(mux->on_close_cb);
   MuxOnCloseCb cb = mux->on_close_cb;
   cb(mux, NULL);
+
+  delete info;
+}
+
+static void DeleteSess(KcpuvSess *sess) {
+  Mux *mux = reinterpret_cast<Mux *>(sess->mux);
+
+  delete sess;
+
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->data = mux;
+  info->cb = RemoveAndTriggerMuxClose;
+
+  Loop::NextTick(info);
 }
 
 void Mux::Close() {
+  KcpuvSess *sess = this->sess;
   kcpuv_link *link = conns;
 
   while (link->next != NULL) {
@@ -230,11 +262,9 @@ void Mux::Close() {
     link = link->next;
   }
 
-  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
-  info->data = this;
-  info->cb = RemoveAndTriggerMuxClose;
-
-  Loop::NextTick(info);
+  // Close sess.
+  sess->BindClose(DeleteSess);
+  sess->Close();
 }
 
 void Mux::BindConnection(MuxOnConnectionCb cb) { on_connection_cb = cb; }
@@ -296,8 +326,15 @@ static void RemoveAndTriggerConnClose(KcpuvCallbackInfo *info) {
 
 // After closing, any io will stop immediatly.
 void Conn::Close() {
+  // TODO: may incorrectly
+  if (recv_state == KCPUV_CONN_RECV_STOP &&
+      send_state == KCPUV_CONN_SEND_STOPPED) {
+    return;
+  }
+
   // Tell the other side to close.
   bool allowSendClose = this->send_state == KCPUV_CONN_SEND_READY;
+
   if (allowSendClose) {
     SendClose();
   }
@@ -416,7 +453,6 @@ static void mux_check(Mux *mux) {
 }
 
 void Mux::UpdateMux(uv_timer_t *timer) {
-  fprintf(stderr, "%s\n", "RENDER");
   // update sessions
   KcpuvSess::KcpuvUpdateKcpSess_(timer);
 

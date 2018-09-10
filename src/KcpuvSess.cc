@@ -260,11 +260,11 @@ bool KcpuvSess::ExitUpdateQueue() {
   return 1;
 }
 
-// NOTE: Outside should not delete other instances in the same tick.
-// NOTE: Outside is expected to delete instances manually.
-void KcpuvSess::TriggerClose() {
+void KcpuvSess::Close_() {
+  this->ExitUpdateQueue();
+
   if (onBeforeFree != NULL) {
-    CloseCb cb = onBeforeFree;
+    CloseCb cb = this->onBeforeFree;
     cb(this);
   }
 
@@ -272,6 +272,23 @@ void KcpuvSess::TriggerClose() {
   // call callback to inform outside
   CloseCb cb = onCloseCb;
   cb(this);
+}
+
+static void RemoveSessInNextTick(KcpuvCallbackInfo *info) {
+  KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(info->data);
+  delete info;
+
+  sess->Close_();
+}
+
+// NOTE: Outside should not delete other instances in the same tick.
+// NOTE: Outside is expected to delete instances manually.
+void KcpuvSess::TriggerClose() {
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->data = this;
+  info->cb = RemoveSessInNextTick;
+
+  Loop::NextTick(info);
 }
 
 // Free a kcpuv session.
@@ -440,7 +457,6 @@ void KcpuvSess::Close() {
 
   // The session is not connected and will nerver receive a fin ack.
   // Let's close it directly.
-  sess->ExitUpdateQueue();
   // TODO: Tell outside that it exits because of timeout.
   sess->TriggerClose();
 
@@ -479,9 +495,9 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
 
     if (enable_timeout && timeout && now - sess->recvTs >= timeout &&
         sess->state < KCPUV_STATE_WAIT_FREE) {
-      sess->ExitUpdateQueue();
       // TODO: Tell outside that it exits because of timeout.
       sess->TriggerClose();
+      ptr = ptr->next;
       continue;
     }
 
@@ -508,7 +524,8 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
       if (cmd == KCPUV_CMD_NOO) {
         // do nothing
       } else if (cmd == KCPUV_CMD_FIN) {
-        if (state <= KCPUV_STATE_READY) {
+        // If we also want and send fin, simply fin ack.
+        if (state <= KCPUV_STATE_FIN) {
           sess->SendCMD(KCPUV_CMD_FIN_ACK);
           sess->state = KCPUV_STATE_FIN_ACK;
         }
@@ -557,27 +574,13 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
       }
     }
 
-    ptr = ptr->next;
-  }
-
-  ptr = sess_list->list;
-
-  while (ptr->next != NULL) {
-    if (!ptr->next->node) {
-      assert(0);
-    }
-
-    KcpuvSess *sess = (KcpuvSess *)ptr->next->node;
-
     if (sess->state == KCPUV_STATE_FIN_ACK) {
       int packets = ikcp_waitsnd(sess->kcp);
 
       // Trigger close when all data acked
       if (packets == 0) {
-        sess->ExitUpdateQueue();
         // NOTE: kcpuv free will remove ptr
         sess->TriggerClose();
-        continue;
       }
     } else {
       if (KCPUV_SESS_HEARTBEAT_ACTIVE && sess->sessUDP->HasSendAddr() &&
@@ -588,9 +591,10 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
       }
     }
 
-    // Might more than one sessions exit.
     ptr = ptr->next;
   }
+
+  ptr = sess_list->list;
 }
 
 void KcpuvSess::SetTimeout(unsigned int t) { timeout = t; }
