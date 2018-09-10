@@ -11,14 +11,15 @@ static int use_default_loop = 0;
 static uv_timer_t *timer = NULL;
 
 // Force closing all handles
-static void closing_walk(uv_handle_t *handle, void *arg) {
-  if (uv_handle_get_type(handle) == UV_UDP && handle->data != nullptr) {
-    SessUDP *sessUDP = reinterpret_cast<SessUDP *>(handle->data);
-    sessUDP->CloseHandle();
-  } else {
-    kcpuv__try_close_handle(handle);
-  }
-}
+// static void closing_walk(uv_handle_t *handle, void *arg) {
+//   if (uv_handle_get_type(handle) == UV_UDP && handle->data != nullptr) {
+//     SessUDP *sessUDP = reinterpret_cast<SessUDP *>(handle->data);
+//     sessUDP->CloseHandle();
+//   } else {
+//     fprintf(stderr, "%s\n", "LOOP_CLOSE_WALKING");
+//     kcpuv__try_close_handle(handle);
+//   }
+// }
 
 static void check_handles(uv_handle_t *handle, void *arg) {
   fprintf(stderr, "handle_type: %d\n", handle->type);
@@ -46,8 +47,38 @@ uv_loop_t *Loop::kcpuv_get_loop() {
   return kcpuv_loop;
 }
 
+static void NextTickCb_(uv_timer_t *timer) {
+  KcpuvCallbackInfo *info = reinterpret_cast<KcpuvCallbackInfo *>(timer->data);
+  NextTickCb cb = info->cb;
+  cb(info);
+  fprintf(stderr, "%s\n", "NEXT_TICK");
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
+}
+
+void Loop::NextTick(KcpuvCallbackInfo *info) {
+  uv_timer_t *timer = new uv_timer_t;
+
+  timer->data = info;
+
+  Loop::KcpuvNextTick_(timer, NextTickCb_);
+}
+
+void Loop::NextTick(uv_loop_t *loop, KcpuvCallbackInfo *info) {
+  uv_timer_t *timer = new uv_timer_t;
+
+  timer->data = info;
+
+  Loop::KcpuvNextTick_(loop, timer, NextTickCb_);
+}
+
 void Loop::KcpuvNextTick_(uv_timer_t *timer, uv_timer_cb cb) {
   uv_timer_init(kcpuv_get_loop(), timer);
+
+  uv_timer_start(timer, cb, 0, 0);
+}
+
+void Loop::KcpuvNextTick_(uv_loop_t *loop, uv_timer_t *timer, uv_timer_cb cb) {
+  uv_timer_init(loop, timer);
 
   uv_timer_start(timer, cb, 0, 0);
 }
@@ -75,19 +106,19 @@ void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
   }
 }
 
-void Loop::CloseLoopHandles_(uv_loop_t *loop) {
-  uv_walk(loop, closing_walk, NULL);
-}
+// void Loop::CloseLoopHandles_(uv_loop_t *loop) {
+//   uv_walk(loop, closing_walk, NULL);
+// }
 
-void Loop::KcpuvLoopCloseHandles_() {
-  Loop::CloseLoopHandles_(kcpuv_get_loop());
-}
+// void Loop::KcpuvLoopCloseHandles_() {
+//   Loop::CloseLoopHandles_(kcpuv_get_loop());
+// }
 
 void Loop::KcpuvCheckHandles_() {
   uv_walk(kcpuv_get_loop(), check_handles, NULL);
 }
 
-int Loop::KcpuvStopLoop() {
+int Loop::KcpuvStopUpdaterTimer() {
   if (timer != NULL) {
     int rval = uv_timer_stop(timer);
 
@@ -100,9 +131,9 @@ int Loop::KcpuvStopLoop() {
     timer = NULL;
   }
 
-  if (!use_default_loop && kcpuv_get_loop() != NULL) {
-    KcpuvLoopCloseHandles_();
-  }
+  // if (!use_default_loop && kcpuv_get_loop() != NULL) {
+  //   KcpuvLoopCloseHandles_();
+  // }
 
   return 0;
 }

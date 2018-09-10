@@ -14,14 +14,11 @@ protected:
 };
 
 static uv_loop_t *loop;
-static void emptyDgramCb(SessUDP *udp, const struct sockaddr *addr,
-                         const char *data, int len) {
-  Loop::CloseLoopHandles_(loop);
+static void StopLoopDgramCb(SessUDP *udp, const struct sockaddr *addr,
+                            const char *data, int len) {
+
+  delete udp;
 }
-// static void emptyTimerCb(uv_timer_t *timer) {
-//   SessUDP *udp = reinterpret_cast<SessUDP *>(timer->data);
-//   udp->Unbind();
-// }
 
 // NOTE: Libuv may failed to trigger some callbacks if we don't actually send
 // msgs.
@@ -34,7 +31,7 @@ TEST_F(SessUDPTest, DeleteSessUDPTest) {
   int namelength = 0;
   int port = 0;
 
-  udp->Bind(0, emptyDgramCb);
+  udp->Bind(0, StopLoopDgramCb);
 
   udp->GetAddressPort(&namelength, addr, &port);
   udp->SetSendAddr("127.0.0.1", port);
@@ -42,10 +39,11 @@ TEST_F(SessUDPTest, DeleteSessUDPTest) {
 
   // NOTE: For valgrind, make uv loop exit automatically.
   uv_run(loop, UV_RUN_DEFAULT);
-  Loop::CloseLoopHandles_(loop);
+
   int rval = uv_loop_close(loop);
 
-  delete udp;
+  // Deleted in callback.
+  // delete udp;
   delete loop;
 }
 
@@ -55,7 +53,7 @@ static void dgramCb(SessUDP *udp, const struct sockaddr *addr, const char *data,
   if (len > 0) {
     ASSERT_STREQ(data, "Hello");
   } else {
-    Loop::CloseLoopHandles_(loop);
+    delete udp;
   }
 }
 
@@ -90,13 +88,17 @@ TEST_F(SessUDPTest, BindAndSend) {
   udp->Send(msg, sizeof(msg));
 
   uv_run(loop, UV_RUN_DEFAULT);
-  Loop::CloseLoopHandles_(loop);
+
   rval = uv_loop_close(loop);
-
   assert(!rval);
-
-  delete udp;
+  // delete udp;
   delete loop;
+}
+
+static void StopBothUdp(SessUDP *udp, const struct sockaddr *addr,
+                        const char *data, int len) {
+  delete reinterpret_cast<SessUDP *>(udp->data);
+  delete udp;
 }
 
 TEST_F(SessUDPTest, HasSendAddr) {
@@ -105,6 +107,7 @@ TEST_F(SessUDPTest, HasSendAddr) {
 
   SessUDP *sessHasAddr = new SessUDP(loop);
   SessUDP *sessDoesntHasAddr = new SessUDP(loop);
+  sessHasAddr->data = sessDoesntHasAddr;
 
   char addr[] = "127.0.0.1";
   char data[] = "Hello";
@@ -112,7 +115,7 @@ TEST_F(SessUDPTest, HasSendAddr) {
   int namelength = 0;
   int port = 0;
 
-  sessHasAddr->Bind(0, emptyDgramCb);
+  sessHasAddr->Bind(0, StopBothUdp);
   sessHasAddr->GetAddressPort(&namelength, addrname, &port);
   sessHasAddr->SetSendAddr("127.0.0.1", port);
   sessHasAddr->Send("Hello", 5);
@@ -121,8 +124,10 @@ TEST_F(SessUDPTest, HasSendAddr) {
   EXPECT_EQ(sessDoesntHasAddr->HasSendAddr(), 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
-  Loop::CloseLoopHandles_(loop);
+
   int rval = uv_loop_close(loop);
+
+  assert(!rval);
 
   delete sessHasAddr;
   delete sessDoesntHasAddr;
@@ -160,7 +165,6 @@ TEST_F(SessUDPTest, SetSendAddrBySockaddr) {
   udp->Send(msg, sizeof(msg));
 
   uv_run(loop, UV_RUN_DEFAULT);
-  Loop::CloseLoopHandles_(loop);
   uv_loop_close(loop);
 
   delete udp;

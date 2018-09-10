@@ -174,7 +174,10 @@ void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->len = suggested_size;
 }
 
-void free_handle_cb(uv_handle_t *handle) { free(handle); }
+void free_handle_cb(uv_handle_t *handle) {
+  fprintf(stderr, "%s\n", "NEXT_FREE_FINI");
+  free(handle);
+}
 
 void kcpuv__try_close_handle(uv_handle_t *handle) {
   uv_handle_type type = uv_handle_get_type(handle);
@@ -185,10 +188,15 @@ void kcpuv__try_close_handle(uv_handle_t *handle) {
     return;
   }
 
+  fprintf(stderr, "addr: %d\n", handle);
+
   // TODO: This might be not correct.
   if (!uv_loop_alive(handle->loop)) {
+    fprintf(stderr, "%s %d\n", "FREE", uv_is_closing(handle));
     free(handle);
+    fprintf(stderr, "%s\n", "FREE_END");
   } else if (!uv_is_closing(handle)) {
+    fprintf(stderr, "%s\n", "FREE_NEXT");
     uv_close(handle, free_handle_cb);
   }
 }

@@ -57,7 +57,7 @@ public:
   // Func to digest input data.
   static void UpdateMux(uv_timer_t *timer);
 
-  Conn *CreateConn();
+  Conn *CreateConn(unsigned int id = 0);
 
   unsigned int GetIncreaseID();
 
@@ -80,19 +80,23 @@ public:
   // Bind new connections event.
   void BindConnection(MuxOnConnectionCb cb);
 
+  bool HasConnWithId(unsigned int id);
+
+  int GetConnLength();
+
   KcpuvSess *sess;
   kcpuv_link *conns;
+  unsigned int count;
+  MuxOnCloseCb on_close_cb;
 
 private:
   void *data;
-  unsigned int count;
   MuxOnConnectionCb on_connection_cb;
-  MuxOnCloseCb on_close_cb;
 };
 
 class Conn {
 public:
-  Conn(Mux *);
+  Conn(Mux *, unsigned int id = 0);
   ~Conn();
 
   // Tell conn to send data.
@@ -127,9 +131,9 @@ public:
   ConnOnOthersideEnd on_otherside_end;
   IUINT32 ts;
   unsigned long timeout;
+  Mux *mux;
 
 private:
-  Mux *mux;
   unsigned int id;
 };
 } // namespace kcpuv

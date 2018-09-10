@@ -19,7 +19,7 @@ protected:
 static int loopCallbackCalled = 0;
 static void LoopCallback(uv_timer_t *timer) {
   loopCallbackCalled = 1;
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 TEST_F(KcpuvSessTest, StartLoopAndExit) {
@@ -31,7 +31,7 @@ TEST_F(KcpuvSessTest, StartLoopAndExit) {
 
   EXPECT_EQ(loopCallbackCalled, 1);
 
-  CLOSE_EMPTY_TIMER();
+  CLOSE_TEST_TIMER();
 
   KCPUV_TRY_STOPPING_LOOP();
 }
@@ -40,7 +40,7 @@ static KcpuvSess *test1_sess = NULL;
 
 static void timer_cb(uv_timer_t *timer) {
   delete test1_sess;
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 TEST_F(KcpuvSessTest, PushSessToSessList) {
@@ -74,7 +74,7 @@ static void test2_free(uv_timer_t *timer) {
   delete test2_recver;
 
   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 void recver_cb(KcpuvSess *sess, const char *data, unsigned int len) {
@@ -90,7 +90,7 @@ TEST_F(KcpuvSessTest, TransferOnePacket) {
 
   test_callback1 = new testing::MockFunction<void(const char *)>();
   test2_sender = new KcpuvSess;
-  test2_recver = new KcpuvSess;
+  test2_recver = new KcpuvSess(1);
   KCPUV_INIT_ENCRYPTOR(test2_sender);
   KCPUV_INIT_ENCRYPTOR(test2_recver);
   int send_port = 12305;
@@ -116,6 +116,40 @@ TEST_F(KcpuvSessTest, TransferOnePacket) {
   KCPUV_TRY_STOPPING_LOOP();
 }
 
+TEST_F(KcpuvSessTest, TakeNextDgramSource) {
+  KcpuvSess::KcpuvInitialize();
+
+  test_callback1 = new testing::MockFunction<void(const char *)>();
+  test2_sender = new KcpuvSess;
+  test2_recver = new KcpuvSess;
+  KCPUV_INIT_ENCRYPTOR(test2_sender);
+  KCPUV_INIT_ENCRYPTOR(test2_recver);
+  int send_port = 12305;
+  int receive_port = 12306;
+  char msg[] = "Hello";
+  char addr[] = "127.0.0.1";
+
+  test2_recver->SetPassive(1);
+  // bind local
+  int rval = test2_recver->Listen(receive_port, &recver_cb);
+
+  EXPECT_GE(rval, 0);
+  EXPECT_EQ(test2_recver->sessUDP->HasSendAddr(), 0);
+
+  test2_sender->InitSend(addr, receive_port);
+
+  test2_sender->Send(msg, strlen(msg));
+
+  EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
+
+  Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
+
+  EXPECT_EQ(test2_recver->sessUDP->HasSendAddr(), 1);
+
+  // Instances are freed in callbacks.
+  KCPUV_TRY_STOPPING_LOOP();
+}
+
 static testing::MockFunction<void(int)> *test_callback2;
 static KcpuvSess *test3_sender = NULL;
 static KcpuvSess *test3_recver = NULL;
@@ -125,7 +159,7 @@ static void test3_free(uv_timer_t *timer) {
   delete test3_recver;
 
   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 void recver_cb2(KcpuvSess *sess, const char *data, unsigned int len) {
@@ -142,7 +176,7 @@ TEST_F(KcpuvSessTest, TransferMultiplePackets) {
   test_callback2 = new testing::MockFunction<void(int)>();
 
   test3_sender = new KcpuvSess();
-  test3_recver = new KcpuvSess();
+  test3_recver = new KcpuvSess(1);
   KCPUV_INIT_ENCRYPTOR(test3_sender);
   KCPUV_INIT_ENCRYPTOR(test3_recver);
   int send_port = 12002;
@@ -176,7 +210,7 @@ static void test4_free(uv_timer_t *timer) {
   delete test4_receiver;
 
   uv_close(reinterpret_cast<uv_handle_t *>(timer), free_handle_cb);
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 void recver_cb22(KcpuvSess *sess, const char *data, unsigned int len) {
@@ -199,7 +233,7 @@ TEST_F(KcpuvSessTest, MockImplementation) {
   int msg_len = 5;
 
   test4_sender = new KcpuvSess;
-  test4_receiver = new KcpuvSess;
+  test4_receiver = new KcpuvSess(1);
   KCPUV_INIT_ENCRYPTOR(test4_sender);
   KCPUV_INIT_ENCRYPTOR(test4_receiver);
 
@@ -236,7 +270,7 @@ static void do_close_cb(uv_timer_t *timer) {
   KcpuvSess *sess = static_cast<KcpuvSess *>(timer->data);
   sess->TriggerClose();
 
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 TEST_F(KcpuvSessTest, OnCloseCb) {
@@ -281,7 +315,7 @@ static void close_cb2(KcpuvSess *sess) {
   delete test_callback4;
   test_callback4 = NULL;
 
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
@@ -320,7 +354,7 @@ static void close_cb3(KcpuvSess *sess) {
   test_callback5->Call();
   delete test_callback5;
 
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 TEST_F(KcpuvSessTest, Timeout) {
@@ -352,7 +386,7 @@ TEST_F(KcpuvSessTest, Timeout) {
 
 static void timer_cb2(uv_timer_t *timer) {
   KcpuvSess *sess = static_cast<KcpuvSess *>(timer->data);
-  Loop::KcpuvStopLoop();
+  Loop::KcpuvStopUpdaterTimer();
 }
 
 TEST_F(KcpuvSessTest, GetAddressPort) {

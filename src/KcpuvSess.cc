@@ -95,9 +95,7 @@ int KcpuvSess::KcpuvDestruct() {
   return 0;
 }
 
-bool KcpuvSess::AllowSend() {
-  return state != KCPUV_STATE_WAIT_PASSIVELY && state < KCPUV_STATE_FIN_ACK;
-}
+bool KcpuvSess::AllowSend() { return state < KCPUV_STATE_FIN_ACK; }
 
 bool KcpuvSess::AllowInput() { return state < KCPUV_STATE_FIN_ACK; }
 
@@ -200,7 +198,7 @@ void KcpuvSess::SendCMD(const int cmd) { RawSend(cmd, NULL, 0); }
 // Create a kcpuv session. This is a common structure for
 // both of the sending and receiving.
 // A session could only have one recvAddr and sendAddr.
-KcpuvSess::KcpuvSess() {
+KcpuvSess::KcpuvSess(bool passive_) {
   IUINT32 now = iclock();
 
   // KcpuvSess *sess = malloc(sizeof(KcpuvSess));
@@ -230,6 +228,9 @@ KcpuvSess::KcpuvSess() {
   timeout = DEFAULT_TIMEOUT;
   cryptor = NULL;
   onBeforeFree = NULL;
+  passive = 0;
+  // NOTE: Take next dgram source as send addr.
+  SetPassive(passive_);
 
   // set output func for kcp
   kcp->output = KcpOutput;
@@ -356,15 +357,9 @@ void KcpuvSess::KcpInput(const struct sockaddr *addr, const char *data,
     }
 
     // Mainlyy for the side waiting for a conversation.
-    if (sess->state == KCPUV_STATE_WAIT_PASSIVELY) {
+    if (!sess->sessUDP->HasSendAddr() && sess->passive) {
       sess->state = KCPUV_STATE_READY;
-
-      if (!sess->sessUDP->HasSendAddr()) {
-        sess->sessUDP->SetSendAddrBySockaddr(addr);
-        // if (KCPUV_DEBUG) {
-        //   kcpuv__print_sockaddr(addr);
-        // }
-      }
+      sess->sessUDP->SetSendAddrBySockaddr(addr);
     }
 
     int read_len = len;
@@ -398,8 +393,9 @@ static void OnDgramCb(SessUDP *sessUDP, const struct sockaddr *addr,
 int KcpuvSess::Listen(int port, DataCb cb) {
   KcpuvSess *sess = this;
   assert(sess->state == KCPUV_STATE_CREATED);
-  sess->state = KCPUV_STATE_WAIT_PASSIVELY;
+
   sess->onMsgCb = cb;
+
   return sess->sessUDP->Bind(port, OnDgramCb);
 }
 

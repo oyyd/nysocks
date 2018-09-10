@@ -17,24 +17,39 @@ static uv_timer_t *timer = NULL;
 static void emptyTimerCb(uv_timer_t *timer) {}
 
 static void EmptyLoopCallback(uv_timer_t *timer) {
-  kcpuv::Loop::KcpuvStopLoop();
+  kcpuv::Loop::KcpuvStopUpdaterTimer();
 }
 
 #ifndef RUN_EMPTY_LOOP
 #define RUN_EMPTY_LOOP() Loop::KcpuvStartLoop_(EmptyLoopCallback)
 #endif
 
+#ifndef ENABLE_100MS_TIMER
+#define ENABLE_100MS_TIMER()                                                   \
+  assert(timer == NULL);                                                       \
+  uv_timer_t *timer = new uv_timer_t;                                          \
+  uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
+  uv_timer_start(timer, EmptyLoopCallback, 100, 0)
+#endif
+
 // NOTE: Libuv may failed to trigger some callbacks if we don't actually use it.
 #ifndef ENABLE_EMPTY_TIMER
 #define ENABLE_EMPTY_TIMER()                                                   \
+  assert(timer == NULL);                                                       \
   uv_timer_t *timer = new uv_timer_t;                                          \
   uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
   uv_timer_start(timer, emptyTimerCb, 10, 0)
 #endif
 
-#ifndef CLOSE_EMPTY_TIMER
-#define CLOSE_EMPTY_TIMER()                                                    \
-  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer))
+#ifndef CLOSE_TEST_TIMER
+#define CLOSE_TEST_TIMER()                                                     \
+  do {                                                                         \
+    if (timer) {                                                               \
+      fprintf(stderr, "%s\n", "TEST_TIMER");                                   \
+      kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));         \
+      timer = NULL;                                                            \
+    }                                                                          \
+  } while (0)
 #endif
 
 // void kcpuv_try_close_cb(uv_timer_t *);

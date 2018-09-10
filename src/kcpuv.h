@@ -20,8 +20,6 @@ extern "C" {
 #define KCPUV_SESS_HEARTBEAT_INTERVAL 10000
 #define DEFAULT_TIMEOUT 30000
 #define KCPUV_STATE_CREATED 0
-// The session is waiting for connection(defined by the first dgram).
-#define KCPUV_STATE_WAIT_PASSIVELY 20
 // Allow the session to send data.
 #define KCPUV_STATE_READY 30
 #define KCPUV_STATE_FIN 31

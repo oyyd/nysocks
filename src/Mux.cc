@@ -66,13 +66,13 @@ void Mux::Encode(char *buffer, unsigned int id, int cmd, int length) {
 }
 
 Mux::Mux(KcpuvSess *s) {
-  count = 0;
   sess = s;
   conns = kcpuv_link_create(NULL);
   on_connection_cb = NULL;
   on_close_cb = NULL;
   sess->mux = this;
 
+  SetZeroID();
   sess->BindListen(OnRecvMsg);
   sess->BindClose(OnSessClose);
 }
@@ -85,10 +85,49 @@ Mux::~Mux() {
   this->on_close_cb = NULL;
 }
 
-// TODO: Will the id collides when both sides try to use a same id?
-unsigned int Mux::GetIncreaseID() { return this->count++; }
+void Mux::SetZeroID() { this->count = sess->GetPassive() ? 2 : 1; }
 
-void Mux::SetZeroID() { this->count = 0; }
+unsigned int Mux::GetIncreaseID() {
+  unsigned int count = this->count;
+  this->count += 2;
+
+  if (count <= 65535) {
+    return count;
+  }
+
+  SetZeroID();
+  return this->count;
+}
+
+bool Mux::HasConnWithId(unsigned int id) {
+  bool has = 0;
+  kcpuv_link *cur = this->conns;
+
+  while (cur->next != NULL) {
+    Conn *conn = static_cast<Conn *>(cur->next->node);
+
+    if (conn->GetId() == id) {
+      has = 1;
+      break;
+    }
+
+    cur = cur->next;
+  }
+
+  return has;
+}
+
+int Mux::GetConnLength() {
+  int length = 0;
+  kcpuv_link *cur = this->conns;
+
+  while (cur->next != NULL) {
+    length += 1;
+    cur = cur->next;
+  }
+
+  return length;
+}
 
 void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
   Mux *mux = this;
@@ -116,15 +155,16 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
                 conn->recv_state);
         return;
       }
-    } else if (id == mux->count) {
-      // create new one
-      conn = mux->CreateConn();
+    } else if (!mux->HasConnWithId(id)) {
+      // Create a new one passively.
+      conn = mux->CreateConn(id);
 
       if (mux->on_connection_cb != NULL) {
         MuxOnConnectionCb cb = mux->on_connection_cb;
         cb(conn);
       }
     } else {
+      // TODO: this may happen
       fprintf(stderr, "receive invalid msg with id: %d, currenct: %d\n", id,
               mux->count);
     }
@@ -169,6 +209,15 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
   }
 }
 
+static void RemoveAndTriggerMuxClose(KcpuvCallbackInfo *info) {
+  Mux *mux = reinterpret_cast<Mux *>(info->data);
+  delete info;
+
+  assert(mux->on_close_cb);
+  MuxOnCloseCb cb = mux->on_close_cb;
+  cb(mux, NULL);
+}
+
 void Mux::Close() {
   kcpuv_link *link = conns;
 
@@ -176,13 +225,16 @@ void Mux::Close() {
     // Force close all conns.
     Conn *conn = (Conn *)link->next->node;
     conn->Close();
-    // NOTE: Expect js to call the free func and should close more than one conn
-    // in the callback.
+    // INVALID: Expect js to call the free func and should close more than one
+    // conn in the callback.
+    link = link->next;
   }
 
-  assert(on_close_cb);
-  MuxOnCloseCb cb = on_close_cb;
-  cb(this, NULL);
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->data = this;
+  info->cb = RemoveAndTriggerMuxClose;
+
+  Loop::NextTick(info);
 }
 
 void Mux::BindConnection(MuxOnConnectionCb cb) { on_connection_cb = cb; }
@@ -198,22 +250,18 @@ kcpuv_link *Mux::RemoveConnFromList(Conn *conn) {
   return kcpuv_link_get_pointer(this->conns, conn);
 };
 
-Conn *Mux::CreateConn() {
-  Conn *conn = new Conn(this);
+Conn *Mux::CreateConn(unsigned int id) {
+  Conn *conn = new Conn(this, id);
   return conn;
 }
 
-Conn::Conn(Mux *mux) {
+Conn::Conn(Mux *mux, unsigned int i) {
   // init conn data
   // TODO: over two bytes
   // side when connecting
-  // TODO: Need tests.
-  id = mux->GetIncreaseID();
 
-  if (id >= 65535) {
-    mux->SetZeroID();
-  }
-
+  // Use new id if not provided.
+  id = i ? i : mux->GetIncreaseID();
   timeout = MUX_CONN_DEFAULT_TIMEOUT;
   ts = iclock();
   this->mux = mux;
@@ -231,23 +279,37 @@ Conn::Conn(Mux *mux) {
 // Users have to free Conn mannually.
 Conn::~Conn() {}
 
+static void RemoveAndTriggerConnClose(KcpuvCallbackInfo *info) {
+  Conn *conn = reinterpret_cast<Conn *>(info->data);
+  delete info;
+
+  kcpuv_link *ptr = conn->mux->RemoveConnFromList(conn);
+  assert(ptr != NULL);
+  delete ptr;
+
+  ConnOnCloseCb cb = conn->on_close_cb;
+  // NOTE: Have to bind close before deleting.
+  assert(conn->on_close_cb != NULL);
+  // TODO: Do we need error msg.
+  cb(conn, NULL);
+}
+
 // After closing, any io will stop immediatly.
 void Conn::Close() {
   // Tell the other side to close.
-  SendClose();
+  bool allowSendClose = this->send_state == KCPUV_CONN_SEND_READY;
+  if (allowSendClose) {
+    SendClose();
+  }
 
   this->recv_state = KCPUV_CONN_RECV_STOP;
   this->send_state = KCPUV_CONN_SEND_STOPPED;
 
-  kcpuv_link *ptr = this->mux->RemoveConnFromList(this);
-  assert(ptr != NULL);
-  delete ptr;
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->cb = RemoveAndTriggerConnClose;
+  info->data = this;
 
-  ConnOnCloseCb cb = this->on_close_cb;
-  // NOTE: Have to bind close before deleting.
-  assert(this->on_close_cb != NULL);
-  // TODO: Do we need error msg.
-  cb(this, NULL);
+  Loop::NextTick(info);
 }
 
 void Conn::BindMsg(ConnOnMsgCb cb) { on_msg_cb = cb; }
@@ -354,11 +416,10 @@ static void mux_check(Mux *mux) {
 }
 
 void Mux::UpdateMux(uv_timer_t *timer) {
+  fprintf(stderr, "%s\n", "RENDER");
   // update sessions
   KcpuvSess::KcpuvUpdateKcpSess_(timer);
 
-  // TODO: depending on kcpuv_sess_list may cause
-  // some mux without sess to be ignored
   assert(KcpuvSess::KcpuvGetSessList() != NULL);
 
   kcpuv_link *link = KcpuvSess::KcpuvGetSessList()->list;

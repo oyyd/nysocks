@@ -1,14 +1,14 @@
 #ifndef KCPUV_SESS_H
 #define KCPUV_SESS_H
 
+#include "Cryptor.h"
 #include "Loop.h"
 #include "SessUDP.h"
 #include "ikcp.h"
 #include "kcpuv.h"
-// TODO:
-#include "Cryptor.h"
 #include "utils.h"
 #include "uv.h"
+#include <cassert>
 
 namespace kcpuv {
 
@@ -26,7 +26,7 @@ typedef struct KCPUV_SESS_LIST {
 
 class KcpuvSess {
 public:
-  KcpuvSess();
+  KcpuvSess(bool passive_ = 0);
   ~KcpuvSess();
 
   // // Get Internal session list references for updating or other operations.
@@ -105,6 +105,15 @@ public:
 
   void SetTimeout(unsigned int);
 
+  // The session is waiting for connection(defined by the first dgram).
+  void SetPassive(bool v) {
+    // Do not allow to change passive back.
+    assert(passive != 1);
+    passive = v;
+  }
+
+  bool GetPassive() { return passive; }
+
   unsigned int recvBufLength;
   char *recvBuf;
   ikcpcb *kcp;
@@ -124,6 +133,7 @@ private:
   unsigned int timeout;
   DataCb onMsgCb;
   CloseCb onCloseCb;
+  bool passive;
 };
 
 } // namespace kcpuv

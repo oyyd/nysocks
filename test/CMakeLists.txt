@@ -29,6 +29,7 @@ add_executable(unit_test
   SessUDPTest.cc
   KcpuvSessTest.cc
   MuxTest.cc
+  LoopTest.cc
 )
 target_link_libraries(unit_test
   kcpuv
