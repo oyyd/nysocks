@@ -45,7 +45,6 @@ static void EmptyLoopCallback(uv_timer_t *timer) {
 #define CLOSE_TEST_TIMER()                                                     \
   do {                                                                         \
     if (timer) {                                                               \
-      fprintf(stderr, "%s\n", "TEST_TIMER");                                   \
       kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));         \
       timer = NULL;                                                            \
     }                                                                          \
@@ -54,8 +53,8 @@ static void EmptyLoopCallback(uv_timer_t *timer) {
 
 // void kcpuv_try_close_cb(uv_timer_t *);
 
-#ifndef KCPUV_TRY_STOPPING_LOOP
-#define KCPUV_TRY_STOPPING_LOOP()                                              \
+#ifndef KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT
+#define KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT()                                 \
   Loop::KcpuvDestroyLoop_();                                                   \
   KcpuvSess::KcpuvDestruct();
 #endif

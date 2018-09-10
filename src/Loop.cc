@@ -21,10 +21,6 @@ static uv_timer_t *timer = NULL;
 //   }
 // }
 
-static void check_handles(uv_handle_t *handle, void *arg) {
-  fprintf(stderr, "handle_type: %d\n", handle->type);
-}
-
 static void init_loop() {
   if (!use_default_loop && kcpuv_loop == NULL) {
     kcpuv_loop = new uv_loop_t;
@@ -98,6 +94,7 @@ void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
 
   timer = new uv_timer_t;
   timer->data = NULL;
+
   uv_timer_init(kcpuv_get_loop(), timer);
   uv_timer_start(timer, cb, 0, KCPUV_TIMER_INTERVAL);
 
@@ -113,6 +110,12 @@ void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
 // void Loop::KcpuvLoopCloseHandles_() {
 //   Loop::CloseLoopHandles_(kcpuv_get_loop());
 // }
+
+static void check_handles(uv_handle_t *handle, void *arg) {
+  fprintf(stderr, "handle_type: %s, isclosing: %d\n",
+          uv_handle_type_name(uv_handle_get_type(handle)),
+          uv_is_closing(handle));
+}
 
 void Loop::KcpuvCheckHandles_() {
   uv_walk(kcpuv_get_loop(), check_handles, NULL);

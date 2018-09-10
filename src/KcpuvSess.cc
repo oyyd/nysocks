@@ -97,18 +97,17 @@ int KcpuvSess::KcpuvDestruct() {
 
 bool KcpuvSess::AllowSend() { return state < KCPUV_STATE_FIN_ACK; }
 
-bool KcpuvSess::AllowInput() { return state < KCPUV_STATE_FIN_ACK; }
+bool KcpuvSess::AllowInput() { return state < KCPUV_STATE_WAIT_FREE; }
 
 // TODO: Allow outside to know if the operation is successful.
 // Send raw data through kcp.
 void KcpuvSess::RawSend(const int cmd, const char *msg, unsigned long len) {
   KcpuvSess *sess = this;
-  if (!sess->AllowSend()) {
-    if (KCPUV_DEBUG) {
-      fprintf(stderr, "input with invalid state");
-    }
-    return;
-  }
+
+  // TODO:
+  // if (!sess->AllowSend()) {
+  //   return;
+  // }
 
   sess->sendTs = iclock();
 
@@ -161,6 +160,10 @@ void KcpuvSess::RawSend(const int cmd, const char *msg, unsigned long len) {
 
 // Send app data through kcp.
 void KcpuvSess::Send(const char *msg, unsigned long len) {
+  if (!this->AllowSend()) {
+    fprintf(stderr, "%s\n", "output with invalid state");
+  }
+
   RawSend(KCPUV_CMD_PUSH, msg, len);
 }
 
@@ -169,11 +172,6 @@ void KcpuvSess::Send(const char *msg, unsigned long len) {
 // TODO: do not allocate twice
 static int KcpOutput(const char *msg, int len, ikcpcb *kcp, void *user) {
   KcpuvSess *sess = (KcpuvSess *)user;
-
-  if (!sess->AllowSend()) {
-    fprintf(stderr, "%s\n", "output with invalid state");
-    return -1;
-  }
 
   if (KCPUV_DEBUG) {
     printf("output: %d %lld\n", len, iclock64());
@@ -192,7 +190,7 @@ static int KcpOutput(const char *msg, int len, ikcpcb *kcp, void *user) {
   return 0;
 }
 
-// // Send cmds.
+// Send cmd.
 void KcpuvSess::SendCMD(const int cmd) { RawSend(cmd, NULL, 0); }
 
 // Create a kcpuv session. This is a common structure for
@@ -270,11 +268,10 @@ void KcpuvSess::TriggerClose() {
     cb(this);
   }
 
-  if (onCloseCb != NULL) {
-    // call callback to inform outside
-    CloseCb cb = onCloseCb;
-    cb(this);
-  }
+  assert(onCloseCb);
+  // call callback to inform outside
+  CloseCb cb = onCloseCb;
+  cb(this);
 }
 
 // Free a kcpuv session.
@@ -430,14 +427,22 @@ void KcpuvSess::BindListen(DataCb cb) { onMsgCb = cb; }
 void KcpuvSess::Close() {
   KcpuvSess *sess = this;
 
+  // Don't need to handle a sess that is closing.
   if (sess->state >= KCPUV_STATE_FIN) {
     return;
   }
 
-  sess->state = KCPUV_STATE_FIN;
+  if (sess->state == KCPUV_STATE_READY) {
+    this->SendCMD(KCPUV_CMD_FIN);
+    sess->state = KCPUV_STATE_FIN;
+    return;
+  }
 
-  // TODO: what if a sess is not established?
-  this->SendCMD(KCPUV_CMD_FIN);
+  // The session is not connected and will nerver receive a fin ack.
+  // Let's close it directly.
+  sess->ExitUpdateQueue();
+  // TODO: Tell outside that it exits because of timeout.
+  sess->TriggerClose();
 
   // mark that this sess could be freed
   // TODO: where to put KCPUV_STATE_CLOSED ?
@@ -496,7 +501,6 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
       // parse cmd
       // check protocol
       int cmd = Cryptor::KcpuvProtocolDecode(buffer);
-
       // NOTE: We don't need to make sure the KCPUV_CMD_NOO
       // to be received as messages sended by kcp will also
       // refresh the recvTs to avoid timeout.
@@ -505,8 +509,8 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
         // do nothing
       } else if (cmd == KCPUV_CMD_FIN) {
         if (state <= KCPUV_STATE_READY) {
-          sess->state = KCPUV_STATE_FIN_ACK;
           sess->SendCMD(KCPUV_CMD_FIN_ACK);
+          sess->state = KCPUV_STATE_FIN_ACK;
         }
       } else if (cmd == KCPUV_CMD_FIN_ACK) {
         sess->state = KCPUV_STATE_FIN_ACK;

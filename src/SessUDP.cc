@@ -26,7 +26,6 @@ void SessUDP::CloseHandle() {
     handle = nullptr;
     h->data = nullptr;
     // TODO: We may still need to free it manualy.
-    fprintf(stderr, "%s\n", "UDP_HANDLE");
     kcpuv__try_close_handle((uv_handle_t *)h);
   }
 }

@@ -104,7 +104,6 @@ void kcpuv__print_sockaddr(const struct sockaddr *name) {
   uv_ip4_name((const struct sockaddr_in *)name, addr, IP4_ADDR_LENTH);
   port = ntohs(((struct sockaddr_in *)name)->sin_port);
 
-  fprintf(stderr, "addr: %s:%d\n", addr, port);
   free(addr);
 }
 
@@ -174,10 +173,7 @@ void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->len = suggested_size;
 }
 
-void free_handle_cb(uv_handle_t *handle) {
-  fprintf(stderr, "%s\n", "NEXT_FREE_FINI");
-  free(handle);
-}
+void free_handle_cb(uv_handle_t *handle) { free(handle); }
 
 void kcpuv__try_close_handle(uv_handle_t *handle) {
   uv_handle_type type = uv_handle_get_type(handle);
@@ -188,15 +184,12 @@ void kcpuv__try_close_handle(uv_handle_t *handle) {
     return;
   }
 
-  fprintf(stderr, "addr: %d\n", handle);
-
+  // fprintf(stderr, "%d\n", uv_loop_alive(handle->loop));
   // TODO: This might be not correct.
-  if (!uv_loop_alive(handle->loop)) {
-    fprintf(stderr, "%s %d\n", "FREE", uv_is_closing(handle));
-    free(handle);
-    fprintf(stderr, "%s\n", "FREE_END");
-  } else if (!uv_is_closing(handle)) {
-    fprintf(stderr, "%s\n", "FREE_NEXT");
+  // if (!uv_loop_alive(handle->loop)) {
+  //   free(handle);
+  // } else
+  if (!uv_is_closing(handle)) {
     uv_close(handle, free_handle_cb);
   }
 }

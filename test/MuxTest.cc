@@ -105,7 +105,7 @@ TEST_F(MuxTest, NewAndDelete) {
   delete MuxCloseCalled;
 
   CLOSE_TEST_TIMER();
-  KCPUV_TRY_STOPPING_LOOP();
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 
 TEST_F(MuxTest, ClosingSessShouldMakeMuxClose) {
@@ -128,7 +128,7 @@ TEST_F(MuxTest, ClosingSessShouldMakeMuxClose) {
   delete MuxCloseCalled;
 
   CLOSE_TEST_TIMER();
-  KCPUV_TRY_STOPPING_LOOP();
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 
 static int received_conns = 0;
@@ -238,7 +238,7 @@ TEST_F(MuxTest, Transmission) {
   delete[] addr_p1;
   delete[] addr_p2;
 
-  KCPUV_TRY_STOPPING_LOOP();
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 
 static int get_mux_conns_count(Mux *mux) {
@@ -295,7 +295,7 @@ TEST_F(MuxTest, Close) {
   delete test_close_sess_p1_conn_p2;
   delete test_close_sess_p1;
 
-  KCPUV_TRY_STOPPING_LOOP();
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 
 } // namespace kcpuv_test

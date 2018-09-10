@@ -129,8 +129,6 @@ TEST_F(SessUDPTest, HasSendAddr) {
 
   assert(!rval);
 
-  delete sessHasAddr;
-  delete sessDoesntHasAddr;
   delete loop;
 }
 
@@ -167,7 +165,6 @@ TEST_F(SessUDPTest, SetSendAddrBySockaddr) {
   uv_run(loop, UV_RUN_DEFAULT);
   uv_loop_close(loop);
 
-  delete udp;
   delete addr;
   delete loop;
 }
