@@ -1,6 +1,5 @@
 import {
   startUpdaterTimer,
-  stopUpdaterTimer,
   stopListen,
   create,
   setAddr,
@@ -20,6 +19,8 @@ import {
   createMuxConn,
   muxFree,
   isConnFreed,
+  muxClose,
+  connClose,
 } from '../mux'
 
 describe('mux', () => {
@@ -34,63 +35,79 @@ describe('mux', () => {
         port: 0,
         targetAddr: '0.0.0.0',
         targetPort: 20000,
+        passive: false,
       })
+
       expect(mux).toBeTruthy()
 
-      stopUpdaterTimer()
-      muxFree(mux)
-      stopListen(mux.sess)
-      destroy(mux.sess)
+      mux.event.on('close', () => {
+        stopUpdaterTimer()
+        done()
+      })
 
-      stopUpdaterTimer()
-      done()
+      muxClose(mux)
     })
   })
 
-  // describe('connSendClose', () => {
-  //   it('should send a close msg to the other side', done => {
-  //     startUpdaterTimer()
-  //
-  //     const mux1 = createMux({
-  //       password: 'hello',
-  //       port: 0,
-  //     })
-  //     const mux2 = createMux({
-  //       password: 'hello',
-  //       port: 0,
-  //     })
-  //     const port1 = getPort(mux1.sess)
-  //     const port2 = getPort(mux2.sess)
-  //     setAddr(mux1.sess, ADDR, port2)
-  //     setAddr(mux2.sess, ADDR, port1)
-  //
-  //     const conn1 = createMuxConn(mux1)
-  //
-  //     muxBindConnection(mux2, conn2 => {
-  //       connListen(conn2, msg => {
-  //         expect(msg.toString('utf8')).toBe('hello')
-  //       })
-  //
-  //       conn2.event.on('close', () => {
-  //         stopUpdaterTimer()
-  //         stopListen(mux1.sess)
-  //         stopListen(mux2.sess)
-  //         muxFree(mux1)
-  //         muxFree(mux2)
-  //
-  //         // TODO: refactor
-  //         setTimeout(() => {
-  //           stopUpdaterTimer()
-  //           done()
-  //         }, 100)
-  //       })
-  //     })
-  //
-  //     connSend(conn1, Buffer.from('hello'))
-  //     connSendClose(conn1)
-  //   })
-  // })
-  //
+  describe('connSendClose', () => {
+    it('should send a close msg to the other side', done => {
+      startUpdaterTimer()
+
+      const mux1 = createMux({
+        password: 'hello',
+        port: 0,
+        passive: false,
+      })
+      const mux2 = createMux({
+        password: 'hello',
+        port: 0,
+        passive: true,
+      })
+
+      let muxClosed = 0
+
+      mux1.event.on('close', () => {
+        muxClosed += 1
+
+        if (muxClosed === 2) {
+          stopUpdaterTimer()
+          done()
+        }
+      })
+
+      mux2.event.on('close', () => {
+        muxClosed += 1
+
+        if (muxClosed === 2) {
+          stopUpdaterTimer()
+          done()
+        }
+      })
+
+      const port1 = getPort(mux1.sess)
+      const port2 = getPort(mux2.sess)
+
+      setAddr(mux1.sess, ADDR, port2)
+      setAddr(mux2.sess, ADDR, port1)
+
+      const conn1 = createMuxConn(mux1)
+
+      muxBindConnection(mux2, conn2 => {
+        // connListen(conn2, msg => {
+        //   expect(msg.toString('utf8')).toBe('hello')
+        // })
+        //
+        // conn2.event.on('close', () => {
+        //   muxClose(mux1)
+        //   muxClose(mux2)
+        // })
+      })
+
+      connSend(conn1, Buffer.from('hello'))
+      // connSendClose(conn1)
+    })
+  })
+
   // // TODO: refactor
   // it('should work with bindUdpSend', done => {
   //   startUpdaterTimer()

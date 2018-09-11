@@ -22,7 +22,7 @@ describe('socket', () => {
   it('should exit automatically when all handles are freed', done => {
     startUpdaterTimer()
 
-    const sess = create()
+    const sess = create(false)
 
     sess.event.on('close', () => {
       stopUpdaterTimer()
@@ -38,8 +38,8 @@ describe('socket', () => {
     const addr = '0.0.0.0'
     const password = 'hello'
     const message = 'hello'
-    const a = create()
-    const b = create()
+    const a = create(false)
+    const b = create(true)
     let closed = 0
 
     const closeLoop = () => {
@@ -130,8 +130,8 @@ describe('socket', () => {
       const password = 'hello'
       const message = 'hello'
       let closed = 0
-      const a = create()
-      const b = create()
+      const a = create(false)
+      const b = create(true)
       initCryptor(a, password)
       initCryptor(b, password)
 

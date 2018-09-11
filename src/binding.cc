@@ -33,9 +33,9 @@ class KcpuvMuxConnBinding;
 
 class KcpuvSessBinding : public Nan::ObjectWrap {
 public:
-  explicit KcpuvSessBinding() {
+  explicit KcpuvSessBinding(unsigned int passive = 0) {
     // TODO: `passive` argument
-    sess = new KcpuvSess;
+    sess = new KcpuvSess(passive);
     sess->data = this;
     sess->timeout = 0;
   }
@@ -82,6 +82,7 @@ public:
   explicit KcpuvMuxBinding(KcpuvSess *sess) {
     assert(sess);
     mux = new Mux(sess);
+    mux->data = this;
   }
   ~KcpuvMuxBinding() {
     // TODO: What if it's deleted before closed?
@@ -119,27 +120,18 @@ void KcpuvMuxBinding::Create(const FunctionCallbackInfo<Value> &info) {
 
 // TODO: Check need mux now.
 void KcpuvMuxConnBinding::Create(const FunctionCallbackInfo<Value> &info) {
-  // TODO: Check it's mux.
-  KcpuvMuxBinding *muxBinding =
-      Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
-
-  Mux *mux = muxBinding->mux;
-
   Isolate *isolate = info.GetIsolate();
 
   if (info.IsConstructCall()) {
-    Conn *c = mux->CreateConn();
     KcpuvMuxConnBinding *conn = new KcpuvMuxConnBinding();
-    conn->WrapConn(c);
     conn->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   } else {
-    assert(0);
-    // Local<Function> cons =
-    //     Local<Function>::New(isolate, KcpuvMuxConnBinding::constructor);
-    // Local<Context> context = isolate->GetCurrentContext();
-    // Local<Object> instance = cons->NewInstance(context, 0,
-    // 0).ToLocalChecked(); info.GetReturnValue().Set(instance);
+    Local<Function> cons =
+        Local<Function>::New(isolate, KcpuvMuxConnBinding::constructor);
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Object> instance = cons->NewInstance(context, 0, 0).ToLocalChecked();
+    info.GetReturnValue().Set(instance);
   }
 }
 
@@ -207,16 +199,20 @@ static void OnUDPSend(SessUDP *udp, const struct sockaddr *addr,
 void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &info) {
   Isolate *isolate = info.GetIsolate();
 
+  unsigned int passive =
+      static_cast<unsigned int>(info[0]->ToNumber(isolate)->Int32Value());
+
   if (info.IsConstructCall()) {
-    KcpuvSessBinding *binding = new KcpuvSessBinding();
+    KcpuvSessBinding *binding = new KcpuvSessBinding(passive);
     binding->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   } else {
-    Local<Function> cons =
-        Local<Function>::New(isolate, KcpuvSessBinding::constructor);
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<Object> instance = cons->NewInstance(context, 0, 0).ToLocalChecked();
-    info.GetReturnValue().Set(instance);
+    assert(0);
+    // Local<Function> cons =
+    //     Local<Function>::New(isolate, KcpuvSessBinding::constructor);
+    // Local<Context> context = isolate->GetCurrentContext();
+    // Local<Object> instance = cons->NewInstance(context, 0,
+    // 0).ToLocalChecked(); info.GetReturnValue().Set(instance);
   }
 }
 
@@ -456,6 +452,13 @@ static NAN_METHOD(MuxFree) {
   delete muxBinding;
 }
 
+static NAN_METHOD(MuxClose) {
+  KcpuvMuxBinding *muxBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
+
+  muxBinding->mux->Close();
+}
+
 // TODO: Add mux_close
 
 static void MuxBindingOnCloseCb(Mux *mux, const char *error_msg) {
@@ -532,6 +535,25 @@ static NAN_METHOD(MuxBindConnection) {
   muxBinding->mux->BindConnection(MuxBindingOnConnectionCb);
 }
 
+static NAN_METHOD(MuxCreateConn) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvMuxBinding *muxBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
+  Local<Context> context = isolate->GetCurrentContext();
+
+  Conn *conn = muxBinding->mux->CreateConn();
+  Local<Function> cons =
+      Local<Function>::New(isolate, KcpuvMuxConnBinding::constructor);
+  Local<Object> conn_instance =
+      cons->NewInstance(context, 0, 0).ToLocalChecked();
+  KcpuvMuxConnBinding *connBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(conn_instance->ToObject());
+
+  connBinding->WrapConn(conn);
+
+  info.GetReturnValue().Set(conn_instance);
+}
+
 // static NAN_METHOD(ConnInit) {
 //   KcpuvMuxBinding *muxBinding =
 //       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
@@ -541,13 +563,12 @@ static NAN_METHOD(MuxBindConnection) {
 //   kcpuv_mux_conn_init(&muxBinding->mux, connBinding->conn);
 // }
 
-// static NAN_METHOD(ConnFree) {
-//   KcpuvMuxConnBinding *connBinding =
-//       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
-//
-//   kcpuv_mux_conn_free(connBinding->conn, NULL);
-//   delete connBinding;
-// }
+static NAN_METHOD(ConnFree) {
+  KcpuvMuxConnBinding *connBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
+
+  delete connBinding;
+}
 
 // TODO: Add conn close
 
@@ -644,6 +665,13 @@ static NAN_METHOD(ConnSetTimeout) {
   connBinding->conn->SetTimeout(timeout);
 }
 
+static NAN_METHOD(ConnSendStop) {
+  KcpuvMuxConnBinding *connBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
+
+  connBinding->conn->SendStopSending();
+}
+
 static NAN_METHOD(ConnClose) {
   KcpuvMuxConnBinding *connBinding =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
@@ -711,18 +739,21 @@ static NAN_MODULE_INIT(Init) {
   // mux method
   // Nan::SetMethod(target, "muxInit", MuxInit);
   Nan::SetMethod(target, "muxFree", MuxFree);
+  Nan::SetMethod(target, "muxClose", MuxClose);
   Nan::SetMethod(target, "muxBindClose", MuxBindClose);
   Nan::SetMethod(target, "muxBindConnection", MuxBindConnection);
+  Nan::SetMethod(target, "muxCreateConn", MuxCreateConn);
 
   // conn method
   // Nan::SetMethod(target, "connInit", ConnInit);
-  // Nan::SetMethod(target, "connFree", ConnFree);
+  Nan::SetMethod(target, "connFree", ConnFree);
   Nan::SetMethod(target, "connSend", ConnSend);
   Nan::SetMethod(target, "connSendClose", ConnSendClose);
   Nan::SetMethod(target, "connListen", ConnListen);
   Nan::SetMethod(target, "connBindClose", ConnBindClose);
   Nan::SetMethod(target, "connSetTimeout", ConnSetTimeout);
-  Nan::SetMethod(target, "connEmitClose", ConnClose);
+  Nan::SetMethod(target, "connSendStop", ConnSendStop);
+  Nan::SetMethod(target, "connClose", ConnClose);
 
   // Nan::SetMethod(target, "muxStopAll", MuxStopAll);
 }

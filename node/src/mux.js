@@ -8,7 +8,7 @@ import {
   close,
 } from './socket'
 import { createBaseSuite } from './utils'
-import { record, get } from './monitor'
+// import { record, get } from './monitor'
 // import { logger } from './logger'
 
 const muxSuite = createBaseSuite('_mux')
@@ -21,7 +21,7 @@ const DEFAULT_MUX_OPTIONS = {
   port: 0,
   password: null,
   targetPort: null,
-  targetAddr: null,
+  targetAddr: '127.0.0.1',
   kcp: null,
 }
 
@@ -52,12 +52,14 @@ export function createMux(_options) {
     // eslint-disable-next-line
     sess = options.sess
   } else {
-    const { port, password, targetPort, targetAddr } = options
+    const {
+      passive, port, password, targetPort, targetAddr,
+    } = options
 
     if (!isValidProperty(port) || !isValidProperty(password)) {
       throw new Error('invalid mux options')
     }
-    sess = createWithOptions(options.kcp)
+    sess = createWithOptions(passive, options.kcp)
     initCryptor(sess, password)
     socketListen(sess, port)
     if (isValidProperty(targetPort) && isValidProperty(targetAddr)) {
@@ -74,38 +76,38 @@ export function createMux(_options) {
   mux.isClosed = false
 
   muxBindClose(mux, () => {
-    mux.sess.isClosed = true
+    binding.muxFree(mux)
     mux.isClosed = true
     mux.event.emit('close')
   })
 
-  record('mux', get('mux') + 1)
+  // record('mux', get('mux') + 1)
 
   return mux
 }
 
-export const muxCloseAll = muxSuite.wrap(mux => {
-  binding.muxStopAll(mux)
+// export const muxCloseAll = muxSuite.wrap(mux => {
+//   binding.muxStopAll(mux)
+//
+//   close(mux.sess)
+// })
 
-  close(mux.sess)
-})
-
-export const muxFree = muxSuite.wrap((mux, onFree) => {
-  if (mux.isClosed) {
-    return
-  }
-
-  mux.isClosed = true
-
-  process.nextTick(() => {
-    binding.muxFree(mux)
-    record('mux', get('mux') - 1)
-
-    if (typeof onFree === 'function') {
-      onFree()
-    }
-  })
-})
+// export const muxFree = muxSuite.wrap((mux, onFree) => {
+//   if (mux.isClosed) {
+//     return
+//   }
+//
+//   mux.isClosed = true
+//
+//   process.nextTick(() => {
+//     binding.muxFree(mux)
+//     record('mux', get('mux') - 1)
+//
+//     if (typeof onFree === 'function') {
+//       onFree()
+//     }
+//   })
+// })
 
 let id = 0
 
@@ -119,7 +121,7 @@ export const connFree = connSuite.wrap((conn, inNextTick = true) => {
 
   const free = () => {
     binding.connFree(conn)
-    record('conn', get('conn') - 1)
+    // record('conn', get('conn') - 1)
   }
 
   if (inNextTick) {
@@ -147,13 +149,12 @@ export function wrapMuxConn(conn) {
   conn.event = new EventEmitter()
 
   connBindClose(conn, () => {
+    connFree(conn, false)
     // NOTE: Make sure emit 'close' event before free to
     // give a chance for outside do something.
     conn.event.emit('close')
-    connFree(conn, false)
   })
-
-  record('conn', get('conn') + 1)
+  // record('conn', get('conn') + 1)
 }
 
 // NOTE: user should bind listen synchronously
@@ -164,17 +165,22 @@ export const muxBindConnection = muxSuite.wrap((mux, onConnection) => {
   }
 
   binding.muxBindConnection(mux, conn => {
-    wrapMuxConn(conn)
-    onConnection(conn)
+    // wrapMuxConn(conn)
+    // onConnection(conn)
   })
+})
+
+export const muxClose = muxSuite.wrap((mux) => {
+  binding.muxClose(mux)
 })
 
 export const createMuxConn = muxSuite.wrap((mux, _options) => {
   // eslint-disable-next-line
   const options = Object.assign({}, DEFAULT_CONN_OPTIONS, _options)
-  const conn = binding.createMuxConn()
+  // TODO: refactor this
+  // eslint-disable-next-line
+  const conn = muxCreateConn(mux)
 
-  binding.connInit(mux, conn)
   wrapMuxConn(conn)
 
   return conn
@@ -210,8 +216,13 @@ export const connSetTimeout = connSuite.wrap((conn, timeout) => {
   binding.connSetTimeout(conn, timeout)
 })
 
-export const connEmitClose = connSuite.wrap(conn => {
-  binding.connEmitClose(conn)
+export const connClose = connSuite.wrap(conn => {
+  binding.connClose(conn)
+})
+
+// TODO: utilize this
+export const connSendStop = connSuite.wrap(conn => {
+  binding.connSendStop(conn)
 })
 
 // if (module === require.main) {

@@ -1,5 +1,6 @@
 // TODO: throw when create socket without starting loops
 import EventEmitter from 'events'
+import assert from 'assert'
 import binding from '../../build/Release/addon.node'
 import { createBaseSuite } from './utils'
 // import { record, get } from './monitor'
@@ -46,8 +47,10 @@ export const destroy = wrap(sess => {
   binding.free(sess)
 })
 
-export function create() {
-  const sess = binding.create()
+export function create(passive) {
+  assert(typeof passive === 'boolean')
+  // eslint-disable-next-line
+  const sess = new binding.create(passive)
   sess.event = new EventEmitter()
   sess._sess = true
   sess.isClosed = false
@@ -78,8 +81,8 @@ export const setNoDelay = wrap((sess, nodelay, interval, resend, nc) => {
 })
 
 // Accept kcp options.
-export function createWithOptions(_options) {
-  const sess = create()
+export function createWithOptions(passive, _options) {
+  const sess = create(passive)
   const options = Object.assign({}, DEFAULT_KCP_OPTIONS, _options)
   const { sndwnd, rcvwnd, nodelay, interval, resend, nc } = options
 

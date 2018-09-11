@@ -88,6 +88,7 @@
     ]
   },
   "jest": {
+    "verbose": true,
     "testMatch": [
       "**/node/src/**/__tests__/**/*.spec.js"
     ]

@@ -7,7 +7,6 @@ import {
   getPort,
   bindUdpSend,
   destroy,
-  stopUpdaterTimer,
   close,
 } from '../socket'
 import {
