@@ -36,9 +36,6 @@ static void OnRecvMsg(KcpuvSess *sess, const char *data, unsigned int len) {
 // TODO: The sess to be freed.
 static void SessCloseFirst(KcpuvSess *sess) {
   assert(sess->mux != NULL);
-
-  Mux *mux = (Mux *)sess->mux;
-
   fprintf(stderr, "sess is closed before closing mux\n");
   assert(0);
 
@@ -440,8 +437,8 @@ static void mux_check(Mux *mux) {
 
     // check conns timeout
     if (enable_timeout) {
-      if (conn->timeout) {
-        if (conn->ts + conn->timeout <= current) {
+      if (conn->GetTimeout()) {
+        if (conn->ts + conn->GetTimeout() <= current) {
           conn->Close();
         }
       }

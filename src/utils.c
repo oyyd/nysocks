@@ -123,7 +123,6 @@ kcpuv_link *kcpuv_link_create(void *node) {
 void kcpuv_link_add(kcpuv_link *head, kcpuv_link *next) {
   kcpuv_link *current = head;
 
-  int count = 0;
   // TODO: we don't have to add a new node to the end of the queue
   while (current->next != NULL) {
     current = current->next;
@@ -138,7 +137,6 @@ kcpuv_link *kcpuv_link_get_pointer(kcpuv_link *head, void *node) {
   kcpuv_link *current = head;
   kcpuv_link *ptr = NULL;
 
-  int count = 0;
   while (current->next != NULL && current->next->node != node) {
     current = current->next;
   }

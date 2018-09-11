@@ -124,15 +124,15 @@ public:
   CloseCb onBeforeFree;
   void *mux;
   IUINT32 recvTs;
+  void *data;
+  unsigned int timeout;
 
 private:
   int state;
   struct sockaddr *recvAddr;
   // User defined data.
-  void *data;
   // TODO: make mux store sess sf a clearer solution
   IUINT32 sendTs;
-  unsigned int timeout;
   DataCb onMsgCb;
   CloseCb onCloseCb;
   bool passive;

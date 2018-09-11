@@ -66,9 +66,9 @@ public:
   kcpuv_link *conns;
   unsigned int count;
   MuxOnCloseCb on_close_cb;
+  void *data;
 
 private:
-  void *data;
   MuxOnConnectionCb on_connection_cb;
 };
 
@@ -101,6 +101,10 @@ public:
 
   unsigned int GetId() { return id; }
 
+  void SetTimeout(unsigned long t) { timeout = t; }
+
+  unsigned long GetTimeout() { return timeout; }
+
   void *data;
   short send_state;
   short recv_state;
@@ -108,11 +112,11 @@ public:
   ConnOnCloseCb on_close_cb;
   ConnOnOthersideEnd on_otherside_end;
   IUINT32 ts;
-  unsigned long timeout;
   Mux *mux;
 
 private:
   unsigned int id;
+  unsigned long timeout;
 };
 } // namespace kcpuv
 

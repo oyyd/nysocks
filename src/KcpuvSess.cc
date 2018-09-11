@@ -539,8 +539,9 @@ void KcpuvSess::KcpuvUpdateKcpSess_(uv_timer_t *timer) {
                          content_length);
         } else {
           if (sess->onMsgCb != NULL) {
+            // TODO: More tests.
             // update receive data
-            DataCb onMsgCb = onMsgCb;
+            DataCb onMsgCb = sess->onMsgCb;
             onMsgCb(sess, sess->recvBuf, sess->recvBufLength);
           }
 

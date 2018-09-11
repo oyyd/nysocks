@@ -115,6 +115,7 @@ int Cryptor::KcpuvCryptorInit(kcpuv_cryptor *cryptor, const char *key,
 void Cryptor::KcpuvCryptorClean(kcpuv_cryptor *cryptor) {
   EVP_CIPHER_CTX_cleanup(cryptor->en);
   EVP_CIPHER_CTX_cleanup(cryptor->de);
+  // TODO: Check different node/openssl version.
   delete cryptor->en;
   delete cryptor->de;
 }

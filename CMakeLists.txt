@@ -1,4 +1,5 @@
 # NOTE: Cmake build is only for tests.
+# TODO: Enable compiler warnings.
 cmake_minimum_required(VERSION 3.5)
 
 project(kcpuv)

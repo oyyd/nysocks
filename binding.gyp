@@ -8,12 +8,12 @@
     ],
     'sources': [
       'lib/kcp/ikcp.c',
-      'src/kcpuv.c',
-      'src/kcpuv_sess.c',
       'src/utils.c',
-      'src/protocol.c',
-      'src/mux.c',
-      'src/loop.c',
+      'src/Loop.cc',
+      'src/SessUDP.cc',
+      'src/Cryptor.cc',
+      'src/KcpuvSess.cc',
+      'src/Mux.cc',
       'src/binding.cc',
     ],
     'conditions' : [

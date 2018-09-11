@@ -289,7 +289,7 @@ TEST_F(MuxTest, ConnTimeout) {
   // Conn sess_p1_conn_p1;
   test_close_sess_p1_conn_p2 = test_close_mux->CreateConn();
 
-  test_close_sess_p1_conn_p2->timeout = 50;
+  test_close_sess_p1_conn_p2->SetTimeout(50);
   test_close_sess_p1_conn_p2->ts = iclock() + 50;
 
   EXPECT_EQ(test_close_mux->GetConnLength(), 1);
