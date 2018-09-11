@@ -209,6 +209,11 @@ export const connListen = connSuite.wrap((conn, onMessage) => {
   binding.connListen(conn, onMessage)
 })
 
+export const bindOthersideEnd = connSuite.wrap((conn, onStopSend) => {
+  binding.bindOthersideEnd(conn, onStopSend)
+})
+
+
 export const connSetTimeout = connSuite.wrap((conn, timeout) => {
   if (typeof timeout !== 'number' && timeout > 0) {
     throw new Error('invalid timeout')

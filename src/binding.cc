@@ -72,6 +72,7 @@ public:
 
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_message;
   Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_close;
+  Nan::CopyablePersistentTraits<Function>::CopyablePersistent on_stop_send;
   Conn *conn;
 };
 
@@ -434,6 +435,15 @@ static NAN_METHOD(GetSessState) {
   info.GetReturnValue().Set(state);
 }
 
+static NAN_METHOD(SetWaitFinTimeout) {
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  unsigned int timeout = info[1]->Uint32Value();
+
+  obj->GetSess()->SetWaitFinTimeout(timeout);
+}
+
 // static NAN_METHOD(MuxInit) {
 //   // Isolate *isolate = info.GetIsolate();
 //   KcpuvMuxBinding *muxBinding =
@@ -679,6 +689,31 @@ static NAN_METHOD(ConnClose) {
   connBinding->conn->Close();
 }
 
+static void ConnBindingStopSend(Conn *conn) {
+  KcpuvMuxConnBinding *connBinding =
+      static_cast<KcpuvMuxConnBinding *>(conn->data);
+  Nan::HandleScope scope;
+  Isolate *isolate = Isolate::GetCurrent();
+
+  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
+                    Nan::New(connBinding->on_stop_send), 0, 0);
+}
+
+static NAN_METHOD(BindOthersideEnd) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvMuxConnBinding *connBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
+
+  if (!info[1]->IsFunction()) {
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(
+        isolate, "`ConnBindClose` expect a callback function")));
+    return;
+  }
+
+  connBinding->on_stop_send.Reset(isolate, info[1].As<Function>());
+  connBinding->conn->BindOthersideEnd(ConnBindingStopSend);
+}
+
 // TODO: Add StopSending
 // static NAN_METHOD(MuxStopAll) {
 //   KcpuvMuxBinding *muxBinding =
@@ -735,6 +770,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "startLoop", StartLoop);
   Nan::SetMethod(target, "stopUpdaterTimer", StopUpdaterTimer);
   Nan::SetMethod(target, "getSessState", GetSessState);
+  Nan::SetMethod(target, "setWaitFinTimeout", SetWaitFinTimeout);
 
   // mux method
   // Nan::SetMethod(target, "muxInit", MuxInit);
@@ -754,6 +790,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "connSetTimeout", ConnSetTimeout);
   Nan::SetMethod(target, "connSendStop", ConnSendStop);
   Nan::SetMethod(target, "connClose", ConnClose);
+  Nan::SetMethod(target, "bindOthersideEnd", BindOthersideEnd);
 
   // Nan::SetMethod(target, "muxStopAll", MuxStopAll);
 }

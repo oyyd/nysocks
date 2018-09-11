@@ -8,8 +8,6 @@ import { createBaseSuite } from './utils'
 const suite = createBaseSuite('_sess')
 const { wrap } = suite
 
-const CLOSE_TIMEOUT = 2000
-
 // TODO: Export this from cpp.
 const SESS_STATE = {
   KCPUV_STATE_CREATED: 0,
@@ -48,7 +46,7 @@ export const destroy = wrap(sess => {
 })
 
 export function create(passive) {
-  assert(typeof passive === 'boolean')
+  assert(typeof passive === 'boolean', 'expect a boolean `passive`')
   // eslint-disable-next-line
   const sess = new binding.create(passive)
   sess.event = new EventEmitter()
@@ -102,15 +100,15 @@ export const bindUdpSend = wrap((sess, next) => {
   binding.bindUdpSend(sess, next)
 })
 
-export const forceClose = wrap((sess) => {
-  if (!sess.isClosed) {
-    sess.isClosed = true
-    destroy(sess)
-    // TODO: Different from common close procedure.
-    // TODO: error msg
-    sess.event.emit('close', null)
-  }
-})
+// export const forceClose = wrap((sess) => {
+//   if (!sess.isClosed) {
+//     sess.isClosed = true
+//     destroy(sess)
+//     // TODO: Different from common close procedure.
+//     // TODO: error msg
+//     sess.event.emit('close', null)
+//   }
+// })
 
 // TODO: Move this to cpp?
 export const close = wrap(sess => {
@@ -119,11 +117,6 @@ export const close = wrap(sess => {
   }
 
   binding.close(sess)
-
-  // NOTE: Force destroying the sess if it takes too many seconds.
-  setTimeout(() => {
-    forceClose(sess)
-  }, CLOSE_TIMEOUT)
 })
 
 export const listen = wrap((sess, port = 0, onMessage) => {
@@ -167,6 +160,10 @@ export const getSessState = wrap(sess => {
   })
 
   return name
+})
+
+export const setSessWaitFinTimeout = wrap((sess, timeout) => {
+  binding.setWaitFinTimeout(sess, timeout)
 })
 
 export function createConnection(targetAddress, targetPort, onMsg) {

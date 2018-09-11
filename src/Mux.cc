@@ -212,8 +212,10 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
     }
   } else if (cmd == KCPUV_MUX_CMD_FIN) {
     conn->recv_state = KCPUV_CONN_RECV_STOP;
-    ConnOnOthersideEnd cb = conn->on_otherside_end;
-    cb(conn);
+    if (conn->on_otherside_end != NULL) {
+      ConnOnOthersideEnd cb = conn->on_otherside_end;
+      cb(conn);
+    }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
     conn->send_state = KCPUV_CONN_SEND_STOPPED;
     conn->recv_state = KCPUV_CONN_RECV_STOP;
