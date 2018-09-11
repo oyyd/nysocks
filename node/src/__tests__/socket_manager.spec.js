@@ -2,7 +2,7 @@ import {
   createClient, createManager, freeManager,
   checkJSONMsg, checkHandshakeMsg,
 } from '../socket_manager'
-import { startKcpuv, stopKcpuv } from '../socket'
+import { startUpdaterTimer, stopUpdaterTimer } from '../socket'
 
 describe('socket_manager', () => {
   describe('checkJSONMsg', () => {
@@ -46,7 +46,7 @@ describe('socket_manager', () => {
 
   // describe('createManager', () => {
   //   it('should create a manager and a client and then free them', (done) => {
-  //     startKcpuv()
+  //     startUpdaterTimer()
   //
   //     const serverAddr = '0.0.0.0'
   //     const password = 'hello'

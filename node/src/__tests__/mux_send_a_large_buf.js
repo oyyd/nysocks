@@ -1,13 +1,13 @@
 import {
-  startKcpuv,
-  stopKcpuv,
+  startUpdaterTimer,
+  stopUpdaterTimer,
   stopListen,
   create,
   setAddr,
   getPort,
   bindUdpSend,
   destroy,
-  _stopLoop,
+  stopUpdaterTimer,
   close,
 } from '../socket'
 import {
@@ -22,7 +22,7 @@ import {
   isConnFreed,
 } from '../mux'
 
-startKcpuv()
+startUpdaterTimer()
 
 const ADDR = '0.0.0.0'
 const mux1 = createMux({
@@ -54,7 +54,7 @@ muxBindConnection(mux2, conn2 => {
   })
 
   // conn2.event.on('close', () => {
-  //   _stopLoop()
+  //   stopUpdaterTimer()
   //   stopListen(mux1.sess)
   //   stopListen(mux2.sess)
   //   muxFree(mux1)
@@ -62,7 +62,7 @@ muxBindConnection(mux2, conn2 => {
   //
   //   // TODO: refactor
   //   setTimeout(() => {
-  //     stopKcpuv()
+  //     stopUpdaterTimer()
   //     done()
   //   }, 100)
   // })

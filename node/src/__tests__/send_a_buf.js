@@ -1,8 +1,8 @@
 import { create, listen, stopListen, destroy,
-  setAddr, send, close, startKcpuv, stopKcpuv, initCryptor } from '../socket'
+  setAddr, send, close, startUpdaterTimer, stopUpdaterTimer, initCryptor } from '../socket'
 
 function main() {
-  startKcpuv()
+  startUpdaterTimer()
 
   const addr = '127.0.0.1'
   const senderPort = 18888
@@ -35,7 +35,7 @@ function main() {
       destroy(receiver)
 
       setTimeout(() => {
-        stopKcpuv()
+        stopUpdaterTimer()
       }, 1000)
     }
   })

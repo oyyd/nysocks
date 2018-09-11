@@ -9,6 +9,7 @@ namespace kcpuv {
 long kcpuvUDPBufSize = 4 * 1024 * 1024;
 
 SessUDP::SessUDP(uv_loop_t *loop) {
+  udpSend = nullptr;
   sendAddr = nullptr;
   recvAddr = nullptr;
   data = nullptr;
@@ -66,6 +67,8 @@ void SessUDP::SetSendAddr(const char *addr, const int port) {
   uv_ip4_addr(addr, port, reinterpret_cast<struct sockaddr_in *>(sendAddr));
 }
 
+void SessUDP::BindUdpSend(UDPProxySend send) { udpSend = send; }
+
 int SessUDP::Bind(int port, DgramCb cb) {
   assert(cb);
   // NOTE: Do not allow bind twice.
@@ -107,16 +110,21 @@ int SessUDP::Send(const char *data, int dataLen) {
   assert(sendAddr);
 
   char *bufData = new char[dataLen];
-  int rval;
+  int rval = 0;
 
   memcpy(bufData, data, dataLen);
 
-  // Transfer `data` into buf.
-  uv_buf_t buf = uv_buf_init(bufData, dataLen);
-
-  // TODO: Maybe handle error here.
-  rval = uv_udp_try_send(handle, &buf, 1,
-                         reinterpret_cast<const struct sockaddr *>(sendAddr));
+  if (udpSend != nullptr) {
+    // TODO: Test this in cpp.
+    udpSend(this, reinterpret_cast<const struct sockaddr *>(sendAddr), bufData,
+            dataLen);
+  } else {
+    // Transfer `data` into buf.
+    uv_buf_t buf = uv_buf_init(bufData, dataLen);
+    // TODO: Maybe handle error here.
+    rval = uv_udp_try_send(handle, &buf, 1,
+                           reinterpret_cast<const struct sockaddr *>(sendAddr));
+  }
 
   delete[] bufData;
   return rval;

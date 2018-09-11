@@ -4,12 +4,19 @@ import binding from '../../build/Release/addon.node'
 import { createBaseSuite } from './utils'
 // import { record, get } from './monitor'
 
-binding.useDefaultLoop(true)
-
 const suite = createBaseSuite('_sess')
 const { wrap } = suite
 
-const CLOSE_TIMEOUT = 10000
+const CLOSE_TIMEOUT = 2000
+
+// TODO: Export this from cpp.
+const SESS_STATE = {
+  KCPUV_STATE_CREATED: 0,
+  KCPUV_STATE_READY: 30,
+  KCPUV_STATE_FIN: 31,
+  KCPUV_STATE_FIN_ACK: 32,
+  KCPUV_STATE_WAIT_FREE: 50,
+}
 
 const DEFAULT_KCP_OPTIONS = {
   // TODO:
@@ -21,6 +28,24 @@ const DEFAULT_KCP_OPTIONS = {
   nc: 1,
 }
 
+function init() {
+  binding.initialize()
+  binding.useDefaultLoop(true)
+}
+
+init()
+
+// TODO: Change name to 'free'
+export const destroy = wrap(sess => {
+  if (sess.isClosed) {
+    return
+  }
+
+  sess.isClosed = true
+
+  binding.free(sess)
+})
+
 export function create() {
   const sess = binding.create()
   sess.event = new EventEmitter()
@@ -28,6 +53,7 @@ export function create() {
   sess.isClosed = false
 
   binding.bindClose(sess, errorMsg => {
+    destroy(sess)
     sess.isClosed = true
     sess.event.emit('close', errorMsg)
   })
@@ -55,14 +81,7 @@ export const setNoDelay = wrap((sess, nodelay, interval, resend, nc) => {
 export function createWithOptions(_options) {
   const sess = create()
   const options = Object.assign({}, DEFAULT_KCP_OPTIONS, _options)
-  const {
-    sndwnd,
-    rcvwnd,
-    nodelay,
-    interval,
-    resend,
-    nc,
-  } = options
+  const { sndwnd, rcvwnd, nodelay, interval, resend, nc } = options
 
   setWndSize(sess, sndwnd, rcvwnd)
   setNoDelay(sess, nodelay, interval, resend, nc)
@@ -72,30 +91,16 @@ export function createWithOptions(_options) {
 
 // NOTE: Do not use this for the transforming of proxy data.
 export const input = wrap((sess, buffer, address, port) =>
-  binding.input(sess, buffer, buffer.length, address, port))
+  binding.input(sess, buffer, buffer.length, address, port),
+)
 
 // NOTE: Do not use this for the transforming of proxy data.
 export const bindUdpSend = wrap((sess, next) => {
   binding.bindUdpSend(sess, next)
 })
 
-export const destroy = wrap((sess) => {
-  if (sess.isClosed) {
-    return
-  }
-
-  sess.isClosed = true
-
-  // TODO:
-  setTimeout(() => {
-    binding.free(sess)
-  })
-  // process.nextTick(() => {
-  //   binding.free(sess)
-  // })
-})
-
-export const close = wrap((sess) => {
+// TODO: Move this to cpp?
+export const close = wrap(sess => {
   if (sess.isClosed) {
     return
   }
@@ -106,6 +111,9 @@ export const close = wrap((sess) => {
   setTimeout(() => {
     if (!sess.isClosed) {
       destroy(sess)
+      // TODO: Different from common close procedure.
+      // TODO: error msg
+      sess.event.emit('close', null)
     }
   }, CLOSE_TIMEOUT)
 })
@@ -126,9 +134,9 @@ export const bindListener = wrap((sess, onMessage) => {
   binding.bindListen(sess, onMessage)
 })
 
-export const getPort = wrap((sess) => binding.getPort(sess))
+export const getPort = wrap(sess => binding.getPort(sess))
 
-export const stopListen = wrap((sess) => {
+export const stopListen = wrap(sess => {
   binding.stopListen(sess)
 })
 
@@ -140,6 +148,19 @@ export const setAddr = wrap((sess, address, port) => {
   binding.initSend(sess, address, port)
 })
 
+export const getSessState = wrap(sess => {
+  const state = binding.getSessState(sess)
+  let name = '(invalid state)'
+
+  Object.keys(SESS_STATE).forEach(n => {
+    if (SESS_STATE[n] === state) {
+      name = n
+    }
+  })
+
+  return name
+})
+
 export function createConnection(targetAddress, targetPort, onMsg) {
   const sess = create()
 
@@ -149,17 +170,10 @@ export function createConnection(targetAddress, targetPort, onMsg) {
   return sess
 }
 
-export function startKcpuv() {
-  binding.initialize()
+export function startUpdaterTimer() {
   binding.startLoop()
 }
 
-export function _stopLoop() {
-  binding.stopLoop()
-}
-
-// TODO:
-export function stopKcpuv() {
-  _stopLoop()
-  binding.destruct()
+export function stopUpdaterTimer() {
+  binding.stopUpdaterTimer()
 }

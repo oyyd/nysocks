@@ -278,6 +278,8 @@ static void RemoveSessInNextTick(KcpuvCallbackInfo *info) {
   KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(info->data);
   delete info;
 
+  // TODO: `Unbind`ing is a bit late.
+  sess->sessUDP->Unbind();
   sess->Close_();
 }
 
@@ -355,7 +357,7 @@ void KcpuvSess::KcpInput(const struct sockaddr *addr, const char *data,
                          int len) {
   KcpuvSess *sess = this;
   if (!sess->AllowInput()) {
-    fprintf(stderr, "%s\n", "invalid msg input");
+    fprintf(stderr, "%s %d\n", "invalid sess state", sess->state);
     return;
   }
 

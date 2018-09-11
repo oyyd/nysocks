@@ -8,6 +8,8 @@ include_directories(../deps/googletest/googlemock/include)
 # openssl
 include_directories(/usr/local/opt/openssl/include)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types -g -Wall")
+
 add_subdirectory(../deps/googletest/googlemock
   "${CMAKE_CURRENT_BINARY_DIR}/deps/googletest/googlemock")
 

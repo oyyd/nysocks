@@ -65,13 +65,13 @@ export function createMux(_options) {
     }
   }
 
-  const mux = binding.createMux()
+  // TODO: refactor
+  // eslint-disable-next-line
+  const mux = new binding.createMux(sess)
   mux.event = new EventEmitter()
   mux.sess = sess
   mux._mux = true
   mux.isClosed = false
-
-  binding.muxInit(mux, sess)
 
   muxBindClose(mux, () => {
     mux.sess.isClosed = true
@@ -217,10 +217,10 @@ export const connEmitClose = connSuite.wrap(conn => {
 // if (module === require.main) {
 //   (() => {
 //     const {
-//       startKcpuv, listen, getPort, setAddr,
+//       startUpdaterTimer, listen, getPort, setAddr,
 //     } = require('./socket')
 //
-//     startKcpuv()
+//     startUpdaterTimer()
 //
 //     const addr = '0.0.0.0'
 //     const sess1 = createSess()

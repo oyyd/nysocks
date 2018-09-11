@@ -3,11 +3,11 @@ import {
   muxBindConnection, connListen, connSend,
 } from '../mux'
 import {
-  startKcpuv,
+  startUpdaterTimer,
 } from '../socket'
 
 function main() {
-  startKcpuv()
+  startUpdaterTimer()
 
   const password = 'hello'
   const serverPort = 20001

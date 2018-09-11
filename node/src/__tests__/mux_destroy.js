@@ -1,13 +1,13 @@
 import {
-  startKcpuv,
-  stopKcpuv,
+  startUpdaterTimer,
+  stopUpdaterTimer,
   stopListen,
   create,
   setAddr,
   getPort,
   bindUdpSend,
   destroy,
-  _stopLoop,
+  stopUpdaterTimer,
   close,
 } from '../socket'
 import {
@@ -23,7 +23,7 @@ import {
 } from '../mux'
 
 function main() {
-  startKcpuv()
+  startUpdaterTimer()
 
   const mux = createMux({
     password: 'hello',
@@ -48,7 +48,7 @@ function main() {
     // expect(isConnFreed(conn)).toBeTruthy()
 
     setTimeout(() => {
-      stopKcpuv()
+      stopUpdaterTimer()
     })
   })
 

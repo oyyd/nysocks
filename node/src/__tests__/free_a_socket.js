@@ -1,7 +1,7 @@
-import { send, setAddr, listen, initCryptor, startKcpuv, create, bindClose, destroy, close } from '../socket'
+import { send, setAddr, listen, initCryptor, startUpdaterTimer, create, bindClose, destroy, close } from '../socket'
 
 function main() {
-  startKcpuv()
+  startUpdaterTimer()
 
   const sender = create()
   // const receiver = create()

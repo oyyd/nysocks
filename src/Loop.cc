@@ -133,10 +133,6 @@ int Loop::KcpuvStopUpdaterTimer() {
     timer = NULL;
   }
 
-  // if (!use_default_loop && kcpuv_get_loop() != NULL) {
-  //   KcpuvLoopCloseHandles_();
-  // }
-
   return 0;
 }
 

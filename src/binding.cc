@@ -40,10 +40,7 @@ public:
     sess->timeout = 0;
   }
 
-  ~KcpuvSessBinding() {
-    KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(this->sess);
-    delete sess;
-  }
+  ~KcpuvSessBinding() { delete sess; }
 
   static Persistent<Function> constructor;
   static void Create(const FunctionCallbackInfo<Value> &info);
@@ -82,9 +79,9 @@ Persistent<Function> KcpuvMuxConnBinding::constructor;
 
 class KcpuvMuxBinding : public Nan::ObjectWrap {
 public:
-  explicit KcpuvMuxBinding(unsigned int passive = 0) {
-    // TODO: `passive` arg
-    mux = new Mux();
+  explicit KcpuvMuxBinding(KcpuvSess *sess) {
+    assert(sess);
+    mux = new Mux(sess);
   }
   ~KcpuvMuxBinding() {
     // TODO: What if it's deleted before closed?
@@ -101,18 +98,22 @@ public:
 Persistent<Function> KcpuvMuxBinding::constructor;
 
 void KcpuvMuxBinding::Create(const FunctionCallbackInfo<Value> &info) {
-  Isolate *isolate = info.GetIsolate();
+  // Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *sessObj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+  KcpuvSess *sess = sessObj->GetSess();
 
   if (info.IsConstructCall()) {
-    KcpuvMuxBinding *binding = new KcpuvMuxBinding();
+    KcpuvMuxBinding *binding = new KcpuvMuxBinding(sess);
     binding->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   } else {
-    Local<Function> cons =
-        Local<Function>::New(isolate, KcpuvMuxBinding::constructor);
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<Object> instance = cons->NewInstance(context, 0, 0).ToLocalChecked();
-    info.GetReturnValue().Set(instance);
+    assert(0);
+    // Local<Function> cons =
+    //     Local<Function>::New(isolate, KcpuvMuxBinding::constructor);
+    // Local<Context> context = isolate->GetCurrentContext();
+    // Local<Object> instance = cons->NewInstance(context, 0,
+    // 0).ToLocalChecked(); info.GetReturnValue().Set(instance);
   }
 }
 
@@ -171,31 +172,24 @@ static void ClosingCb(KcpuvSess *sess) {
   const int argc = 1;
   Local<Value> info[argc] = {Nan::Undefined()};
 
-  // if (!isolate) {
-  //   isolate = Isolate::New();
-  //   isolate->Enter();
-  // }
-
-  // if (error_msg) {
-  //   // TODO: memcpy
-  //   info[0] = String::NewFromUtf8(isolate, error_msg);
-  // }
-
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
                     Nan::New(binding->close_cb), argc, info);
 }
 
-static void OnUDPSend(KcpuvSess *sess, uv_buf_t *buf, int buf_count,
-                      const struct sockaddr *addr) {
+static void OnUDPSend(SessUDP *udp, const struct sockaddr *addr,
+                      const char *data, int len) {
+  KcpuvSess *sess = static_cast<KcpuvSess *>(udp->data);
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
+
   Nan::HandleScope scope;
   Isolate *isolate = Isolate::GetCurrent();
 
-  char *buf_data = new char[buf->len];
-  memcpy(buf_data, buf->base, buf->len);
+  char *buf_data = new char[len];
+  memcpy(buf_data, data, len);
 
-  char address[16];
-  uv_ip4_name(reinterpret_cast<const struct sockaddr_in *>(addr), address, 16);
+  char address[IP4_ADDR_LENTH];
+  uv_ip4_name(reinterpret_cast<const struct sockaddr_in *>(addr), address,
+              IP4_ADDR_LENTH);
   int port =
       ntohs((reinterpret_cast<const struct sockaddr_in *>(addr))->sin_port);
 
@@ -203,8 +197,8 @@ static void OnUDPSend(KcpuvSess *sess, uv_buf_t *buf, int buf_count,
   Local<Value> js_port = Number::New(isolate, port);
 
   const int argc = 3;
-  Local<Value> info[argc] = {
-      Nan::NewBuffer(buf_data, buf->len).ToLocalChecked(), js_address, js_port};
+  Local<Value> info[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked(),
+                             js_address, js_port};
 
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
                     Nan::New(binding->udp_send_cb), argc, info);
@@ -283,14 +277,6 @@ static NAN_METHOD(Free) {
 
   delete obj;
 }
-
-// TODO: need to free the object wrap or causing memory leaks
-// static NAN_METHOD(MarkFree) {
-//   KcpuvSessBinding *obj =
-//       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-//
-//   kcpuv_set_state(obj->GetSess(), KCPUV_STATE_WAIT_FREE);
-// }
 
 // TODO: check this
 static NAN_METHOD(Input) {
@@ -393,20 +379,20 @@ static NAN_METHOD(BindClose) {
   obj->GetSess()->BindClose(ClosingCb);
 }
 
-// static NAN_METHOD(BindUdpSend) {
-//   Isolate *isolate = info.GetIsolate();
-//   KcpuvSessBinding *obj =
-//       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-//
-//   if (!info[1]->IsFunction()) {
-//     isolate->ThrowException(Exception::Error(String::NewFromUtf8(
-//         isolate, "`BindUdpSend` expect a callback function")));
-//     return;
-//   }
-//
-//   obj->udp_send_cb.Reset(isolate, info[1].As<Function>());
-//   kcpuv_bind_udp_send(obj->GetSess(), OnUDPSend);
-// }
+static NAN_METHOD(BindUdpSend) {
+  Isolate *isolate = info.GetIsolate();
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  if (!info[1]->IsFunction()) {
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(
+        isolate, "`BindUdpSend` expect a callback function")));
+    return;
+  }
+
+  obj->udp_send_cb.Reset(isolate, info[1].As<Function>());
+  obj->GetSess()->sessUDP->BindUdpSend(OnUDPSend);
+}
 
 static NAN_METHOD(Close) {
   KcpuvSessBinding *obj =
@@ -439,7 +425,18 @@ static NAN_METHOD(Send) {
 
 static NAN_METHOD(StartLoop) { Loop::KcpuvStartLoop_(Mux::UpdateMux); }
 
-static NAN_METHOD(StopLoop) { Loop::KcpuvStopUpdaterTimer(); }
+static NAN_METHOD(StopUpdaterTimer) { Loop::KcpuvStopUpdaterTimer(); }
+
+static NAN_METHOD(GetSessState) {
+  Isolate *isolate = info.GetIsolate();
+
+  KcpuvSessBinding *obj =
+      Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
+
+  Local<Number> state = Number::New(isolate, obj->GetSess()->GetState());
+
+  info.GetReturnValue().Set(state);
+}
 
 // static NAN_METHOD(MuxInit) {
 //   // Isolate *isolate = info.GetIsolate();
@@ -451,14 +448,13 @@ static NAN_METHOD(StopLoop) { Loop::KcpuvStopUpdaterTimer(); }
 //   kcpuv_mux_init(&muxBinding->mux, sessObj->sess);
 // }
 
-// TODO:
-// static NAN_METHOD(MuxFree) {
-//   KcpuvMuxBinding *muxBinding =
-//       Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
-//
-//   kcpuv_mux_free(&muxBinding->mux);
-//   delete muxBinding;
-// }
+// TODO: Remove these.
+static NAN_METHOD(MuxFree) {
+  KcpuvMuxBinding *muxBinding =
+      Nan::ObjectWrap::Unwrap<KcpuvMuxBinding>(info[0]->ToObject());
+
+  delete muxBinding;
+}
 
 // TODO: Add mux_close
 
@@ -696,7 +692,6 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "setNoDelay", SetNoDelay);
   Nan::SetMethod(target, "useDefaultLoop", UseDefaultLoop);
   Nan::SetMethod(target, "free", Free);
-  // Nan::SetMethod(target, "markFree", MarkFree);
   Nan::SetMethod(target, "input", Input);
   Nan::SetMethod(target, "listen", Listen);
   Nan::SetMethod(target, "getPort", GetPort);
@@ -705,16 +700,17 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "send", Send);
   Nan::SetMethod(target, "bindClose", BindClose);
   Nan::SetMethod(target, "bindListen", BindListen);
-  // Nan::SetMethod(target, "bindUdpSend", BindUdpSend);
+  Nan::SetMethod(target, "bindUdpSend", BindUdpSend);
   Nan::SetMethod(target, "close", Close);
   Nan::SetMethod(target, "initialize", Initialize);
   Nan::SetMethod(target, "destruct", Destruct);
   Nan::SetMethod(target, "startLoop", StartLoop);
-  Nan::SetMethod(target, "stopLoop", StopLoop);
+  Nan::SetMethod(target, "stopUpdaterTimer", StopUpdaterTimer);
+  Nan::SetMethod(target, "getSessState", GetSessState);
 
   // mux method
   // Nan::SetMethod(target, "muxInit", MuxInit);
-  // Nan::SetMethod(target, "muxFree", MuxFree);
+  Nan::SetMethod(target, "muxFree", MuxFree);
   Nan::SetMethod(target, "muxBindClose", MuxBindClose);
   Nan::SetMethod(target, "muxBindConnection", MuxBindConnection);
 

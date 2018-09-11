@@ -11,6 +11,8 @@ class SessUDP;
 
 typedef void (*DgramCb)(SessUDP *udp, const struct sockaddr *addr,
                         const char *data, int len);
+typedef void (*UDPProxySend)(SessUDP *udp, const struct sockaddr *addr,
+                             const char *data, int len);
 
 // TODO: All uv methods used:
 // uv_udp_try_send
@@ -35,6 +37,7 @@ public:
   int Unbind();
   int GetAddressPort(int *namelength, char *addr, int *port);
   bool HasSendAddr();
+  void BindUdpSend(UDPProxySend send);
 
   // user data
   void *data;
@@ -43,6 +46,7 @@ private:
   // Operations in uv are mostly asynchronous so that we should not try to
   // delete it synchchronously.
   uv_udp_t *handle;
+  UDPProxySend udpSend;
 
   // TODO: Change the name to `dgramCb`.
   DgramCb dataCb;

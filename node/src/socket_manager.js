@@ -20,7 +20,7 @@ import {
 } from './mux'
 import { getIP, debug } from './utils'
 
-export { startKcpuv, stopKcpuv } from './socket'
+export { startUpdaterTimer, stopUpdaterTimer } from './socket'
 
 const TOTAL_TIMEOUT = (debug ? 10 : 60) * 1000
 const BEATING_INTERVAL = TOTAL_TIMEOUT / 6
@@ -393,7 +393,7 @@ export function createConnection(client) {
 export const destroy = _destroy
 
 // if (module === require.main) {
-//   startKcpuv()
+//   startUpdaterTimer()
 //
 //   const serverAddr = '0.0.0.0'
 //   const password = 'hello'

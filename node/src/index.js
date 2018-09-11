@@ -14,7 +14,7 @@ import {
   createConnection,
   close,
   sendClose,
-  startKcpuv,
+  startUpdaterTimer,
   freeManager,
 } from './socket_manager'
 import { createMonitor } from './network_monitor'
@@ -38,7 +38,7 @@ function start() {
   }
 
   kcpuvStarted = true
-  startKcpuv()
+  startUpdaterTimer()
 }
 
 function ssProtocol(config, managerClient) {

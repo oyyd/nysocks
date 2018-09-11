@@ -1,7 +1,9 @@
 import dgram from 'dgram'
 import {
-  startKcpuv,
-  stopKcpuv,
+  getSessState,
+  close,
+  startUpdaterTimer,
+  stopUpdaterTimer,
   create,
   send,
   bindListener,
@@ -12,150 +14,171 @@ import {
   setAddr,
   destroy,
   bindUdpSend,
-  _stopLoop,
   stopListen,
   createWithOptions,
 } from '../socket'
 
 describe('socket', () => {
+  it('should exit automatically when all handles are freed', done => {
+    startUpdaterTimer()
+
+    const sess = create()
+
+    sess.event.on('close', () => {
+      stopUpdaterTimer()
+      done()
+    })
+
+    close(sess)
+  })
+
   it('should send some data from a to b', done => {
-    startKcpuv()
+    startUpdaterTimer()
 
     const addr = '0.0.0.0'
     const password = 'hello'
     const message = 'hello'
     const a = create()
     const b = create()
+    let closed = 0
+
+    const closeLoop = () => {
+      closed += 1
+
+      if (closed !== 2) {
+        return
+      }
+
+      stopUpdaterTimer()
+      done()
+    }
+
+    a.event.on('close', () => {
+      expect(getSessState(a)).toBe('KCPUV_STATE_WAIT_FREE')
+      closeLoop()
+    })
+    b.event.on('close', () => {
+      expect(getSessState(a)).toBe('KCPUV_STATE_WAIT_FREE')
+      closeLoop()
+    })
+
     initCryptor(a, password)
     initCryptor(b, password)
+
     listen(a, 0)
     listen(b, 0)
 
     const portA = getPort(a)
     const portB = getPort(b)
 
-    expect(typeof portA === 'number').toBe(true)
-    expect(typeof portB === 'number').toBe(true)
+    expect(getSessState(a)).toBe('KCPUV_STATE_CREATED')
+    expect(getSessState(b)).toBe('KCPUV_STATE_CREATED')
+
+    expect(typeof portA === 'number' && portA !== 0).toBe(true)
+    expect(typeof portB === 'number' && portB !== 0).toBe(true)
 
     setAddr(a, addr, portB)
     setAddr(b, addr, portA)
 
-    bindListener(b, msg => {
+    bindListener(a, msg => {
       expect(msg.toString('utf8')).toBe(message)
-      stopListen(a)
-      stopListen(b)
+      close(a)
+      close(b)
 
-      setTimeout(() => {
-        _stopLoop()
-        stopKcpuv()
-        done()
-      }, 100)
+      expect(getSessState(a)).toBe('KCPUV_STATE_FIN')
+      expect(getSessState(b)).toBe('KCPUV_STATE_FIN')
+    })
+
+    bindListener(b, msg => {
+      send(b, msg)
     })
 
     send(a, Buffer.from(message))
   })
 
-  it('should trigger onClose callback when destroied', done => {
-    startKcpuv()
-
-    const socket = create()
-
-    socket.event.on('close', () => {
-      setTimeout(() => {
-        stopKcpuv()
-        done()
-      })
-    })
-
-    destroy(socket)
-  })
-
-  it('should trigger onClose callback when destroied', done => {
-    startKcpuv()
-
-    const socket = createWithOptions()
-
-    socket.event.on('close', () => {
-      setTimeout(() => {
-        stopKcpuv()
-        done()
-      })
-    })
-
-    destroy(socket)
-  })
-
-  //
-  // // describe('input', () => {
-  // //   // TODO: refactor
-  // //   it('should put some data to a sess by calling input', (done) => {
-  // //     startKcpuv()
-  // //
-  // //     const addr = '0.0.0.0'
-  // //     const password = 'hello'
-  // //     const a = create()
-  // //     initCryptor(a, password)
-  // //     listen(a, 0)
-  // //
-  // //     const buffer = Buffer.from('Hello')
-  // //
-  // //     input(a, buffer, addr, 20000)
-  // //
-  // //     stopListen(a)
-  // //
-  // //     setTimeout(() => {
-  // //       _stopLoop()
-  // //       stopKcpuv()
-  // //       done()
-  // //     }, 20)
-  // //   })
-  // // })
-  //
-  // describe('bindUdpSend', () => {
+  // describe('input', () => {
   //   // TODO: refactor
-  //   it('should send msg by proxy', (done) => {
-  //     startKcpuv()
+  //   it('should put some data to a sess by calling input', (done) => {
+  //     startUpdaterTimer()
   //
-  //     const udpSocket = dgram.createSocket('udp4')
   //     const addr = '0.0.0.0'
   //     const password = 'hello'
-  //     const message = 'hello'
   //     const a = create()
-  //     const b = create()
   //     initCryptor(a, password)
-  //     initCryptor(b, password)
   //     listen(a, 0)
-  //     listen(b, 0)
   //
-  //     const portA = getPort(a)
-  //     const portB = getPort(b)
+  //     const buffer = Buffer.from('Hello')
   //
-  //     expect(typeof portA === 'number').toBe(true)
-  //     expect(typeof portB === 'number').toBe(true)
+  //     input(a, buffer, addr, 20000)
   //
-  //     setAddr(a, addr, portB)
-  //     setAddr(b, addr, portA)
+  //     stopListen(a)
   //
-  //     bindListener(b, (msg) => {
-  //       expect(msg.toString('utf8')).toBe(message)
-  //       _stopLoop()
-  //
-  //       stopListen(a)
-  //       stopListen(b)
-  //       udpSocket.close()
-  //
-  //       // TODO: refactor this
-  //       setTimeout(() => {
-  //         stopKcpuv()
-  //         done()
-  //       }, 100)
-  //     })
-  //
-  //     bindUdpSend(b, (msg, address, port) => {
-  //       udpSocket.send(msg, port, address)
-  //     })
-  //
-  //     send(a, Buffer.from(message))
+  //     setTimeout(() => {
+  //       stopUpdaterTimer()
+  //       stopUpdaterTimer()
+  //       done()
+  //     }, 20)
   //   })
   // })
+
+  describe('bindUdpSend', () => {
+    it('should send msg by proxy', (done) => {
+      startUpdaterTimer()
+
+      const udpSocket = dgram.createSocket('udp4')
+      const addr = '0.0.0.0'
+      const password = 'hello'
+      const message = 'hello'
+      let closed = 0
+      const a = create()
+      const b = create()
+      initCryptor(a, password)
+      initCryptor(b, password)
+
+      listen(a, 0)
+      listen(b, 0)
+
+
+      const closeLoop = () => {
+        closed += 1
+
+        if (closed !== 2) {
+          return
+        }
+
+        udpSocket.close()
+        stopUpdaterTimer()
+        done()
+      }
+
+      a.event.on('close', () => {
+        closeLoop()
+      })
+      b.event.on('close', () => {
+        closeLoop()
+      })
+
+      const portA = getPort(a)
+      const portB = getPort(b)
+
+      expect(typeof portA === 'number').toBe(true)
+      expect(typeof portB === 'number').toBe(true)
+
+      setAddr(a, addr, portB)
+      setAddr(b, addr, portA)
+
+      bindListener(b, (msg) => {
+        expect(msg.toString('utf8')).toBe(message)
+
+        close(a)
+        close(b)
+      })
+
+      bindUdpSend(b, (msg, address, port) => {
+        udpSocket.send(msg, port, address)
+      })
+
+      send(a, Buffer.from(message))
+    })
+  })
 })

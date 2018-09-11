@@ -16,8 +16,6 @@ class KcpuvSess;
 
 typedef void (*DataCb)(KcpuvSess *sess, const char *data, unsigned int len);
 typedef void (*CloseCb)(KcpuvSess *sess);
-typedef void (*kcpuv_udp_send)(KcpuvSess *sess, uv_buf_t *buf, int buf_count,
-                               const struct sockaddr *);
 
 typedef struct KCPUV_SESS_LIST {
   kcpuv_link *list;
@@ -113,6 +111,8 @@ public:
   }
 
   bool GetPassive() { return passive; }
+
+  int GetState() { return state; }
 
   void Close_();
 
