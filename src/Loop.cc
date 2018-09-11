@@ -43,7 +43,7 @@ uv_loop_t *Loop::kcpuv_get_loop() {
   return kcpuv_loop;
 }
 
-static void NextTickCb_(uv_timer_t *timer) {
+static void TriggerCallback(uv_timer_t *timer) {
   KcpuvCallbackInfo *info = reinterpret_cast<KcpuvCallbackInfo *>(timer->data);
   NextTickCb cb = info->cb;
   cb(info);
@@ -55,7 +55,23 @@ void Loop::NextTick(KcpuvCallbackInfo *info) {
 
   timer->data = info;
 
-  Loop::KcpuvNextTick_(timer, NextTickCb_);
+  Loop::KcpuvNextTick_(timer, TriggerCallback);
+}
+
+uv_timer_t *Loop::AddTimer(unsigned int timeout, KcpuvCallbackInfo *info) {
+  uv_timer_t *timer = new uv_timer_t;
+
+  timer->data = info;
+
+  uv_timer_init(kcpuv_get_loop(), timer);
+  uv_timer_start(timer, TriggerCallback, timeout, 0);
+
+  return timer;
+}
+
+void Loop::StopTimer(uv_timer_t *timer) {
+  uv_timer_stop(timer);
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
 }
 
 void Loop::NextTick(uv_loop_t *loop, KcpuvCallbackInfo *info) {
@@ -63,7 +79,7 @@ void Loop::NextTick(uv_loop_t *loop, KcpuvCallbackInfo *info) {
 
   timer->data = info;
 
-  Loop::KcpuvNextTick_(loop, timer, NextTickCb_);
+  Loop::KcpuvNextTick_(loop, timer, TriggerCallback);
 }
 
 void Loop::KcpuvNextTick_(uv_timer_t *timer, uv_timer_cb cb) {

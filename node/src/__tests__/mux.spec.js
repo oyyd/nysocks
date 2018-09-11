@@ -8,6 +8,7 @@ import {
   destroy,
   stopUpdaterTimer,
   close,
+  getSessState,
 } from '../socket'
 import {
   connListen,
@@ -67,6 +68,8 @@ describe('mux', () => {
       let muxClosed = 0
 
       mux1.event.on('close', () => {
+        console.log('mux1 close', getSessState(mux1.sess))
+        console.log('mux2 close', getSessState(mux2.sess))
         muxClosed += 1
 
         if (muxClosed === 2) {
@@ -76,6 +79,7 @@ describe('mux', () => {
       })
 
       mux2.event.on('close', () => {
+        console.log('mux1 close', getSessState(mux2.sess))
         muxClosed += 1
 
         if (muxClosed === 2) {
@@ -93,14 +97,15 @@ describe('mux', () => {
       const conn1 = createMuxConn(mux1)
 
       muxBindConnection(mux2, conn2 => {
-        // connListen(conn2, msg => {
-        //   expect(msg.toString('utf8')).toBe('hello')
-        // })
-        //
-        // conn2.event.on('close', () => {
-        //   muxClose(mux1)
-        //   muxClose(mux2)
-        // })
+        connListen(conn2, msg => {
+          expect(msg.toString('utf8')).toBe('hello')
+          connClose(conn2)
+        })
+
+        conn2.event.on('close', () => {
+          muxClose(mux1)
+          muxClose(mux2)
+        })
       })
 
       connSend(conn1, Buffer.from('hello'))

@@ -227,6 +227,8 @@ KcpuvSess::KcpuvSess(bool passive_) {
   cryptor = NULL;
   onBeforeFree = NULL;
   passive = 0;
+  waitFinTimeout = KCPUV_WAIT_FIN_TIMEOUT;
+  waitFinUVTimer = NULL;
   // NOTE: Take next dgram source as send addr.
   SetPassive(passive_);
 
@@ -258,39 +260,6 @@ bool KcpuvSess::ExitUpdateQueue() {
   sess_list->len -= 1;
 
   return 1;
-}
-
-void KcpuvSess::Close_() {
-  this->ExitUpdateQueue();
-
-  if (onBeforeFree != NULL) {
-    CloseCb cb = this->onBeforeFree;
-    cb(this);
-  }
-
-  assert(onCloseCb);
-  // call callback to inform outside
-  CloseCb cb = onCloseCb;
-  cb(this);
-}
-
-static void RemoveSessInNextTick(KcpuvCallbackInfo *info) {
-  KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(info->data);
-  delete info;
-
-  // TODO: `Unbind`ing is a bit late.
-  sess->sessUDP->Unbind();
-  sess->Close_();
-}
-
-// NOTE: Outside should not delete other instances in the same tick.
-// NOTE: Outside is expected to delete instances manually.
-void KcpuvSess::TriggerClose() {
-  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
-  info->data = this;
-  info->cb = RemoveSessInNextTick;
-
-  Loop::NextTick(info);
 }
 
 // Free a kcpuv session.
@@ -431,16 +400,54 @@ void KcpuvSess::BindClose(CloseCb cb) {
 
 void KcpuvSess::BindListen(DataCb cb) { onMsgCb = cb; }
 
-// int KcpuvSetState(KcpuvSess *sess, int state) {
-//   // do not allow to change state when it's KCPUV_STATE_WAIT_FREE
-//   // if (state != KCPUV_STATE_WAIT_FREE && state == KCPUV_STATE_WAIT_FREE)
-//   // {
-//   //   return -1;
-//   // }
-//
-//   state = state;
-//   return 0;
-// }
+static void RemoveSessInNextTick(KcpuvCallbackInfo *info) {
+  KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(info->data);
+  delete info;
+
+  sess->ExitUpdateQueue();
+  // TODO: `Unbind`ing is a bit late.
+  sess->sessUDP->Unbind();
+
+  if (sess->onBeforeFree != NULL) {
+    CloseCb cb = sess->onBeforeFree;
+    cb(sess);
+  }
+
+  assert(sess->onCloseCb);
+  // call callback to inform outside
+  CloseCb cb = sess->onCloseCb;
+  cb(sess);
+}
+
+// NOTE: Outside should not delete other instances in the same tick.
+// NOTE: Outside is expected to delete instances manually.
+void KcpuvSess::TriggerClose() {
+  if (waitFinUVTimer != NULL) {
+    KcpuvCallbackInfo *info = (KcpuvCallbackInfo *)(waitFinUVTimer->data);
+    delete info;
+
+    Loop::StopTimer(waitFinUVTimer);
+    waitFinUVTimer = NULL;
+  }
+
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->data = this;
+  info->cb = RemoveSessInNextTick;
+
+  Loop::NextTick(info);
+}
+
+void KcpuvSess::WaitFinTimer() {
+  if (!this->waitFinTimeout) {
+    return;
+  }
+
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->data = this;
+  info->cb = RemoveSessInNextTick;
+
+  this->waitFinUVTimer = Loop::AddTimer(this->waitFinTimeout, info);
+}
 
 // Close
 void KcpuvSess::Close() {
@@ -454,6 +461,8 @@ void KcpuvSess::Close() {
   if (sess->state == KCPUV_STATE_READY) {
     this->SendCMD(KCPUV_CMD_FIN);
     sess->state = KCPUV_STATE_FIN;
+    this->WaitFinTimer();
+    // Add a timer to delete sess when timeout.
     return;
   }
 

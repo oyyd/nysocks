@@ -114,7 +114,7 @@ public:
 
   int GetState() { return state; }
 
-  void Close_();
+  void SetWaitFinTimeout(unsigned int t) { waitFinTimeout = t; }
 
   unsigned int recvBufLength;
   char *recvBuf;
@@ -126,16 +126,20 @@ public:
   IUINT32 recvTs;
   void *data;
   unsigned int timeout;
+  CloseCb onCloseCb;
 
 private:
+  void WaitFinTimer();
+
+  unsigned int waitFinTimeout;
   int state;
   struct sockaddr *recvAddr;
   // User defined data.
   // TODO: make mux store sess sf a clearer solution
   IUINT32 sendTs;
   DataCb onMsgCb;
-  CloseCb onCloseCb;
   bool passive;
+  uv_timer_t *waitFinUVTimer;
 };
 
 } // namespace kcpuv

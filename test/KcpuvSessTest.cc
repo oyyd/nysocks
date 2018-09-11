@@ -35,7 +35,7 @@ TEST_F(KcpuvSessTest, StartLoopAndExit) {
 
 static KcpuvSess *test1_sess = NULL;
 
-static void DeleteSess(KcpuvSess *sess) {
+static void DeleteSessAndStopTimer(KcpuvSess *sess) {
   delete sess;
   Loop::KcpuvStopUpdaterTimer();
 }
@@ -52,7 +52,7 @@ TEST_F(KcpuvSessTest, PushSessToSessList) {
   KCPUV_INIT_ENCRYPTOR(test1_sess);
   kcpuv_sess_list *sess_list = KcpuvSess::KcpuvGetSessList();
 
-  test1_sess->BindClose(DeleteSess);
+  test1_sess->BindClose(DeleteSessAndStopTimer);
 
   EXPECT_EQ(sess_list->len, 1);
   EXPECT_TRUE(sess_list->list->next);
@@ -331,7 +331,7 @@ static void CloseSender(uv_timer_t *timer) {
   kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
 }
 
-TEST_F(KcpuvSessTest, sending_fin_would_close_the_other_side) {
+TEST_F(KcpuvSessTest, SendindFinWouldCloseOtherSide) {
   KcpuvSess::KcpuvInitialize();
 
   test_callback4 = new testing::MockFunction<void(void)>();
@@ -434,6 +434,61 @@ TEST_F(KcpuvSessTest, GetAddressPort) {
 
   delete[] ip_addr;
 
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
+}
+
+static testing::MockFunction<void(void)> *WaitFinCloseCb;
+
+static void DeleteSessOnly(KcpuvSess *sess) {
+  delete sess;
+  WaitFinCloseCb->Call();
+}
+
+static void CloseBothSess(uv_timer_t *timer) {
+  KcpuvSess *sender = reinterpret_cast<KcpuvSess *>(timer->data);
+  sender->Close();
+  KcpuvSess *recver = reinterpret_cast<KcpuvSess *>(sender->data);
+  recver->Close();
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
+}
+
+TEST_F(KcpuvSessTest, WaitFinTimer) {
+  KcpuvSess::KcpuvInitialize();
+
+  WaitFinCloseCb = new testing::MockFunction<void(void)>();
+  EXPECT_CALL(*WaitFinCloseCb, Call()).Times(1);
+
+  KcpuvSess *sender = new KcpuvSess(0);
+  KcpuvSess *recver = new KcpuvSess(1);
+  recver->SetWaitFinTimeout(1000);
+  recver->SetWaitFinTimeout(1000);
+
+  sender->BindClose(DeleteSessAndStopTimer);
+  recver->BindClose(DeleteSessOnly);
+
+  KCPUV_INIT_ENCRYPTOR(sender);
+  KCPUV_INIT_ENCRYPTOR(recver);
+  int send_port = 12004;
+  int receive_port = 12005;
+  char localaddr[] = "127.0.0.1";
+
+  // bind local
+  sender->Listen(send_port, NULL);
+  recver->Listen(receive_port, NULL);
+  sender->InitSend(localaddr, receive_port);
+  recver->InitSend(localaddr, send_port);
+  sender->Send("Hello", 5);
+
+  uv_timer_t *close_timer = new uv_timer_t;
+
+  close_timer->data = sender;
+  sender->data = recver;
+  Loop::KcpuvAddTimer_(close_timer);
+  uv_timer_start(close_timer, CloseBothSess, 1000, 0);
+
+  Loop::KcpuvStartLoop_(KcpuvSess::KcpuvUpdateKcpSess_);
+
+  delete WaitFinCloseCb;
   KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 

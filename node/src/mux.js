@@ -165,8 +165,8 @@ export const muxBindConnection = muxSuite.wrap((mux, onConnection) => {
   }
 
   binding.muxBindConnection(mux, conn => {
-    // wrapMuxConn(conn)
-    // onConnection(conn)
+    wrapMuxConn(conn)
+    onConnection(conn)
   })
 })
 
@@ -179,7 +179,7 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
   const options = Object.assign({}, DEFAULT_CONN_OPTIONS, _options)
   // TODO: refactor this
   // eslint-disable-next-line
-  const conn = muxCreateConn(mux)
+  const conn = binding.muxCreateConn(mux)
 
   wrapMuxConn(conn)
 

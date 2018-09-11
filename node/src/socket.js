@@ -102,6 +102,16 @@ export const bindUdpSend = wrap((sess, next) => {
   binding.bindUdpSend(sess, next)
 })
 
+export const forceClose = wrap((sess) => {
+  if (!sess.isClosed) {
+    sess.isClosed = true
+    destroy(sess)
+    // TODO: Different from common close procedure.
+    // TODO: error msg
+    sess.event.emit('close', null)
+  }
+})
+
 // TODO: Move this to cpp?
 export const close = wrap(sess => {
   if (sess.isClosed) {
@@ -112,12 +122,7 @@ export const close = wrap(sess => {
 
   // NOTE: Force destroying the sess if it takes too many seconds.
   setTimeout(() => {
-    if (!sess.isClosed) {
-      destroy(sess)
-      // TODO: Different from common close procedure.
-      // TODO: error msg
-      sess.event.emit('close', null)
-    }
+    forceClose(sess)
   }, CLOSE_TIMEOUT)
 })
 

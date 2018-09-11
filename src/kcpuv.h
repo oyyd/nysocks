@@ -56,6 +56,7 @@ extern "C" {
 // four byte for id,
 // two byte for length,
 #define KCPUV_MUX_PROTOCOL_OVERHEAD 7
+#define KCPUV_WAIT_FIN_TIMEOUT 10000
 #define MAX_MUX_CONTENT_LEN                                                    \
   (MAX_SENDING_LEN - KCPUV_OVERHEAD - KCPUV_MUX_PROTOCOL_OVERHEAD)
 

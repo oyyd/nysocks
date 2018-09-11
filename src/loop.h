@@ -30,6 +30,10 @@ public:
 
   static void NextTick(uv_loop_t *loop, KcpuvCallbackInfo *);
 
+  static uv_timer_t *AddTimer(unsigned int timeout, KcpuvCallbackInfo *info);
+
+  static void StopTimer(uv_timer_t *);
+
   static void KcpuvUseDefaultLoop(int value);
 
   static void KcpuvAddIdle_(uv_idle_t *idle);
