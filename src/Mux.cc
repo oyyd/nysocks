@@ -326,6 +326,8 @@ void Conn::Close() {
     return;
   }
 
+  fprintf(stderr, "Conn::Close %d\n", this->id);
+
   // Tell the other side to close.
   bool allowSendClose = this->send_state == KCPUV_CONN_SEND_READY;
 
