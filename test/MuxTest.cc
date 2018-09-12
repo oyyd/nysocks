@@ -171,6 +171,8 @@ void P2OnMessage(Conn *conn, const char *buffer, int length) {
   }
 
   conn->Close();
+  // Close more than once should be okay.
+  conn->Close();
 }
 
 static void OnP2Conn(Conn *conn) {

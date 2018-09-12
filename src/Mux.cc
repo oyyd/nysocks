@@ -38,9 +38,6 @@ static void SessCloseFirst(KcpuvSess *sess) {
   assert(sess->mux != NULL);
   fprintf(stderr, "sess is closed before closing mux\n");
   assert(0);
-
-  // delete sess;
-  // mux->Close();
 }
 
 static void int_to_bytes(unsigned char *buffer, unsigned int id) {
@@ -217,8 +214,6 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
       cb(conn);
     }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
-    conn->send_state = KCPUV_CONN_SEND_STOPPED;
-    conn->recv_state = KCPUV_CONN_RECV_STOP;
     conn->Close();
   } else {
     // drop invalid cmd
