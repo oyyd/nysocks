@@ -326,12 +326,15 @@ export function createServerRouter(config) {
       const serverConfig = Object.assign({}, config, {
         serverPort: 0,
       })
-      const server = createServer(serverConfig, () => {
+      let server = null
+
+      return createServer(serverConfig, () => {
         freeManager(server.managerServer)
         router.onServerClose(options)
+      }).then(s => {
+        server = s
+        return server.managerServer.masterSocket
       })
-
-      return server.managerServer.masterSocket
     },
   )
 

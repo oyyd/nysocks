@@ -36,16 +36,19 @@ export function createRouter(_options, createASess) {
 
     // TODO: drop invalid msg
     if (!managerMaps[key]) {
-      const sess = createASess({ address, port })
-      managerMaps[key] = sess
+      createASess({ address, port }).then(sess => {
+        managerMaps[key] = sess
 
-      bindUdpSend(sess, (msgToBeSend, remoteAddr, remotePort) => {
-        routerSocket.send(msgToBeSend, remotePort, remoteAddr)
+        bindUdpSend(sess, (msgToBeSend, remoteAddr, remotePort) => {
+          routerSocket.send(msgToBeSend, remotePort, remoteAddr)
+        })
+
+        input(sess, msg, address, port)
       })
+    } else {
+      const sess = managerMaps[key]
+      input(sess, msg, address, port)
     }
-
-    const sess = managerMaps[key]
-    input(sess, msg, address, port)
   })
 
   routerSocket.bind(listenPort)
