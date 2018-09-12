@@ -16,9 +16,8 @@ import {
   sendClose,
   startUpdaterTimer,
   freeManager,
-  // TODO:
-  bindOthersideEnd,
-  connSendClose,
+  bindEnd,
+  sendStop,
 } from './socket_manager'
 import { createMonitor } from './network_monitor'
 import { createRouter } from './router'
@@ -98,8 +97,10 @@ function socksProtocol(config, managerClient) {
     // TODO: We don't need to use 'end' event.
     // tunnel
     const conn = createConnection(managerClient)
-    let socketEnd = false
 
+    bindEnd(conn, () => {
+      socket.end()
+    })
     // bind
     conn.event.on('close', () => {
       // TODO: error msg
@@ -107,11 +108,6 @@ function socksProtocol(config, managerClient) {
     })
 
     listen(conn, buf => {
-      // console.log('CONN_SEND', buf.length)
-      if (socketEnd) {
-        return
-      }
-
       socket.write(buf)
     })
 
@@ -125,7 +121,7 @@ function socksProtocol(config, managerClient) {
     })
 
     socket.on('end', () => {
-      socketEnd = true
+      sendStop(conn)
     })
 
     socket.on('close', () => {
@@ -137,7 +133,7 @@ function socksProtocol(config, managerClient) {
   })
 }
 
-export function createClientInstance(config) {
+export async function createClientInstance(config) {
   return createManagerClient(config).then(managerClient => {
     const { clientProtocol } = config
     const client = {
@@ -257,13 +253,12 @@ export function createClient(config, onReconnect) {
   recreate()
 }
 
-export function createServer(config, onClose) {
+export async function createServer(config, onClose) {
   start()
 
   const server = {}
 
-  //
-  const managerServer = createManager(
+  const managerServer = await createManager(
     config,
     // on connection
     conn => {
@@ -271,15 +266,12 @@ export function createServer(config, onClose) {
       let socket = null
 
       listen(conn, buf => {
-        let socketEnd = false
-
         if (firstBuf) {
           firstBuf = false
           const dstInfo = parseDstInfo(buf)
 
           // drop invalid msg
           if (!dstInfo) {
-            // throw new Error('invalid dstInfo')
             close(conn)
             return
           }
@@ -302,7 +294,10 @@ export function createServer(config, onClose) {
             close(conn)
           })
           socket.on('end', () => {
-            socketEnd = true
+            sendStop(conn)
+          })
+          bindEnd(conn, () => {
+            socket.end()
           })
           conn.event.on('close', () => {
             // TODO: error msg
@@ -311,10 +306,7 @@ export function createServer(config, onClose) {
           })
           return
         }
-
-        if (!socketEnd) {
-          socket.write(buf)
-        }
+        socket.write(buf)
       })
     },
     // on close
@@ -335,8 +327,6 @@ export function createServerRouter(config) {
         serverPort: 0,
       })
       const server = createServer(serverConfig, () => {
-        // TODO:
-        // on close
         freeManager(server.managerServer)
         router.onServerClose(options)
       })

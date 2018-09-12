@@ -261,9 +261,9 @@ export default function main() {
 
         const pacConfig = Object.assign({ port: config.SOCKS.port }, config.pac)
         createPACServer(pacConfig)
-        createClient(config)
-
         logger.info(`PAC service is listening on ${pacConfig.pacServerPort}`)
+
+        createClient(config)
       },
     })
     .demandCommand(1, 'You need at least one command before moving on')

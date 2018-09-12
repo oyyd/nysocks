@@ -34,6 +34,7 @@
     "test": "test"
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "chalk": "^2.3.0",
     "encryptsocks": "^1.4.4",
     "fecha": "^2.3.1",
