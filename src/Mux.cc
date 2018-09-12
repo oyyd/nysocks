@@ -203,13 +203,13 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
 
   // handle cmd
   if (cmd == KCPUV_MUX_CMD_PUSH || cmd == KCPUV_MUX_CMD_CONNECT) {
-    if (conn->on_msg_cb != NULL) {
-      ConnOnMsgCb cb = conn->on_msg_cb;
-      cb(conn, data, len);
-    } else {
+    if (conn->on_msg_cb == NULL) {
       // Should never happen.
       assert(0);
     }
+
+    ConnOnMsgCb cb = conn->on_msg_cb;
+    cb(conn, data, len);
   } else if (cmd == KCPUV_MUX_CMD_FIN) {
     conn->recv_state = KCPUV_CONN_RECV_STOP;
     if (conn->on_otherside_end != NULL) {

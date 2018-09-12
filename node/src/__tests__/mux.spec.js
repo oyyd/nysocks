@@ -331,6 +331,7 @@ describe('mux', () => {
       })
 
       let receive = 0
+
       connListen(conn1, () => {
         receive += 1
         if (receive === TIMES) {

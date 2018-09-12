@@ -6,6 +6,7 @@ import {
   listen as socketListen,
   setAddr,
   close,
+  setSessWaitFinTimeout,
 } from './socket'
 import { createBaseSuite } from './utils'
 // import { record, get } from './monitor'
@@ -213,7 +214,6 @@ export const bindOthersideEnd = connSuite.wrap((conn, onStopSend) => {
   binding.bindOthersideEnd(conn, onStopSend)
 })
 
-
 export const connSetTimeout = connSuite.wrap((conn, timeout) => {
   if (typeof timeout !== 'number' && timeout > 0) {
     throw new Error('invalid timeout')
@@ -229,6 +229,9 @@ export const connClose = connSuite.wrap(conn => {
 export const connSendStop = connSuite.wrap(conn => {
   binding.connSendStop(conn)
 })
+
+export const setWaitFinTimeout = muxSuite.wrap((mux, timeout) =>
+  setSessWaitFinTimeout(mux.sess, timeout))
 
 // if (module === require.main) {
 //   (() => {

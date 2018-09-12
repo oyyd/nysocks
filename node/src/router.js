@@ -1,5 +1,6 @@
 import dgram from 'dgram'
 import { DEFAULT_SERVER_PORT } from './socket_manager'
+// TODO: Hide socket info
 import { input, bindUdpSend } from './socket'
 import { logger } from './logger'
 

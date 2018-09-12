@@ -1,8 +1,12 @@
 import {
   createClient, createManager, freeManager,
   checkJSONMsg, checkHandshakeMsg,
+  sendBuf, createConnection,
+  sendClose, close, listen,
+  bindEnd, sendStop,
+  setWaitFinTimeout,
 } from '../socket_manager'
-import { startUpdaterTimer, stopUpdaterTimer } from '../socket'
+import { startUpdaterTimer, stopUpdaterTimer, getPort } from '../socket'
 
 describe('socket_manager', () => {
   describe('checkJSONMsg', () => {
@@ -44,29 +48,78 @@ describe('socket_manager', () => {
     })
   })
 
-  // describe('createManager', () => {
-  //   it('should create a manager and a client and then free them', (done) => {
-  //     startUpdaterTimer()
-  //
-  //     const serverAddr = '0.0.0.0'
-  //     const password = 'hello'
-  //     const serverPort = 20020
-  //
-  //     const manager = createManager({
-  //       password,
-  //       serverAddr,
-  //       serverPort,
-  //     }, () => {})
-  //
-  //     createClient({
-  //       password,
-  //       serverAddr,
-  //       serverPort,
-  //     }).then(client => {
-  //       console.log('client', client)
-  //       freeManager(client)
-  //       // done()
-  //     })
-  //   })
-  // })
+  describe('createManager', () => {
+    it('should create a manager and a client and then free them', (done) => {
+      startUpdaterTimer()
+
+      const serverAddr = '0.0.0.0'
+      const password = 'hello'
+      const socketAmount = 2
+      const data = 'buffer'
+      const timeout = 1000
+      const bindEndCb = jest.fn()
+      let serverPort = 0
+      let manager = null
+      let client = null
+
+      const destruct = () => {
+        expect(bindEndCb).toHaveBeenCalled()
+        stopUpdaterTimer()
+        done()
+      }
+
+      createManager({
+        password,
+        serverAddr,
+        serverPort,
+        socketAmount,
+      }, (conn) => {
+        sendBuf(conn, Buffer.from(data))
+
+        listen(conn, msg => {
+          expect(msg.toString('utf8')).toBe(data)
+        })
+
+        bindEnd(conn, () => {
+          bindEndCb()
+
+          setWaitFinTimeout(manager, timeout)
+          setWaitFinTimeout(client, timeout)
+          freeManager(client)
+          freeManager(manager)
+        })
+      }, () => {
+        destruct()
+      }).then(m => {
+        manager = m
+        serverPort = getPort(manager.masterSocket)
+        // eslint-disable-next-line
+        _createClient()
+      })
+
+      function _createClient() {
+        createClient({
+          password,
+          serverAddr,
+          serverPort,
+        }).then(c => {
+          client = c
+          // NOTE: This `conns` is actual muxes.
+          const { conns, ports } = client
+          expect(Array.isArray(ports)).toBe(true)
+          expect(ports.length).toBe(socketAmount)
+          expect(Array.isArray(conns)).toBe(true)
+          expect(conns.length).toBe(socketAmount)
+
+          const conn = createConnection(client)
+          listen(conn, msg => {
+            // console.log('client msg', msg)
+          })
+          sendBuf(conn, Buffer.from(data))
+          sendStop(conn)
+          // close(conn)
+        })
+      }
+    })
+  })
 })

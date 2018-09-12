@@ -16,6 +16,9 @@ import {
   sendClose,
   startUpdaterTimer,
   freeManager,
+  // TODO:
+  bindOthersideEnd,
+  connSendClose,
 } from './socket_manager'
 import { createMonitor } from './network_monitor'
 import { createRouter } from './router'
@@ -259,8 +262,10 @@ export function createServer(config, onClose) {
 
   const server = {}
 
+  //
   const managerServer = createManager(
     config,
+    // on connection
     conn => {
       let firstBuf = true
       let socket = null
@@ -312,6 +317,7 @@ export function createServer(config, onClose) {
         }
       })
     },
+    // on close
     onClose,
   )
 

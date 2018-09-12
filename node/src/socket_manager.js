@@ -1,22 +1,19 @@
+import assert from 'assert'
 import EventEmitter from 'events'
-import {
-  getPort,
-  createWithOptions,
-  listen as socketListen,
-  setAddr,
-  initCryptor,
-  destroy as _destroy,
-} from './socket'
+import { getPort } from './socket'
 import {
   createMux,
   createMuxConn,
   muxBindConnection,
-  connFree,
+  connClose,
   connSend,
   connListen,
   connSendClose,
   connSetTimeout,
-  muxCloseAll,
+  muxClose,
+  bindOthersideEnd,
+  connSendStop,
+  setWaitFinTimeout as _setWaitFinTimeout,
 } from './mux'
 import { getIP, debug } from './utils'
 
@@ -35,6 +32,18 @@ const DEFAULT_OPTIONS = {
 const BEATING_MSG = '\\\\beat'
 const CONVERSATION_START_CHAR = '\\\\start'
 const CONVERSATION_END_CHAR = '\\\\end'
+
+// class SocketRequester {}
+//
+// class SocketDistributor {}
+
+// TODO: Move these detail into conn
+function initConn(conn, onMsg) {
+  connSetTimeout(conn, 0)
+  connListen(conn, onMsg)
+
+  conn.event.on('close', () => {})
+}
 
 function sendJson(conn, jsonMsg) {
   const content = Buffer.from(
@@ -125,24 +134,29 @@ export function freeManager(manager) {
     beatInfo,
     conns,
     masterMux,
-    // masterSocket,
+    onClose,
   } = manager
+  let remainedSockets = conns.length + 1
+
+  const tryTriggerClose = () => {
+    remainedSockets -= 1
+    if (remainedSockets === 0 && typeof onClose === 'function') {
+      onClose()
+    }
+  }
 
   clearBeat(beatInfo)
 
   if (Array.isArray(conns)) {
     conns.forEach(conn => {
-      const { mux, socket } = conn
-      // NOTE: freed in next tick
-      // muxFree(mux)
-      // sessClose(socket)
-      muxCloseAll(mux)
+      const { mux } = conn
+      mux.event.on('close', tryTriggerClose)
+      muxClose(mux)
     })
   }
 
-  // muxFree(masterMux)
-  // sessClose(masterSocket)
-  muxCloseAll(masterMux)
+  masterMux.event.on('close', tryTriggerClose)
+  muxClose(masterMux)
 }
 
 export function initClientMasterSocket(mux) {
@@ -151,8 +165,7 @@ export function initClientMasterSocket(mux) {
     let data = Buffer.allocUnsafe(0)
 
     const conn = createMuxConn(mux)
-    connSetTimeout(conn, 0)
-    connListen(conn, buf => {
+    initConn(conn, buf => {
       data = Buffer.concat([data, buf])
 
       const res = checkJSONMsg(data)
@@ -160,10 +173,6 @@ export function initClientMasterSocket(mux) {
       if (res) {
         resolve([conn, res])
       }
-    })
-
-    conn.event.on('close', () => {
-      // connFree(conn)
     })
 
     connSend(conn, msg)
@@ -182,25 +191,19 @@ export function initClientConns(options, client, ipAddr) {
 
   ports.forEach(port => {
     const info = {}
-    const socket = createWithOptions(options.kcp)
 
-    initCryptor(socket, options.password)
-    socketListen(socket, 0)
-    setAddr(socket, ipAddr, port)
-
-    const mux = createMux({
-      sess: socket,
-    })
-
-    // NOTE: This will happen when the previous conn has been closed
-    // but the data comes from the other side.
-    // muxBindConnection(mux, (conn) => {
-    //   connSendClose(conn)
-    //   connFree(conn)
-    // })
+    const mux = createMux(
+      Object.assign({}, options, {
+        port: 0,
+        // TODO: check
+        passive: false,
+        targetPort: port,
+        targetAddr: ipAddr,
+      }),
+    )
 
     info.mux = mux
-    info.socket = socket
+    info.socket = mux.sess
     info.targetSocketPort = port
     info.targetSocketAddr = serverAddr
 
@@ -211,7 +214,7 @@ export function initClientConns(options, client, ipAddr) {
 }
 
 // TODO: throw when failed to connect
-export function createClient(_options) {
+export async function createClient(_options) {
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverAddr, serverPort } = options
   const client = new EventEmitter()
@@ -220,29 +223,28 @@ export function createClient(_options) {
   client.ports = []
   client._roundCur = 0
 
-  let ipAddr = null
-  const masterSocket = createWithOptions(options.kcp)
-  initCryptor(masterSocket, options.password)
-  socketListen(masterSocket, 0)
+  // Requests the ip from address.
+  const ipAddr = await getIP(serverAddr)
 
-  const masterMux = createMux({
-    sess: masterSocket,
-  })
-
-  client.masterSocket = masterSocket
+  const masterMux = createMux(
+    Object.assign({}, _options, {
+      // TODO: check
+      passive: false,
+      targetAddr: ipAddr,
+      targetPort: serverPort,
+      port: 0,
+    }),
+  )
+  client.masterSocket = masterMux.sess
   client.masterMux = masterMux
 
+  // Client should never get any passive connections.
+  // TODO: Remove?
   muxBindConnection(client.masterMux, conn => {
     connSendClose(conn)
-    // connFree(conn)
   })
 
-  return getIP(serverAddr)
-    .then(_ipAddr => {
-      ipAddr = _ipAddr
-      setAddr(masterSocket, ipAddr, serverPort)
-      return initClientMasterSocket(masterMux)
-    })
+  return initClientMasterSocket(masterMux)
     .then(([conn, ports]) => {
       // TODO:
       client.beatInfo = initBeat(conn, () => {
@@ -261,13 +263,6 @@ export function createClient(_options) {
     })
 }
 
-// export function closeClient(client) {
-//   const { masterSocket, conns } = client
-//
-//   conns.forEach(conn => sessClose(conn.socket, true))
-//   sessClose(masterSocket)
-// }
-
 export function getConnectionPorts(sockets) {
   return sockets.map(i => i.port)
 }
@@ -285,19 +280,19 @@ function createPassiveSockets(manager, options) {
   // create sockets for tunneling
   for (let i = 0; i < socketAmount; i += 1) {
     const info = {}
-    const socket = createWithOptions(options.kcp)
-    initCryptor(socket, options.password)
-    socketListen(socket, 0)
-    const port = getPort(socket)
 
-    const mux = createMux({
-      sess: socket,
-    })
+    const mux = createMux(
+      Object.assign({}, options, {
+        passive: true,
+        port: 0,
+      }),
+    )
+    const port = getPort(mux.sess)
 
     muxBindConnection(mux, handleConn)
 
     info.mux = mux
-    info.socket = socket
+    info.socket = mux.sess
     info.port = port
     sockets.push(info)
   }
@@ -305,7 +300,9 @@ function createPassiveSockets(manager, options) {
   return sockets
 }
 
-export function createManager(_options, onConnection, onClose) {
+// Create a "server" that waits for connection and create sockets
+// for them to connect.
+export async function createManager(_options, onConnection, onClose) {
   const options = Object.assign({}, DEFAULT_OPTIONS, _options)
   const { serverPort } = options
   const manager = {
@@ -313,29 +310,23 @@ export function createManager(_options, onConnection, onClose) {
     onConnection,
   }
 
+  // 1. Create mux sockets.
   // create master socket
-  const masterSocket = createWithOptions(options.kcp)
-  initCryptor(masterSocket, options.password)
-  socketListen(masterSocket, serverPort)
-  const masterMux = createMux({
-    sess: masterSocket,
-  })
-  manager.masterSocket = masterSocket
+  const masterMux = createMux(
+    Object.assign({}, options, {
+      // TODO: check
+      passive: true,
+      port: serverPort,
+    }),
+  )
+  manager.masterSocket = masterMux.sess
   manager.masterMux = masterMux
-  // TODO: prevent from calling `onClose` twice
-  let muxClosed = false
+  manager.onClose = onClose
 
-  // TODO: free manager from router
-  masterMux.event.on('close', () => {
-    if (!muxClosed && typeof onClose === 'function') {
-      onClose()
-    }
-  })
-
-  // TODO:
+  // When new connections comes, create some passive sockets
+  // that waits for connections.
   muxBindConnection(masterMux, conn => {
-    connListen(conn, buf => {
-      connSetTimeout(conn, 0)
+    initConn(conn, buf => {
       const shouldReply = checkHandshakeMsg(buf)
 
       if (!shouldReply) {
@@ -348,15 +339,8 @@ export function createManager(_options, onConnection, onClose) {
       sendJson(conn, getConnectionPorts(conns))
 
       manager.beatInfo = initBeat(conn, () => {
-        if (typeof onClose === 'function') {
-          muxClosed = true
-          onClose()
-        }
+        freeManager(manager)
       })
-    })
-
-    conn.event.on('close', () => {
-      // connFree(conn)
     })
   })
 
@@ -367,7 +351,11 @@ export const sendBuf = connSend
 
 export const listen = connListen
 
-export const close = (conn) => connFree(conn, false)
+export const close = conn => connClose(conn)
+
+export const bindEnd = bindOthersideEnd
+
+export const sendStop = connSendStop
 
 export const sendClose = connSendClose
 
@@ -390,7 +378,15 @@ export function createConnection(client) {
   return conn
 }
 
-export const destroy = _destroy
+// private
+export function setWaitFinTimeout(manager, timeout) {
+  const { masterMux, conns } = manager
+
+  _setWaitFinTimeout(masterMux, timeout)
+  conns.forEach(muxInfo => {
+    _setWaitFinTimeout(muxInfo.mux, timeout)
+  })
+}
 
 // if (module === require.main) {
 //   startUpdaterTimer()
