@@ -174,11 +174,9 @@ void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
 void free_handle_cb(uv_handle_t *handle) { free(handle); }
 
 void kcpuv__try_close_handle(uv_handle_t *handle) {
-  uv_handle_type type = uv_handle_get_type(handle);
-
   // There are some internal handles when running a uv process even though we
   // never declare them.
-  if (type != UV_UDP && type != UV_TIMER) {
+  if (handle->type != UV_UDP && handle->type != UV_TIMER) {
     return;
   }
 

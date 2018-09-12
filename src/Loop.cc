@@ -128,8 +128,7 @@ void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
 
 static void check_handles(uv_handle_t *handle, void *arg) {
   fprintf(stderr, "handle_type: %s, isclosing: %d\n",
-          uv_handle_type_name(uv_handle_get_type(handle)),
-          uv_is_closing(handle));
+          uv_handle_type_name(handle->type), uv_is_closing(handle));
 }
 
 void Loop::KcpuvCheckHandles_() {

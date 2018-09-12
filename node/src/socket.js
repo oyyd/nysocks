@@ -166,14 +166,14 @@ export const setSessWaitFinTimeout = wrap((sess, timeout) => {
   binding.setWaitFinTimeout(sess, timeout)
 })
 
-export function createConnection(targetAddress, targetPort, onMsg) {
-  const sess = create()
-
-  listen(sess, 0, onMsg)
-  setAddr(sess, targetAddress, targetPort)
-
-  return sess
-}
+// export function createConnection(targetAddress, targetPort, onMsg) {
+//   const sess = create()
+//
+//   listen(sess, 0, onMsg)
+//   setAddr(sess, targetAddress, targetPort)
+//
+//   return sess
+// }
 
 export function startUpdaterTimer() {
   binding.startLoop()
