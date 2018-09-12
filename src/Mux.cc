@@ -195,6 +195,7 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
 
   // ready for data
   conn->recv_state = KCPUV_CONN_RECV_READY;
+
   // update ts
   conn->ts = sess->recvTs;
 
@@ -286,6 +287,7 @@ Conn::Conn(Mux *mux, unsigned int i) {
 
   // Use new id if not provided.
   id = i ? i : mux->GetIncreaseID();
+
   timeout = MUX_CONN_DEFAULT_TIMEOUT;
   ts = iclock();
   this->mux = mux;
@@ -301,11 +303,18 @@ Conn::Conn(Mux *mux, unsigned int i) {
 
 // Popout the link from the queue and close it.
 // Users have to free Conn mannually.
-Conn::~Conn() {}
+Conn::~Conn() {
+  assert(id);
+  this->id = 0;
+}
 
 static void RemoveAndTriggerConnClose(KcpuvCallbackInfo *info) {
   Conn *conn = reinterpret_cast<Conn *>(info->data);
   delete info;
+
+  if (!conn->GetId()) {
+    return;
+  }
 
   kcpuv_link *ptr = conn->mux->RemoveConnFromList(conn);
   assert(ptr != NULL);
@@ -320,13 +329,16 @@ static void RemoveAndTriggerConnClose(KcpuvCallbackInfo *info) {
 
 // After closing, any io will stop immediatly.
 void Conn::Close() {
+  // assert(id);
+  if (!id) {
+    return;
+  }
+
   // TODO: may incorrectly
   if (recv_state == KCPUV_CONN_RECV_STOP &&
       send_state == KCPUV_CONN_SEND_STOPPED) {
     return;
   }
-
-  fprintf(stderr, "Conn::Close %d\n", this->id);
 
   // Tell the other side to close.
   bool allowSendClose = this->send_state == KCPUV_CONN_SEND_READY;

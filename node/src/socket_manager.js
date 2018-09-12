@@ -1,4 +1,3 @@
-import assert from 'assert'
 import EventEmitter from 'events'
 import { getPort } from './socket'
 import {

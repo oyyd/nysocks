@@ -48,14 +48,13 @@ export const destroy = wrap(sess => {
 export function create(passive) {
   assert(typeof passive === 'boolean', 'expect a boolean `passive`')
   // eslint-disable-next-line
-  const sess = new binding.create(passive)
+  const sess = new binding.create(passive ? 1 : 0)
   sess.event = new EventEmitter()
   sess._sess = true
   sess.isClosed = false
 
   binding.bindClose(sess, errorMsg => {
     destroy(sess)
-    sess.isClosed = true
     sess.event.emit('close', errorMsg)
   })
 

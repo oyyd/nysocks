@@ -113,23 +113,14 @@ export function createMux(_options) {
 let id = 0
 
 // TODO: keep api in accordance
-export const connFree = connSuite.wrap((conn, inNextTick = true) => {
+export const connFree = connSuite.wrap((conn) => {
   if (conn.isClosed) {
     return
   }
 
   conn.isClosed = true
 
-  const free = () => {
-    binding.connFree(conn)
-    // record('conn', get('conn') - 1)
-  }
-
-  if (inNextTick) {
-    process.nextTick(free)
-  } else {
-    free()
-  }
+  binding.connFree(conn)
 })
 
 export const connBindClose = connSuite.wrap((conn, cb) => {
@@ -150,7 +141,7 @@ export function wrapMuxConn(conn) {
   conn.event = new EventEmitter()
 
   connBindClose(conn, () => {
-    connFree(conn, false)
+    connFree(conn)
     // NOTE: Make sure emit 'close' event before free to
     // give a chance for outside do something.
     conn.event.emit('close')

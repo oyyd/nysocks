@@ -26,6 +26,9 @@ function checkValidSocket(name, obj) {
 function wrap(name, func) {
   return (obj, ...args) => {
     checkValidSocket(name, obj)
+    if (obj.isClosed === true) {
+      return
+    }
     return func(obj, ...args)
   }
 }
