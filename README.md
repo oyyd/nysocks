@@ -33,8 +33,7 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 
 **protocol(unstable):**
 
-**NOTE:** The protocol of nysocks has been changed from v1.3.0 so that you have to install nysocks v1.3.x in both of your client and server.
-
+**NOTE:** The protocol of nysocks has been changed from v2.0.0 so that you have to install nysocks v2.0.x in both of your client and server.
 
 ```
 +-------+-----+-----+---------+---------+--------+------------+
@@ -43,6 +42,8 @@ Proxy tests from a Linode instance(Tokyo 2, JP) where 10% packet loss always hap
 |  24   |  1  |  1  |    8    |    1    |    2   |     4      |
 +-------+-----+-----+---------+---------+--------+------------+
 ```
+
+TODO: Pass error code.
 
 ## About the Tunnel Implementation
 

@@ -102,6 +102,7 @@ TEST_F(KcpuvSessTest, TransferOnePacket) {
   char msg[] = "Hello";
   char addr[] = "127.0.0.1";
 
+  test2_sender->Listen(0, NULL);
   // bind local
   int rval = test2_recver->Listen(receive_port, &recver_cb);
 
@@ -134,6 +135,7 @@ TEST_F(KcpuvSessTest, TakeNextDgramSource) {
   char addr[] = "127.0.0.1";
 
   test2_recver->SetPassive(1);
+  test2_sender->Listen(0, NULL);
   // bind local
   int rval = test2_recver->Listen(receive_port, &recver_cb);
 
@@ -141,7 +143,6 @@ TEST_F(KcpuvSessTest, TakeNextDgramSource) {
   EXPECT_EQ(test2_recver->sessUDP->HasSendAddr(), 0);
 
   test2_sender->InitSend(addr, receive_port);
-
   test2_sender->Send(msg, strlen(msg));
 
   EXPECT_CALL(*test_callback1, Call(StrEq("Hello"))).Times(1);
@@ -191,6 +192,7 @@ TEST_F(KcpuvSessTest, TransferMultiplePackets) {
 
   memset(msg, 65, size);
 
+  test3_sender->Listen(0, NULL);
   // bind local
   test3_recver->Listen(receive_port, &recver_cb2);
   test3_sender->InitSend(addr, receive_port);
@@ -241,6 +243,7 @@ TEST_F(KcpuvSessTest, MockImplementation) {
   KCPUV_INIT_ENCRYPTOR(test4_sender);
   KCPUV_INIT_ENCRYPTOR(test4_receiver);
 
+  test4_sender->Listen(0, NULL);
   test4_receiver->Listen(receiver_port, &recver_cb22);
   test4_sender->InitSend(addr, receiver_port);
 

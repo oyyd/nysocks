@@ -10,7 +10,7 @@ static short enable_timeout = KCPUV_MUX_CONN_TIMEOUT;
 
 void Mux::SetEnableTimeout(short value) { enable_timeout = value; }
 
-static unsigned int bytes_to_int(const unsigned char *buffer) {
+static unsigned int BytesToInt(const unsigned char *buffer) {
   return (unsigned int)(buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 |
                         buffer[3]);
 }
@@ -40,7 +40,7 @@ static void SessCloseFirst(KcpuvSess *sess) {
   assert(0);
 }
 
-static void int_to_bytes(unsigned char *buffer, unsigned int id) {
+static void IntToBytes(unsigned char *buffer, unsigned int id) {
   buffer[0] = (id >> 24) & 0xFF;
   buffer[1] = (id >> 16) & 0xFF;
   buffer[2] = (id >> 8) & 0xFF;
@@ -54,24 +54,19 @@ unsigned int Mux::Decode(const char *buffer, int *cmd, int *length) {
   *cmd = (int)buf[0];
   *length = (unsigned int)(buf[5] << 8 | buf[6]);
 
-  return bytes_to_int(buf + 1);
+  return BytesToInt(buf + 1);
 }
 
 void Mux::Encode(char *buffer, unsigned int id, int cmd, int length) {
   unsigned char *buf = (unsigned char *)buffer;
   buf[0] = cmd;
-  int_to_bytes(buf + 1, id);
+  IntToBytes(buf + 1, id);
   buf[5] = (length >> 8) & 0xFF;
   buf[6] = (length)&0xFF;
 }
 
-Mux::Mux(KcpuvSess *s) {
-  if (s == NULL) {
-    sess = new KcpuvSess;
-  } else {
-    sess = s;
-  }
-
+void Mux::InitMux(KcpuvSess *s) {
+  sess = s;
   conns = kcpuv_link_create(NULL);
   on_connection_cb = NULL;
   on_close_cb = NULL;
@@ -81,6 +76,15 @@ Mux::Mux(KcpuvSess *s) {
 
   sess->BindListen(OnRecvMsg);
   sess->BindClose(SessCloseFirst);
+}
+
+Mux::Mux(KcpuvSess *s) {
+  if (s == NULL) {
+    // TODO: Didn't pass refactor
+    s = new KcpuvSess;
+  }
+
+  InitMux(s);
 }
 
 Mux::~Mux() {
@@ -184,23 +188,30 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
 
   // NOTE: happend when the conn has been freed
   if (conn == NULL) {
+    // TODO: Inform the other side to close.
     return;
   }
 
   // The conn have receive fin.
-  if (conn->recv_state == KCPUV_CONN_RECV_STOP) {
+  if (conn->recv_state == KCPUV_CONN_RECV_STOP && cmd != KCPUV_MUX_CMD_CLS) {
     fprintf(stderr, "%s %d %d\n", "drop invalid msg", id, cmd);
     return;
   }
-
-  // ready for data
-  conn->recv_state = KCPUV_CONN_RECV_READY;
 
   // update ts
   conn->ts = sess->recvTs;
 
   // handle cmd
-  if (cmd == KCPUV_MUX_CMD_PUSH || cmd == KCPUV_MUX_CMD_CONNECT) {
+  if (cmd == KCPUV_MUX_CMD_FIN) {
+    conn->recv_state = KCPUV_CONN_RECV_STOP;
+    if (conn->on_otherside_end != NULL) {
+      ConnOnOthersideEnd cb = conn->on_otherside_end;
+      cb(conn);
+    }
+  } else if (cmd == KCPUV_MUX_CMD_PUSH || cmd == KCPUV_MUX_CMD_CONNECT) {
+    // ready for data
+    conn->recv_state = KCPUV_CONN_RECV_READY;
+
     if (conn->on_msg_cb == NULL) {
       // Should never happen.
       assert(0);
@@ -208,13 +219,9 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
 
     ConnOnMsgCb cb = conn->on_msg_cb;
     cb(conn, data, len);
-  } else if (cmd == KCPUV_MUX_CMD_FIN) {
-    conn->recv_state = KCPUV_CONN_RECV_STOP;
-    if (conn->on_otherside_end != NULL) {
-      ConnOnOthersideEnd cb = conn->on_otherside_end;
-      cb(conn);
-    }
   } else if (cmd == KCPUV_MUX_CMD_CLS) {
+    conn->SetErrorCode(
+        BytesToInt(reinterpret_cast<const unsigned char *>(data)));
     conn->Close();
   } else {
     // drop invalid cmd
@@ -296,6 +303,7 @@ Conn::Conn(Mux *mux, unsigned int i) {
   on_otherside_end = NULL;
   recv_state = KCPUV_CONN_RECV_NOT_CONNECTED;
   send_state = KCPUV_CONN_SEND_NOT_CONNECTED;
+  receiveErrorCode = 0;
 
   // add to mux conns
   mux->AddConnToList(this);
@@ -324,11 +332,11 @@ static void RemoveAndTriggerConnClose(KcpuvCallbackInfo *info) {
   // NOTE: Have to bind close before deleting.
   assert(conn->on_close_cb != NULL);
   // TODO: Do we need error msg.
-  cb(conn, NULL);
+  cb(conn, conn->GetErrorCode());
 }
 
 // After closing, any io will stop immediatly.
-void Conn::Close() {
+void Conn::Close(unsigned int errorCode) {
   // assert(id);
   if (!id) {
     return;
@@ -344,7 +352,7 @@ void Conn::Close() {
   bool allowSendClose = this->send_state == KCPUV_CONN_SEND_READY;
 
   if (allowSendClose) {
-    SendClose();
+    SendClose(errorCode);
   }
 
   this->recv_state = KCPUV_CONN_RECV_STOP;
@@ -431,7 +439,12 @@ int Conn::Send(const char *content, int len, int cmd) {
   return 0;
 }
 
-void Conn::SendClose() { Send(NULL, 0, KCPUV_MUX_CMD_CLS); }
+void Conn::SendClose(unsigned int errorCode) {
+  const int len = 4;
+  char errorCodeBytes[len];
+  IntToBytes(reinterpret_cast<unsigned char *>(errorCodeBytes), errorCode);
+  Send(errorCodeBytes, len, KCPUV_MUX_CMD_CLS);
+}
 
 void Conn::SendStopSending() {
   Send(NULL, 0, KCPUV_MUX_CMD_FIN);

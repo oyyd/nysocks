@@ -93,10 +93,11 @@ function ssProtocol(config, managerClient) {
 function socksProtocol(config, managerClient) {
   return createSocksServer(config.SOCKS, (info, socket) => {
     const { chunk } = info
-
     // TODO: We don't need to use 'end' event.
     // tunnel
     const conn = createConnection(managerClient)
+    // TODO: Pass error code.
+    let error = null
 
     bindEnd(conn, () => {
       socket.end()
@@ -117,6 +118,7 @@ function socksProtocol(config, managerClient) {
     })
 
     socket.on('error', err => {
+      error = err
       logger.error(err.message)
     })
 

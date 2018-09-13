@@ -30,6 +30,7 @@ const DEFAULT_KCP_OPTIONS = {
 function init() {
   binding.initialize()
   binding.useDefaultLoop(true)
+  binding.enableMuxTimeoutChecking(1)
 }
 
 init()

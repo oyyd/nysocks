@@ -444,6 +444,12 @@ static NAN_METHOD(SetWaitFinTimeout) {
   obj->GetSess()->SetWaitFinTimeout(timeout);
 }
 
+static NAN_METHOD(EnableMuxTimeoutChecking) {
+  unsigned int enable = info[1]->Uint32Value();
+
+  Mux::SetEnableTimeout(enable);
+}
+
 // static NAN_METHOD(MuxInit) {
 //   // Isolate *isolate = info.GetIsolate();
 //   KcpuvMuxBinding *muxBinding =
@@ -581,7 +587,6 @@ static NAN_METHOD(ConnFree) {
 }
 
 // TODO: Add conn close
-
 static NAN_METHOD(ConnSend) {
   KcpuvMuxConnBinding *connBinding =
       Nan::ObjectWrap::Unwrap<KcpuvMuxConnBinding>(info[0]->ToObject());
@@ -771,6 +776,7 @@ static NAN_MODULE_INIT(Init) {
   Nan::SetMethod(target, "stopUpdaterTimer", StopUpdaterTimer);
   Nan::SetMethod(target, "getSessState", GetSessState);
   Nan::SetMethod(target, "setWaitFinTimeout", SetWaitFinTimeout);
+  Nan::SetMethod(target, "enableMuxTimeoutChecking", EnableMuxTimeoutChecking);
 
   // mux method
   // Nan::SetMethod(target, "muxInit", MuxInit);

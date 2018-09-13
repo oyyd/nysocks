@@ -14,7 +14,7 @@ protected:
   virtual ~MuxTest(){};
 };
 
-static void CloseConn(Conn *conn, const char *error_msg) { delete conn; }
+static void CloseConn(Conn *conn, unsigned int code) { delete conn; }
 
 static void CloseMux(Mux *mux, const char *error_msg) { delete mux; }
 
@@ -51,7 +51,7 @@ TEST_F(MuxTest, EncodeAndDecode) {
 static testing::MockFunction<void(void)> *ConnCloseCalled;
 static testing::MockFunction<void(void)> *MuxCloseCalled;
 
-static void ConnOnClose(Conn *conn, const char *error_msg) {
+static void ConnOnClose(Conn *conn, unsigned int code) {
   EXPECT_EQ(conn->send_state, KCPUV_CONN_SEND_STOPPED);
   EXPECT_EQ(conn->recv_state, KCPUV_CONN_RECV_STOP);
   ConnCloseCalled->Call();
@@ -272,7 +272,7 @@ static void CloseMuxAndStopTimer(Mux *mux, const char *msg) {
   Loop::KcpuvStopUpdaterTimer();
 }
 
-void timeout_close_cb(Conn *conn, const char *error_msg) {
+void timeout_close_cb(Conn *conn, unsigned int code) {
   Mux *mux = conn->mux;
   EXPECT_EQ(mux->GetConnLength(), 0);
 
@@ -301,6 +301,89 @@ TEST_F(MuxTest, ConnTimeout) {
 
   // TODO:
   // test_close_mux->Close();
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
+}
+
+static int freedMux = 0;
+static Mux *errorCodeMux = NULL;
+static Mux *errorCodeMux2 = NULL;
+
+static void CloseMuxAndCount(Mux *mux, const char *err) {
+  delete mux;
+
+  if (++freedMux == 2) {
+    Loop::KcpuvStopUpdaterTimer();
+  }
+}
+
+static void TestZeroErrorCode(Conn *conn, unsigned int code) {
+  EXPECT_EQ(code, 0);
+
+  delete conn;
+}
+
+static void TestErrorCode(Conn *conn, unsigned int code) {
+  EXPECT_EQ(code, 104);
+
+  delete conn;
+
+  errorCodeMux->Close();
+  errorCodeMux2->Close();
+}
+
+static void TestHelloMsg(Conn *conn, const char *buffer, int length) {
+  EXPECT_EQ(length, 5);
+}
+
+static void BindConnectionToTestErrorCode(Conn *conn) {
+  conn->Send("Hello", 5, 0);
+  conn->BindClose(TestErrorCode);
+  conn->BindMsg(TestHelloMsg);
+}
+
+static void TimerCloseConn(uv_timer_t *timer) {
+  Conn *conn = reinterpret_cast<Conn *>(timer->data);
+  conn->Close(104);
+
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
+}
+
+TEST_F(MuxTest, ConnPassErrorCodeWhenClosed) {
+  KcpuvSess::KcpuvInitialize();
+
+  char *addr = new char[16];
+  int port = 0;
+  int namelen;
+
+  KcpuvSess *sess1 = new KcpuvSess(0);
+  KcpuvSess *sess2 = new KcpuvSess(1);
+
+  sess1->Listen(0, NULL);
+  sess2->Listen(0, NULL);
+  sess2->GetAddressPort(addr, &namelen, &port);
+  sess1->InitSend(addr, port);
+
+  errorCodeMux = new Mux(sess1);
+  errorCodeMux2 = new Mux(sess2);
+
+  KCPUV_INIT_ENCRYPTOR(errorCodeMux->sess);
+  KCPUV_INIT_ENCRYPTOR(errorCodeMux2->sess);
+
+  errorCodeMux->BindClose(CloseMuxAndCount);
+  errorCodeMux2->BindClose(CloseMuxAndCount);
+  errorCodeMux2->BindConnection(BindConnectionToTestErrorCode);
+
+  Conn *errorCodeConn = errorCodeMux->CreateConn();
+  errorCodeConn->BindMsg(TestHelloMsg);
+  errorCodeConn->Send("Hello", 5, 0);
+  errorCodeConn->BindClose(TestZeroErrorCode);
+
+  START_MS_TEST_TIMER(TimerCloseConn, 2000);
+  timer->data = errorCodeConn;
+
+  Loop::KcpuvStartLoop_(Mux::UpdateMux);
+
+  delete[] addr;
   KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 

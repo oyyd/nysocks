@@ -14,28 +14,18 @@ using namespace testing;
 
 static uv_timer_t *timer = NULL;
 
-static void emptyTimerCb(uv_timer_t *timer) {}
-
-static void EmptyLoopCallback(uv_timer_t *timer) {
-  kcpuv::Loop::KcpuvStopUpdaterTimer();
-}
+#ifndef START_MS_TEST_TIMER
+#define START_MS_TEST_TIMER(CbName, timeout)                                   \
+  uv_timer_t *timer = new uv_timer_t;                                          \
+  uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
+  uv_timer_start(timer, CbName, timeout, 0)
+#endif
 
 #ifndef START_TEST_TIMER
 #define START_TEST_TIMER(CbName)                                               \
   uv_timer_t *timer = new uv_timer_t;                                          \
   uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
   uv_timer_start(timer, CbName, 100, 0)
-#endif
-
-#ifndef RUN_EMPTY_LOOP
-#define RUN_EMPTY_LOOP() Loop::KcpuvStartLoop_(EmptyLoopCallback)
-#endif
-
-#ifndef ENABLE_100MS_TIMER
-#define ENABLE_100MS_TIMER()                                                   \
-  uv_timer_t *timer = new uv_timer_t;                                          \
-  uv_timer_init(Loop::kcpuv_get_loop(), timer);                                \
-  uv_timer_start(timer, EmptyLoopCallback, 100, 0)
 #endif
 
 // NOTE: Libuv may failed to trigger some callbacks if we don't actually use it.

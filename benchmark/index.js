@@ -106,13 +106,11 @@ function createEnvironment() {
       // 3. create nysocks client and send msg continually
       // 4. record nysocks server CPU and memory
       .then(_server => {
-        console.log('nysocks server created')
         nysocksServer = _server
 
         return createNysocksClient()
       })
       .then(() => {
-        console.log('nysocks client created')
         return createAppClient(addr)
       })
       .then(_appSocket => {

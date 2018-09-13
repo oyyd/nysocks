@@ -107,6 +107,8 @@ int SessUDP::Bind(int port, DgramCb cb) {
 int SessUDP::Unbind() { return uv_udp_recv_stop(handle); }
 
 int SessUDP::Send(const char *data, int dataLen) {
+  // NOTE: Have to bind before sending.
+  assert(dataCb);
   assert(sendAddr);
 
   char *bufData = new char[dataLen];

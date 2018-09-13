@@ -20,6 +20,7 @@ export { startUpdaterTimer, stopUpdaterTimer } from './socket'
 
 const TOTAL_TIMEOUT = (debug ? 10 : 60) * 1000
 const BEATING_INTERVAL = TOTAL_TIMEOUT / 6
+const CONN_DEFAULT_TIMEOUT = 2 * 1000 * 60
 export const DEFAULT_SERVER_PORT = 20000
 
 const DEFAULT_OPTIONS = {
@@ -38,7 +39,7 @@ const CONVERSATION_END_CHAR = '\\\\end'
 
 // TODO: Move these detail into conn
 function initConn(conn, onMsg) {
-  connSetTimeout(conn, 0)
+  connSetTimeout(conn, CONN_DEFAULT_TIMEOUT)
   connListen(conn, onMsg)
 
   conn.event.on('close', () => {})

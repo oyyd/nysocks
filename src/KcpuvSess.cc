@@ -377,6 +377,9 @@ static void OnDgramCb(SessUDP *sessUDP, const struct sockaddr *addr,
 // Set receiving info.
 int KcpuvSess::Listen(int port, DataCb cb) {
   KcpuvSess *sess = this;
+
+  // Do not allow unbind.
+  assert(!(sess->onMsgCb != NULL && !cb));
   assert(sess->state == KCPUV_STATE_CREATED);
 
   sess->onMsgCb = cb;
