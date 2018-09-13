@@ -9,6 +9,7 @@ import {
   setSessWaitFinTimeout,
 } from './socket'
 import { createBaseSuite } from './utils'
+import { getMsg, getCode } from './net_error_codes'
 // import { record, get } from './monitor'
 // import { logger } from './logger'
 
@@ -140,11 +141,11 @@ export function wrapMuxConn(conn) {
 
   conn.event = new EventEmitter()
 
-  connBindClose(conn, () => {
+  connBindClose(conn, (errorCode) => {
     connFree(conn)
     // NOTE: Make sure emit 'close' event before free to
     // give a chance for outside do something.
-    conn.event.emit('close')
+    conn.event.emit('close', getMsg(errorCode))
   })
   // record('conn', get('conn') + 1)
 }
@@ -189,12 +190,12 @@ export const connSend = connSuite.wrap((conn, buffer) => {
   binding.connSend(conn, buffer, buffer.length)
 })
 
-export const connSendClose = connSuite.wrap(conn => {
+export const connSendClose = connSuite.wrap((conn, errorMsg) => {
   if (conn.isClosed) {
     return
   }
 
-  binding.connSendClose(conn)
+  binding.connSendClose(conn, getCode(errorMsg))
 })
 
 export const connListen = connSuite.wrap((conn, onMessage) => {

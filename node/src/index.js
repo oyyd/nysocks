@@ -43,6 +43,20 @@ function start() {
   startUpdaterTimer()
 }
 
+function createException(msg) {
+  if (!msg) {
+    return undefined
+  }
+
+  let error
+  if (msg) {
+    error = new Error()
+    error.code = msg
+    error.errno = msg
+  }
+  return error
+}
+
 function ssProtocol(config, managerClient) {
   const ssConfig = Object.assign({}, DEFAULT_SS_CONFIG, config.SS)
 
@@ -54,8 +68,8 @@ function ssProtocol(config, managerClient) {
     mockSocket.conn = conn
 
     // bind
-    conn.event.on('close', () => {
-      mockSocket.emit('close')
+    conn.event.on('close', (msg) => {
+      mockSocket.emit('close', createException(msg))
     })
 
     listen(conn, buf => {
@@ -97,14 +111,15 @@ function socksProtocol(config, managerClient) {
     // tunnel
     const conn = createConnection(managerClient)
     // TODO: Pass error code.
-    let error = null
+    // let errorMsg
 
     bindEnd(conn, () => {
       socket.end()
     })
     // bind
-    conn.event.on('close', () => {
+    conn.event.on('close', (msg) => {
       // TODO: error msg
+      // socket.destroy(createException(msg))
       socket.destroy()
     })
 
@@ -113,13 +128,12 @@ function socksProtocol(config, managerClient) {
     })
 
     socket.on('data', buf => {
-      // console.log('SOCKET_SEND', buf.length)
       sendBuf(conn, buf)
     })
 
     socket.on('error', err => {
-      error = err
-      logger.error(err.message)
+      // errorMsg = err.code
+      logger.error(err)
     })
 
     socket.on('end', () => {
@@ -266,6 +280,7 @@ export async function createServer(config, onClose) {
     conn => {
       let firstBuf = true
       let socket = null
+      // let errorMsg
 
       listen(conn, buf => {
         if (firstBuf) {
@@ -289,7 +304,8 @@ export async function createServer(config, onClose) {
             sendBuf(conn, buffer)
           })
           socket.on('error', err => {
-            logger.error(err.message)
+            // errorMsg = err.code
+            logger.error(err)
           })
           socket.on('close', () => {
             sendClose(conn)
@@ -301,10 +317,9 @@ export async function createServer(config, onClose) {
           bindEnd(conn, () => {
             socket.end()
           })
-          conn.event.on('close', () => {
-            // TODO: error msg
+          conn.event.on('close', (msg) => {
+            // socket.destroy(createException(msg))
             socket.destroy()
-            // close(conn)
           })
           return
         }

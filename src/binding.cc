@@ -638,7 +638,7 @@ static NAN_METHOD(ConnListen) {
   connBinding->conn->BindMsg(ConnBindingOnMessage);
 }
 
-static void ConnBindingOnClose(Conn *conn, const char *error_msg) {
+static void ConnBindingOnClose(Conn *conn, unsigned int errorCode) {
   KcpuvMuxConnBinding *connBinding =
       static_cast<KcpuvMuxConnBinding *>(conn->data);
   Nan::HandleScope scope;
@@ -647,12 +647,7 @@ static void ConnBindingOnClose(Conn *conn, const char *error_msg) {
   const int argc = 1;
   Local<Value> argv[argc] = {};
 
-  if (error_msg) {
-    argv[0] = String::NewFromUtf8(isolate, error_msg);
-  } else {
-    argv[0] = Nan::Undefined();
-  }
-
+  argv[0] = Number::New(isolate, errorCode);
   Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
                     Nan::New(connBinding->on_close), argc, argv);
 }

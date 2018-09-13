@@ -41,8 +41,7 @@ const CONVERSATION_END_CHAR = '\\\\end'
 function initConn(conn, onMsg) {
   connSetTimeout(conn, CONN_DEFAULT_TIMEOUT)
   connListen(conn, onMsg)
-
-  conn.event.on('close', () => {})
+  // conn.event.on('close', () => {})
 }
 
 function sendJson(conn, jsonMsg) {
