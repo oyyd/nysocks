@@ -1,6 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import yargs from 'yargs'
+import childProcess from 'child_process'
 import { createPACServer } from 'pac-server'
 import { createClient, createServerRouter } from './index'
 import { MODES } from './modes'
@@ -264,6 +265,17 @@ export default function main() {
         logger.info(`PAC service is listening on ${pacConfig.pacServerPort}`)
 
         createClient(config)
+      },
+    })
+    .command({
+      command: 'pm',
+      desc: 'Alias of PM2(process manager) CLI that you can use to check or operate processes directly.',
+      handler: (argv) => {
+        const args = argv._.slice(1)
+
+        childProcess.fork(path.resolve(__dirname, '../../node_modules/pm2/bin/pm2'), args, {
+          stdio: 'inherit',
+        })
       },
     })
     .demandCommand(1, 'You need at least one command before moving on')

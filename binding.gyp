@@ -20,7 +20,6 @@
       ['OS=="win"', {
         'libraries' : ['ws2_32.lib']
       }]
-    ],
-    'cflags_cc!': ['-Wno-incompatible-pointer-types']
+    ]
   }]
 }

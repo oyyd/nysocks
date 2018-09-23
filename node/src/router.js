@@ -56,7 +56,7 @@ export function createRouter(_options, createASess) {
   const onServerClose = ({ address, port }) => {
     const key = createKey(address, port)
     delete managerMaps[key]
-    logger.info(`close ${key}`)
+    logger.info(`client disconnected, address: ${key}`)
   }
 
   return {

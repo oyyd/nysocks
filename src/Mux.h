@@ -122,6 +122,7 @@ private:
   unsigned int id;
   unsigned long timeout;
   unsigned int receiveErrorCode;
+  bool isClosing;
 };
 } // namespace kcpuv
 

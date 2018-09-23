@@ -124,7 +124,7 @@ export const connFree = connSuite.wrap((conn) => {
   binding.connFree(conn)
 })
 
-export const connBindClose = connSuite.wrap((conn, cb) => {
+const connBindClose = connSuite.wrap((conn, cb) => {
   binding.connBindClose(conn, cb)
 })
 

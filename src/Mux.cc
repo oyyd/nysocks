@@ -209,7 +209,7 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
 
   // The conn have receive fin.
   if (conn->recv_state == KCPUV_CONN_RECV_STOP && cmd != KCPUV_MUX_CMD_CLS) {
-    fprintf(stderr, "%s %d %d\n", "drop invalid msg", id, cmd);
+    // fprintf(stderr, "%s %d %d\n", "drop invalid msg", id, cmd);
     return;
   }
 
@@ -297,6 +297,7 @@ Conn::Conn(Mux *mux, unsigned int i) {
   recv_state = KCPUV_CONN_RECV_NOT_CONNECTED;
   send_state = KCPUV_CONN_SEND_NOT_CONNECTED;
   receiveErrorCode = 0;
+  isClosing = 0;
 
   // add to mux conns
   mux->AddConnToList(this);
@@ -335,11 +336,10 @@ void Conn::Close(unsigned int errorCode) {
     return;
   }
 
-  // TODO: may incorrectly
-  if (recv_state == KCPUV_CONN_RECV_STOP &&
-      send_state == KCPUV_CONN_SEND_STOPPED) {
+  if (isClosing) {
     return;
   }
+  isClosing = 1;
 
   // Tell the other side to close.
   bool allowSendClose = this->send_state == KCPUV_CONN_SEND_READY;

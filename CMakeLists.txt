@@ -8,7 +8,6 @@ project(kcpuv)
 # TODO: CMAKE_CXX_FLAGS doesn't work
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 add_compile_options(-g)
-add_compile_options(-Wno-incompatible-pointer-types)
 
 # libuv
 include_directories(./deps/libuv/include)
@@ -51,20 +50,3 @@ target_link_libraries(kcpuv
   ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/out/Debug/libuv.a
   /usr/local/opt/openssl/lib/libcrypto.a
 )
-
-# add_executable(benchmark_udp
-#   src/benchmark_udp.c
-# )
-#
-# add_executable(benchmark_openssl
-#   src/benchmark_openssl.c
-# )
-
-# benchmark
-# target_link_libraries(benchmark_udp
-#   kcpuv
-# )
-
-# target_link_libraries(benchmark_openssl
-#   kcpuv
-# )

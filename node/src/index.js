@@ -133,7 +133,7 @@ function socksProtocol(config, managerClient) {
 
     socket.on('error', err => {
       // errorMsg = err.code
-      logger.error(err)
+      logger.debug(`A. ${err.message}`)
     })
 
     socket.on('end', () => {
@@ -305,7 +305,7 @@ export async function createServer(config, onClose) {
           })
           socket.on('error', err => {
             // errorMsg = err.code
-            logger.error(err)
+            logger.debug(`B.${err.message}`)
           })
           socket.on('close', () => {
             sendClose(conn)
