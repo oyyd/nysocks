@@ -6,7 +6,7 @@ project(kcpuv)
 
 # known warnings
 # TODO: CMAKE_CXX_FLAGS doesn't work
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-pointer-types -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 add_compile_options(-g)
 add_compile_options(-Wno-incompatible-pointer-types)
 
