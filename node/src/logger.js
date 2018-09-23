@@ -58,6 +58,7 @@ export const logger = {};
   'info',
   'error',
   'warn',
+  'verbose',
 ]).forEach(level => {
   Object.defineProperty(logger, level, {
     get: () => _logger[level].bind(_logger),
