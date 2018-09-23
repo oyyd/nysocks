@@ -387,4 +387,25 @@ TEST_F(MuxTest, ConnPassErrorCodeWhenClosed) {
   KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
 }
 
+static void CloseSess(uv_timer_t *timer) {
+  KcpuvSess *sess = reinterpret_cast<KcpuvSess *>(timer->data);
+  sess->Close();
+  kcpuv__try_close_handle(reinterpret_cast<uv_handle_t *>(timer));
+}
+
+TEST_F(MuxTest, CloseSessBeforeMux) {
+  KcpuvSess::KcpuvInitialize();
+
+  KcpuvSess *sess = new KcpuvSess(0);
+  Mux *mux = new Mux(sess);
+
+  mux->BindClose(CloseMuxAndStopTimer);
+
+  START_MS_TEST_TIMER(CloseSess, 100);
+  timer->data = sess;
+
+  Loop::KcpuvStartLoop_(Mux::UpdateMux);
+  KCPUV_TRY_STOPPING_LOOP_AND_DESTRUCT();
+}
+
 } // namespace kcpuv_test

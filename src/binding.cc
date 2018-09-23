@@ -152,21 +152,22 @@ static void OnListenCb(KcpuvSess *sess, const char *data, unsigned int len) {
   const int argc = 1;
   Local<Value> info[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->listen_cb), argc, info);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(binding->listen_cb), argc, info);
 }
 
 static void ClosingCb(KcpuvSess *sess) {
   KcpuvSessBinding *binding = static_cast<KcpuvSessBinding *>(sess->data);
 
   Nan::HandleScope scope;
-  Isolate *isolate = Isolate::GetCurrent();
   // const char *error_msg = reinterpret_cast<const char *>(data);
   const int argc = 1;
   Local<Value> info[argc] = {Nan::Undefined()};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->close_cb), argc, info);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(binding->close_cb), argc, info);
 }
 
 static void OnUDPSend(SessUDP *udp, const struct sockaddr *addr,
@@ -193,8 +194,9 @@ static void OnUDPSend(SessUDP *udp, const struct sockaddr *addr,
   Local<Value> info[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked(),
                              js_address, js_port};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(binding->udp_send_cb), argc, info);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(binding->udp_send_cb), argc, info);
 }
 
 void KcpuvSessBinding::Create(const FunctionCallbackInfo<Value> &info) {
@@ -236,7 +238,7 @@ static NAN_METHOD(InitCryptor) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
-  String::Utf8Value utf8Str(info[1]->ToString());
+  String::Utf8Value utf8Str(isolate, info[1]->ToString());
   const char *key = *utf8Str;
   int keylen = info[2]->ToNumber(isolate)->Int32Value();
 
@@ -277,7 +279,7 @@ static NAN_METHOD(Free) {
 
 // TODO: check this
 static NAN_METHOD(Input) {
-  // Isolate *isolate = info.GetIsolate();
+  Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
@@ -286,7 +288,7 @@ static NAN_METHOD(Input) {
   char *content = new char[content_size];
   memcpy(content, js_content, content_size);
 
-  String::Utf8Value utf8Str(info[3]->ToString());
+  String::Utf8Value utf8Str(isolate, info[3]->ToString());
   char *ip = *utf8Str;
   unsigned int port = info[4]->Uint32Value();
 
@@ -402,7 +404,7 @@ static NAN_METHOD(InitSend) {
   Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-  String::Utf8Value utf8Str(info[1]->ToString());
+  String::Utf8Value utf8Str(isolate, info[1]->ToString());
   // TODO: Do we need to free strings from js?
   char *addr = *utf8Str;
   int port = static_cast<double>(info[2]->ToNumber(isolate)->Value());
@@ -491,8 +493,9 @@ static void MuxBindingOnCloseCb(Mux *mux, const char *error_msg) {
     argv[0] = Nan::Undefined();
   }
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(muxBinding->on_close), argc, argv);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(muxBinding->on_close), argc, argv);
 }
 
 static NAN_METHOD(MuxBindClose) {
@@ -532,8 +535,9 @@ static void MuxBindingOnConnectionCb(Conn *conn) {
   const int argc = 1;
   Local<Value> argv[argc] = {conn_instance};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(muxBinding->on_connection), argc, argv);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(muxBinding->on_connection), argc, argv);
 }
 
 static NAN_METHOD(MuxBindConnection) {
@@ -617,8 +621,9 @@ static void ConnBindingOnMessage(Conn *conn, const char *data, int len) {
   const int argc = 1;
   Local<Value> info[argc] = {Nan::NewBuffer(buf_data, len).ToLocalChecked()};
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(connBinding->on_message), argc, info);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(connBinding->on_message), argc, info);
 }
 
 // TODO: Change name to `ConnBindMsg`
@@ -648,8 +653,9 @@ static void ConnBindingOnClose(Conn *conn, unsigned int errorCode) {
   Local<Value> argv[argc] = {};
 
   argv[0] = Number::New(isolate, errorCode);
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(connBinding->on_close), argc, argv);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(connBinding->on_close), argc, argv);
 }
 
 static NAN_METHOD(ConnBindClose) {
@@ -693,10 +699,10 @@ static void ConnBindingStopSend(Conn *conn) {
   KcpuvMuxConnBinding *connBinding =
       static_cast<KcpuvMuxConnBinding *>(conn->data);
   Nan::HandleScope scope;
-  Isolate *isolate = Isolate::GetCurrent();
 
-  Nan::MakeCallback(Nan::GetCurrentContext()->Global(),
-                    Nan::New(connBinding->on_stop_send), 0, 0);
+  Nan::AsyncResource resource("nysocks_async");
+  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(),
+                           Nan::New(connBinding->on_stop_send), 0, 0);
 }
 
 static NAN_METHOD(BindOthersideEnd) {

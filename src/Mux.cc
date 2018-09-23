@@ -33,13 +33,6 @@ static void OnRecvMsg(KcpuvSess *sess, const char *data, unsigned int len) {
   }
 }
 
-// TODO: The sess to be freed.
-static void SessCloseFirst(KcpuvSess *sess) {
-  assert(sess->mux != NULL);
-  fprintf(stderr, "sess is closed before closing mux\n");
-  assert(0);
-}
-
 static void IntToBytes(unsigned char *buffer, unsigned int id) {
   buffer[0] = (id >> 24) & 0xFF;
   buffer[1] = (id >> 16) & 0xFF;
@@ -65,6 +58,28 @@ void Mux::Encode(char *buffer, unsigned int id, int cmd, int length) {
   buf[6] = (length)&0xFF;
 }
 
+static void RemoveAndTriggerMuxClose(KcpuvCallbackInfo *info) {
+  Mux *mux = reinterpret_cast<Mux *>(info->data);
+
+  assert(mux->on_close_cb);
+  MuxOnCloseCb cb = mux->on_close_cb;
+  cb(mux, NULL);
+
+  delete info;
+}
+
+static void DeleteSess(KcpuvSess *sess) {
+  Mux *mux = reinterpret_cast<Mux *>(sess->mux);
+
+  delete sess;
+
+  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
+  info->data = mux;
+  info->cb = RemoveAndTriggerMuxClose;
+
+  Loop::NextTick(info);
+}
+
 void Mux::InitMux(KcpuvSess *s) {
   sess = s;
   conns = kcpuv_link_create(NULL);
@@ -75,7 +90,7 @@ void Mux::InitMux(KcpuvSess *s) {
   SetZeroID();
 
   sess->BindListen(OnRecvMsg);
-  sess->BindClose(SessCloseFirst);
+  sess->BindClose(DeleteSess);
 }
 
 Mux::Mux(KcpuvSess *s) {
@@ -227,28 +242,6 @@ void Mux::Input(const char *data, unsigned int len, unsigned int id, int cmd) {
     // drop invalid cmd
     fprintf(stderr, "%s\n", "receive invalid cmd");
   }
-}
-
-static void RemoveAndTriggerMuxClose(KcpuvCallbackInfo *info) {
-  Mux *mux = reinterpret_cast<Mux *>(info->data);
-
-  assert(mux->on_close_cb);
-  MuxOnCloseCb cb = mux->on_close_cb;
-  cb(mux, NULL);
-
-  delete info;
-}
-
-static void DeleteSess(KcpuvSess *sess) {
-  Mux *mux = reinterpret_cast<Mux *>(sess->mux);
-
-  delete sess;
-
-  KcpuvCallbackInfo *info = new KcpuvCallbackInfo;
-  info->data = mux;
-  info->cb = RemoveAndTriggerMuxClose;
-
-  Loop::NextTick(info);
 }
 
 void Mux::Close() {
