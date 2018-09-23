@@ -43,7 +43,7 @@
     "pac-server": "^1.0.1",
     "pm2": "^2.8.0",
     "socksv5-kcpuv": "^0.0.9",
-    "winston": "^3.1.0",
+    "winston": "^3.0.0-rc1",
     "yargs": "^10.0.3"
   },
   "devDependencies": {

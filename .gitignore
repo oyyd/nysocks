@@ -25,7 +25,6 @@ test.json
 README_CN.md
 nohup.out
 
-package-lock.json
 *.zip
 test/Makefile
 src_
