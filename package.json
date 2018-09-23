@@ -43,7 +43,7 @@
     "pac-server": "^1.0.1",
     "pm2": "^2.8.0",
     "socksv5-kcpuv": "^0.0.9",
-    "winston": "^3.0.0-rc1",
+    "winston": "^3.1.0",
     "yargs": "^10.0.3"
   },
   "devDependencies": {
@@ -55,7 +55,6 @@
     "eslint-plugin-import": "^2.8.0",
     "fs-extra": "^4.0.2",
     "jest": "^21.2.1",
-    "segfault-handler": "^1.0.0",
     "yazl": "^2.4.3"
   },
   "eslintConfig": {
