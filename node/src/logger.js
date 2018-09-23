@@ -25,7 +25,6 @@ const nysocksFormat = format.combine(
 
 let _logger = winston.createLogger({
   level: 'info',
-  levels: winston.config.syslog.levels,
   format: nysocksFormat,
   transports: [
     new winston.transports.Console(),
@@ -34,7 +33,6 @@ let _logger = winston.createLogger({
 
 export const memoryLogger = winston.createLogger({
   level: 'info',
-  levels: winston.config.syslog.levels,
   format: format.simple(),
   transports: [
     new winston.transports.File({
@@ -45,7 +43,6 @@ export const memoryLogger = winston.createLogger({
 
 export const monitorLogger = winston.createLogger({
   level: 'info',
-  levels: winston.config.syslog.levels,
   format: format.simple(),
   transports: [
     new winston.transports.File({
