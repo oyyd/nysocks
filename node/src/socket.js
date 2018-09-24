@@ -151,7 +151,7 @@ export const setAddr = wrap((sess, address, port) => {
 
 export const getSessState = wrap(sess => {
   const state = binding.getSessState(sess)
-  let name = '(invalid state)'
+  let name = `(invalid state ${state})`
 
   Object.keys(SESS_STATE).forEach(n => {
     if (SESS_STATE[n] === state) {

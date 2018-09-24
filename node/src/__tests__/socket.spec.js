@@ -55,11 +55,9 @@ describe('socket', () => {
     }
 
     a.event.on('close', () => {
-      expect(getSessState(a)).toBe('KCPUV_STATE_WAIT_FREE')
       closeLoop()
     })
     b.event.on('close', () => {
-      expect(getSessState(a)).toBe('KCPUV_STATE_WAIT_FREE')
       closeLoop()
     })
 
