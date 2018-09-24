@@ -211,6 +211,9 @@ describe('mux', () => {
 
       setAddr(mux1.sess, ADDR, port2)
       setAddr(mux2.sess, ADDR, port1)
+      // TODO: refactor
+      setSessWaitFinTimeout(mux1.sess, 500)
+      setSessWaitFinTimeout(mux2.sess, 500)
 
       const conn1 = createMuxConn(mux1)
       const BUFFER_LENGTH = 64 * 1024
@@ -295,6 +298,9 @@ describe('mux', () => {
 
       setAddr(mux1.sess, ADDR, port2)
       setAddr(mux2.sess, ADDR, port1)
+      // TODO: refactor
+      setSessWaitFinTimeout(mux1.sess, 500)
+      setSessWaitFinTimeout(mux2.sess, 500)
 
       const conn1 = createMuxConn(mux1)
       const BUFFER_LENGTH = 64 * 1024

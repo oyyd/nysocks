@@ -41,6 +41,11 @@ describe('socket', () => {
     const message = 'hello'
     const a = create(false)
     const b = create(true)
+
+    // TODO: refactor
+    setSessWaitFinTimeout(a, 500)
+    setSessWaitFinTimeout(b, 500)
+
     let closed = 0
 
     const closeLoop = () => {
