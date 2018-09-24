@@ -126,14 +126,14 @@ void Loop::KcpuvStartLoop_(uv_timer_cb cb) {
 //   Loop::CloseLoopHandles_(kcpuv_get_loop());
 // }
 
-static void check_handles(uv_handle_t *handle, void *arg) {
-  fprintf(stderr, "handle_type: %s, isclosing: %d\n",
-          uv_handle_type_name(handle->type), uv_is_closing(handle));
-}
-
-void Loop::KcpuvCheckHandles_() {
-  uv_walk(kcpuv_get_loop(), check_handles, NULL);
-}
+// static void check_handles(uv_handle_t *handle, void *arg) {
+//   fprintf(stderr, "handle_type: %s, isclosing: %d\n",
+//           uv_handle_type_name(handle->type), uv_is_closing(handle));
+// }
+//
+// void Loop::KcpuvCheckHandles_() {
+//   uv_walk(kcpuv_get_loop(), check_handles, NULL);
+// }
 
 int Loop::KcpuvStopUpdaterTimer() {
   if (timer != NULL) {
