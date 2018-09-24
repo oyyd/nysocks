@@ -27,6 +27,19 @@ using v8::Persistent;
 using v8::String;
 using v8::Value;
 
+#if NODE_MAJOR_VERSION > 6
+#ifndef COMMON_UTF8VALUE
+#define COMMON_UTF8VALUE(name, isolate, value)                                 \
+  String::Utf8Value name(isolate, value);
+#endif
+#endif
+
+#if NODE_MAJOR_VERSION <= 6
+#ifndef COMMON_UTF8VALUE
+#define COMMON_UTF8VALUE(name, isolate, value) String::Utf8Value name(value);
+#endif
+#endif
+
 class KcpuvSessBinding;
 class KcpuvMuxBinding;
 class KcpuvMuxConnBinding;
@@ -238,7 +251,7 @@ static NAN_METHOD(InitCryptor) {
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
 
-  String::Utf8Value utf8Str(isolate, info[1]->ToString());
+  COMMON_UTF8VALUE(utf8Str, isolate, info[1]->ToString());
   const char *key = *utf8Str;
   int keylen = info[2]->ToNumber(isolate)->Int32Value();
 
@@ -288,7 +301,7 @@ static NAN_METHOD(Input) {
   char *content = new char[content_size];
   memcpy(content, js_content, content_size);
 
-  String::Utf8Value utf8Str(isolate, info[3]->ToString());
+  COMMON_UTF8VALUE(utf8Str, isolate, info[3]->ToString());
   char *ip = *utf8Str;
   unsigned int port = info[4]->Uint32Value();
 
@@ -404,7 +417,7 @@ static NAN_METHOD(InitSend) {
   Isolate *isolate = info.GetIsolate();
   KcpuvSessBinding *obj =
       Nan::ObjectWrap::Unwrap<KcpuvSessBinding>(info[0]->ToObject());
-  String::Utf8Value utf8Str(isolate, info[1]->ToString());
+  COMMON_UTF8VALUE(utf8Str, isolate, info[1]->ToString());
   // TODO: Do we need to free strings from js?
   char *addr = *utf8Str;
   int port = static_cast<double>(info[2]->ToNumber(isolate)->Value());
