@@ -160,7 +160,7 @@ export const getSessState = wrap(sess => {
   })
 
   return name
-})
+}, false)
 
 export const setSessWaitFinTimeout = wrap((sess, timeout) => {
   binding.setWaitFinTimeout(sess, timeout)

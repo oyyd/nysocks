@@ -17,12 +17,13 @@ function checkValidSocket(name, obj) {
   }
 }
 
-function wrap(name, func) {
+function wrap(name, func, checkIsClose = true) {
   return (obj, ...args) => {
     checkValidSocket(name, obj)
-    if (obj.isClosed === true) {
+    if (checkIsClose && obj.isClosed === true) {
       return
     }
+
     return func(obj, ...args)
   }
 }

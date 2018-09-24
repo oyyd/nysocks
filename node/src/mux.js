@@ -179,7 +179,7 @@ export const createMuxConn = muxSuite.wrap((mux, _options) => {
   return conn
 })
 
-export const isConnFreed = connSuite.wrap(conn => conn.isClosed)
+export const isConnFreed = connSuite.wrap(conn => conn.isClosed, false)
 
 export const connSend = connSuite.wrap((conn, buffer) => {
   if (conn.isClosed) {

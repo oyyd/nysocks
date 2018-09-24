@@ -16,6 +16,7 @@ import {
   bindUdpSend,
   stopListen,
   createWithOptions,
+  setSessWaitFinTimeout,
 } from '../socket'
 
 describe('socket', () => {
@@ -160,6 +161,9 @@ describe('socket', () => {
 
       const portA = getPort(a)
       const portB = getPort(b)
+
+      setSessWaitFinTimeout(a, 500)
+      setSessWaitFinTimeout(b, 500)
 
       expect(typeof portA === 'number').toBe(true)
       expect(typeof portB === 'number').toBe(true)
