@@ -14,11 +14,11 @@ import {
   connSendStop,
   setWaitFinTimeout as _setWaitFinTimeout,
 } from './mux'
-import { getIP, debug } from './utils'
+import { getIP } from './utils'
 
 export { startUpdaterTimer, stopUpdaterTimer } from './socket'
 
-const TOTAL_TIMEOUT = (debug ? 10 : 60) * 1000
+export const TOTAL_TIMEOUT = 60 * 1000
 const BEATING_INTERVAL = TOTAL_TIMEOUT / 6
 const CONN_DEFAULT_TIMEOUT = 2 * 1000 * 60
 export const DEFAULT_SERVER_PORT = 20000

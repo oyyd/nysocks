@@ -97,15 +97,15 @@ void print_as_hex(const char *msg, int len) {
   printf("\n");
 }
 
-void kcpuv__print_sockaddr(const struct sockaddr *name) {
-  int port;
-  char *addr = malloc(sizeof(char) * 16);
-
-  uv_ip4_name((const struct sockaddr_in *)name, addr, IP4_ADDR_LENTH);
-  port = ntohs(((struct sockaddr_in *)name)->sin_port);
-
-  free(addr);
-}
+// void kcpuv__print_sockaddr(const struct sockaddr *name) {
+//   int port;
+//   char *addr = malloc(sizeof(char) * 16);
+//
+//   uv_ip4_name((const struct sockaddr_in *)name, addr, IP4_ADDR_LENTH);
+//   port = ntohs(((struct sockaddr_in *)name)->sin_port);
+//
+//   free(addr);
+// }
 
 void kcpuv_log_error(char *msg) { fprintf(stderr, "error: %s", msg); }
 

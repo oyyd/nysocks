@@ -1,4 +1,5 @@
 import os from 'os'
+import { TOTAL_TIMEOUT } from './socket_manager'
 
 const INTERVAL_TIME = 5 * 1000
 
@@ -29,19 +30,23 @@ export function createMonitor(next) {
   }
 
   const obj = {
+    ts: Date.now(),
     ip: getValidIP(),
   }
 
   obj.id = setInterval(() => {
     const oriIP = obj.ip
+    const now = Date.now()
     const ip = getValidIP()
 
     obj.ip = ip
 
     // trigger when we could access non-internal network
-    if (oriIP !== ip) {
+    if (oriIP !== ip || now - obj.ts >= TOTAL_TIMEOUT) {
       next()
     }
+
+    obj.ts = now
   }, INTERVAL_TIME)
 
   return obj
