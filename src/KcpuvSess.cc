@@ -215,8 +215,6 @@ KcpuvSess::KcpuvSess(bool passive_) {
   recvBufLength = 0;
   recvBuf = new char[KCPUV_SESS_BUFFER_SIZE];
   mux = NULL;
-  // TODO:
-  // handle->data = this;
   recvAddr = NULL;
   onMsgCb = NULL;
   onCloseCb = NULL;
@@ -275,22 +273,9 @@ KcpuvSess::~KcpuvSess() {
     delete recvAddr;
   }
 
-  // TODO: Make sure sessUdp will be closed correctly.
-  // if (!uv_is_closing((uv_handle_t *)handle)) {
-  //   uv_close((uv_handle_t *)handle, free_handle_cb);
-  // }
   delete sessUDP;
-
-  // // TODO: should stop listening
-  // if (handle->data != NULL) {
-  //   // freed
-  // } else if (!uv_is_closing((uv_handle_t *)handle)) {
-  // } else {
-  //   // handle->data = NULL;
-  //   // free(handle);
-  // }
-
   delete recvBuf;
+
   ikcp_release(kcp);
 }
 

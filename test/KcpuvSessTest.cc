@@ -421,7 +421,7 @@ TEST_F(KcpuvSessTest, GetAddressPort) {
   KCPUV_INIT_ENCRYPTOR(sess);
   sess->Listen(bind_port, NULL);
 
-  char *ip_addr = new char[16];
+  char *ip_addr = new char[IP4_ADDR_LENTH];
   int port = 0;
   int namelen = 0;
   int rval = sess->GetAddressPort(ip_addr, &namelen, &port);

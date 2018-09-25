@@ -205,8 +205,8 @@ TEST_F(MuxTest, Transmission) {
   sess_p1->Listen(0, nullptr);
   sess_p2->Listen(0, nullptr);
 
-  char *addr_p1 = new char[16];
-  char *addr_p2 = new char[16];
+  char *addr_p1 = new char[IP4_ADDR_LENTH];
+  char *addr_p2 = new char[IP4_ADDR_LENTH];
   int namelen_p1;
   int namelen_p2;
   int port_p1;
@@ -351,7 +351,7 @@ static void TimerCloseConn(uv_timer_t *timer) {
 TEST_F(MuxTest, ConnPassErrorCodeWhenClosed) {
   KcpuvSess::KcpuvInitialize();
 
-  char *addr = new char[16];
+  char *addr = new char[IP4_ADDR_LENTH];
   int port = 0;
   int namelen;
 
