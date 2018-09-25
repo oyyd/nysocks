@@ -1,6 +1,6 @@
 # nysocks
 
-[![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks) [![travis-ci](https://travis-ci.org/oyyd/nysocks.svg?branch=dev)](https://travis-ci.org/oyyd/nysocks)
+[![npm-version](https://img.shields.io/npm/v/nysocks.svg?style=flat-square)](https://www.npmjs.com/package/nysocks) [![travis-ci](https://travis-ci.org/oyyd/nysocks.svg)](https://travis-ci.org/oyyd/nysocks)
 
 [English](./doc/README_EN.md)
 
