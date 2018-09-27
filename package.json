@@ -1,6 +1,6 @@
 {
   "name": "nysocks",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Nysocks binds kcp and libuv to provide a tunnel for nodejs.",
   "main": "node/lib/index.js",
   "bin": {
